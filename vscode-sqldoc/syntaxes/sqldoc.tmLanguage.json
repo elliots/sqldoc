@@ -1,0 +1,73 @@
+{
+  "scopeName": "comment.sqldoc",
+  "injectionSelector": "L:comment.line.double-dash.sql",
+  "patterns": [{ "include": "#import" }, { "include": "#tag" }],
+  "repository": {
+    "import": {
+      "match": "((@)import)\\s+('[^']*'|\"[^\"]*\")",
+      "captures": {
+        "1": { "name": "keyword.control.import.sqldoc" },
+        "2": { "name": "punctuation.definition.tag.sqldoc" },
+        "3": { "name": "string.quoted.import-path.sqldoc" }
+      }
+    },
+    "tag": {
+      "begin": "(@)(\\w+)(?:(\\.)([\\w]+))?(?=\\(|\\s|$)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.sqldoc" },
+        "2": { "name": "entity.name.tag.sqldoc" },
+        "3": { "name": "punctuation.separator.dot.sqldoc" },
+        "4": { "name": "entity.name.function.sqldoc" }
+      },
+      "end": "(?<=\\))|(?=\\s+@)|(?=$)",
+      "patterns": [{ "include": "#args" }]
+    },
+    "args": {
+      "begin": "\\(",
+      "end": "\\)",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.parens.begin.sqldoc" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.parens.end.sqldoc" }
+      },
+      "patterns": [
+        { "include": "#named-arg" },
+        { "include": "#array-literal" },
+        { "include": "#string-literal" },
+        { "include": "#comma" },
+        { "include": "#bare-value" }
+      ]
+    },
+    "named-arg": {
+      "match": "(\\w+)(\\s*:\\s*)",
+      "captures": {
+        "1": { "name": "variable.parameter.key.sqldoc" },
+        "2": { "name": "keyword.operator.assignment.sqldoc" }
+      }
+    },
+    "array-literal": {
+      "begin": "\\[",
+      "end": "\\]",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.brackets.begin.sqldoc" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.brackets.end.sqldoc" }
+      },
+      "patterns": [{ "include": "#string-literal" }, { "include": "#comma" }, { "include": "#bare-value" }]
+    },
+    "string-literal": {
+      "match": "'[^']*'|\"[^\"]*\"",
+      "name": "string.quoted.single.sqldoc"
+    },
+    "comma": {
+      "match": ",",
+      "name": "punctuation.separator.comma.sqldoc"
+    },
+    "bare-value": {
+      "match": "\\w+",
+      "name": "constant.other.enum.sqldoc"
+    }
+  }
+}

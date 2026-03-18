@@ -1,0 +1,25 @@
+{
+  "name": "@sqldoc/e2e",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests for sqldoc",
+  "scripts": {
+    "test": "vitest run",
+    "docs-docker": "./src/docs-docker.sh src/docs-pglite.sql",
+    "docs-pglite": "sqldoc codegen -c sqldoc.config.docs-pglite.ts src/docs-pglite.sql",
+    "docs-extension-pglite": "sqldoc codegen -c sqldoc.config.docs-pglite.ts src/docs-extensions.sql",
+    "docs-extension-docker": "./src/docs-docker.sh src/docs-extensions.sql"
+  },
+  "devDependencies": {
+    "@sqldoc/core": "workspace:*",
+    "@sqldoc/ns-anon": "workspace:*",
+    "@sqldoc/ns-audit": "workspace:*",
+    "@sqldoc/ns-comment": "workspace:*",
+    "@sqldoc/ns-deprecated": "workspace:*",
+    "@sqldoc/ns-postgraphile": "workspace:*",
+    "@sqldoc/ns-rls": "workspace:*",
+    "@sqldoc/ns-validate": "workspace:*",
+    "vitest": "^4.1.0"
+  }
+}

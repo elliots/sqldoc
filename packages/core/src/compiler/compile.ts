@@ -1,0 +1,783 @@
+/**
+ * Core compiler pipeline: parse tags, build context, invoke generators.
+ *
+ * compile() takes pre-parsed inputs (source, plugins, statements, config)
+ * and orchestrates generateSQL/generateCode for each tag occurrence.
+ *
+ * Supports two compilation tiers:
+ * - Tier 1 (no Atlas): Uses block resolution from sqlparser-ts (VSCode, validation)
+ * - Tier 2 (Atlas):    Uses Atlas-parsed schema with tags already matched to objects
+ */
+
+import type { SqlAstAdapter } from '../ast/adapter.ts'
+import type { SqlCommentOn, SqlStatement } from '../ast/types.ts'
+import type { TagBlock } from '../blocks.ts'
+import { buildBlocks } from '../blocks.ts'
+import { parse, parseArgs } from '../parser.ts'
+import type { SqlTarget } from '../types.ts'
+import type {
+  CodeOutput,
+  CompilerOutput,
+  DocsMeta,
+  NamespaceConfig,
+  NamespacePlugin,
+  ResolvedConfig,
+  SqlOutput,
+  TagContext,
+  TagOutput,
+} from './types.ts'
+
+// ── Internal Atlas types (mirrors @sqldoc/atlas without importing) ────
+// Core must NOT depend on @sqldoc/atlas. These mirror the shapes for internal use.
+// Schema fields use lowercase (matching marshal.go json tags).
+// Attr variants (Tag, Comment, Check) use PascalCase (map[string]string in Go).
+
+interface InternalAtlasRealm {
+  schemas: InternalAtlasSchema[]
+  attrs?: InternalAtlasAttr[]
+}
+
+interface InternalAtlasSchema {
+  name: string
+  tables?: InternalAtlasTable[]
+  views?: InternalAtlasView[]
+  attrs?: InternalAtlasAttr[]
+}
+
+interface InternalAtlasTable {
+  name: string
+  columns?: InternalAtlasColumn[]
+  attrs?: InternalAtlasAttr[]
+}
+
+interface InternalAtlasView {
+  name: string
+  columns?: InternalAtlasColumn[]
+  attrs?: InternalAtlasAttr[]
+}
+
+interface InternalAtlasColumn {
+  name: string
+  type?: { raw?: string; null?: boolean; T?: string }
+  attrs?: InternalAtlasAttr[]
+}
+
+type InternalAtlasAttr = { Name: string; Args: string } | Record<string, unknown>
+
+// ── Public API ───────────────────────────────────────────────────────
+
+export interface CompileOptions {
+  /** SQL file content */
+  source: string
+  /** SQL file path (for import resolution) */
+  filePath: string
+  /** Loaded namespace plugins (already resolved, keyed by namespace name) */
+  plugins: Map<string, NamespacePlugin>
+  /** Parsed SQL statements from AST adapter */
+  statements: SqlStatement[]
+  /** The AST adapter instance (initialized) */
+  adapter: SqlAstAdapter
+  /** Project config */
+  config: ResolvedConfig
+  /** Atlas-parsed schema realm (Tier 2). When provided, uses Atlas tag-to-object matching instead of block resolution. */
+  atlasRealm?: unknown
+}
+
+export function compile(options: CompileOptions): CompilerOutput {
+  const { source, filePath, plugins, statements, config, adapter, atlasRealm } = options
+
+  // Tier 2: Atlas realm provided — use Atlas tag-to-object matching
+  if (atlasRealm) {
+    const result = compileAtlas(
+      atlasRealm as InternalAtlasRealm,
+      filePath,
+      plugins,
+      statements,
+      config,
+      source,
+      adapter,
+    )
+    // Merge parser-derived tags that Atlas doesn't see (e.g. @lint.ignore)
+    // These tags have no SQL output so Atlas never encounters them
+    const tags = parse(source).tags
+    if (tags.length > 0) {
+      const docLines = source.split('\n')
+      const blocks = buildBlocks(tags, source, docLines, statements)
+      const parserFileTags = buildFileTags(blocks)
+      mergeParserTags(result.fileTags, parserFileTags)
+    }
+    return result
+  }
+
+  // Tier 1: No Atlas realm — use block resolution
+  return compileTier1(source, filePath, plugins, statements, config, adapter)
+}
+
+// ── Tier 1: Block resolution (existing logic) ─────────────────────────
+
+function compileTier1(
+  source: string,
+  filePath: string,
+  plugins: Map<string, NamespacePlugin>,
+  statements: SqlStatement[],
+  config: ResolvedConfig,
+  adapter: SqlAstAdapter,
+): CompilerOutput {
+  const sqlOutputs: SqlOutput[] = []
+  const codeOutputs: CodeOutput[] = []
+  const docsMeta: DocsMeta[] = []
+  const errors: Array<{ namespace: string; message: string }> = []
+
+  // 1. Parse source to extract tags
+  const { tags } = parse(source)
+  if (tags.length === 0) {
+    return { sourceFile: filePath, mergedSql: source, sqlOutputs, codeOutputs, errors, docsMeta, fileTags: [] }
+  }
+
+  // 2. Build tag blocks (group consecutive comment-line tags, resolve to SQL object)
+  const docLines = source.split('\n')
+  const blocks = buildBlocks(tags, source, docLines, statements)
+
+  // 3. Build file-level tag summary (all tags across file grouped by object)
+  const fileTags = buildFileTags(blocks)
+
+  // 4. Process each block
+  for (const block of blocks) {
+    const { objectName, target, columnName, columnType, astNode } = block.ast
+
+    // Group tags by namespace within this block
+    for (const tag of block.tags) {
+      const plugin = plugins.get(tag.namespace)
+      if (!plugin) continue
+      const tagHandler = plugin.onTag ?? plugin.generateSQL
+      if (!tagHandler && !plugin.generateCode) continue
+
+      // Build namespaceTags: all tags from same namespace on same object
+      const namespaceTags = block.tags
+        .filter((t) => t.namespace === tag.namespace)
+        .map((t) => ({
+          tag: t.tag,
+          args: parsedArgsToValue(t.rawArgs),
+        }))
+
+      // Build siblingTags: all tags from ALL namespaces on same object
+      const siblingTags = block.tags.map((t) => ({
+        namespace: t.namespace,
+        tag: t.tag,
+        args: parsedArgsToValue(t.rawArgs),
+      }))
+
+      const ctx: TagContext = {
+        target,
+        objectName: objectName ?? 'unknown',
+        columnName,
+        columnType,
+        tag: {
+          name: tag.tag,
+          args: parsedArgsToValue(tag.rawArgs),
+        },
+        namespaceTags,
+        siblingTags,
+        fileTags,
+        astNode: astNode ?? null,
+        fileStatements: statements,
+        config: (config.namespaces?.[tag.namespace] ?? {}) as NamespaceConfig,
+        filePath,
+      }
+
+      invokePlugin(plugin, tagHandler, ctx, tag, sqlOutputs, codeOutputs, docsMeta, errors)
+    }
+  }
+
+  // 5. Build merged SQL: original source + generated SQL appended
+  const mergedSql = buildMergedOutput(source, sqlOutputs, adapter)
+
+  return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
+}
+
+// ── Tier 2: Atlas realm compilation ───────────────────────────────────
+
+function compileAtlas(
+  realm: InternalAtlasRealm,
+  filePath: string,
+  plugins: Map<string, NamespacePlugin>,
+  statements: SqlStatement[],
+  config: ResolvedConfig,
+  source: string,
+  adapter: SqlAstAdapter,
+): CompilerOutput {
+  const sqlOutputs: SqlOutput[] = []
+  const codeOutputs: CodeOutput[] = []
+  const docsMeta: DocsMeta[] = []
+  const errors: Array<{ namespace: string; message: string }> = []
+
+  // Collect all tag occurrences across the realm for fileTags building
+  const allTagOccurrences: Array<{
+    objectName: string
+    target: SqlTarget
+    namespace: string
+    tag: string | null
+    args: Record<string, unknown> | unknown[]
+  }> = []
+
+  for (const schema of realm.schemas) {
+    // Process tables
+    if (schema.tables) {
+      for (const table of schema.tables) {
+        processAtlasObject(
+          table,
+          'table',
+          table.name,
+          realm,
+          filePath,
+          plugins,
+          statements,
+          config,
+          sqlOutputs,
+          codeOutputs,
+          docsMeta,
+          errors,
+          allTagOccurrences,
+        )
+      }
+    }
+
+    // Process views
+    if (schema.views) {
+      for (const view of schema.views) {
+        processAtlasObject(
+          view,
+          'view',
+          view.name,
+          realm,
+          filePath,
+          plugins,
+          statements,
+          config,
+          sqlOutputs,
+          codeOutputs,
+          docsMeta,
+          errors,
+          allTagOccurrences,
+        )
+      }
+    }
+  }
+
+  // Build fileTags from collected tag occurrences
+  const fileTags = buildAtlasFileTags(allTagOccurrences)
+
+  // Build merged SQL output
+  const mergedSql = buildMergedOutput(source, sqlOutputs, adapter)
+
+  return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
+}
+
+/** Process a single Atlas object (table or view) and its columns for tag invocation */
+function processAtlasObject(
+  obj: InternalAtlasTable | InternalAtlasView,
+  target: SqlTarget,
+  objectName: string,
+  realm: InternalAtlasRealm,
+  filePath: string,
+  plugins: Map<string, NamespacePlugin>,
+  statements: SqlStatement[],
+  config: ResolvedConfig,
+  sqlOutputs: SqlOutput[],
+  codeOutputs: CodeOutput[],
+  docsMeta: DocsMeta[],
+  errors: Array<{ namespace: string; message: string }>,
+  allTagOccurrences: Array<{
+    objectName: string
+    target: SqlTarget
+    namespace: string
+    tag: string | null
+    args: Record<string, unknown> | unknown[]
+  }>,
+): void {
+  // Extract tags from object-level attrs
+  const objectTags = findAtlasTags(obj.attrs)
+
+  // Collect all tags on this object (object-level + column-level) for siblingTags
+  const allObjectTagsParsed = objectTags.map((t) => {
+    const split = splitTagName(t.Name)
+    return { namespace: split.namespace, tag: split.tag, argsStr: t.Args }
+  })
+
+  // Also collect column tags for sibling awareness
+  if (obj.columns) {
+    for (const col of obj.columns) {
+      const colTags = findAtlasTags(col.attrs)
+      for (const ct of colTags) {
+        const split = splitTagName(ct.Name)
+        allObjectTagsParsed.push({ namespace: split.namespace, tag: split.tag, argsStr: ct.Args })
+      }
+    }
+  }
+
+  // Process object-level tags (table/view level)
+  for (const atag of objectTags) {
+    const { namespace, tag: tagName } = splitTagName(atag.Name)
+    const plugin = plugins.get(namespace)
+    if (!plugin) continue
+    const tagHandler = plugin.onTag ?? plugin.generateSQL
+    if (!tagHandler && !plugin.generateCode) continue
+
+    const args = parseAtlasArgs(atag.Args)
+
+    // Build namespaceTags: all tags from same namespace on this object
+    const namespaceTags = allObjectTagsParsed
+      .filter((t) => t.namespace === namespace)
+      .map((t) => ({ tag: t.tag, args: parseAtlasArgs(t.argsStr) }))
+
+    // Build siblingTags: all tags from ALL namespaces on this object
+    const siblingTags = allObjectTagsParsed.map((t) => ({
+      namespace: t.namespace,
+      tag: t.tag,
+      args: parseAtlasArgs(t.argsStr),
+    }))
+
+    // Track for fileTags
+    allTagOccurrences.push({ objectName, target, namespace, tag: tagName, args })
+
+    const ctx: TagContext = {
+      target,
+      objectName,
+      tag: { name: tagName, args },
+      namespaceTags,
+      siblingTags,
+      fileTags: [], // Placeholder — will be set after all objects processed
+      astNode: null,
+      fileStatements: statements,
+      config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
+      filePath,
+      atlasTable: obj,
+      atlasRealm: realm,
+    }
+
+    invokePlugin(
+      plugin,
+      tagHandler,
+      ctx,
+      { namespace, tag: tagName, rawArgs: atag.Args },
+      sqlOutputs,
+      codeOutputs,
+      docsMeta,
+      errors,
+    )
+  }
+
+  // Process column-level tags
+  if (obj.columns) {
+    for (const col of obj.columns) {
+      const colTags = findAtlasTags(col.attrs)
+      for (const atag of colTags) {
+        const { namespace, tag: tagName } = splitTagName(atag.Name)
+        const plugin = plugins.get(namespace)
+        if (!plugin) continue
+        const tagHandler = plugin.onTag ?? plugin.generateSQL
+        if (!tagHandler && !plugin.generateCode) continue
+
+        const args = parseAtlasArgs(atag.Args)
+        const columnType = col.type?.raw ?? col.type?.T
+
+        // Build namespaceTags
+        const namespaceTags = allObjectTagsParsed
+          .filter((t) => t.namespace === namespace)
+          .map((t) => ({ tag: t.tag, args: parseAtlasArgs(t.argsStr) }))
+
+        // Build siblingTags
+        const siblingTags = allObjectTagsParsed.map((t) => ({
+          namespace: t.namespace,
+          tag: t.tag,
+          args: parseAtlasArgs(t.argsStr),
+        }))
+
+        // Track for fileTags — use table.column as objectName so templates can look up per-column
+        allTagOccurrences.push({
+          objectName: `${objectName}.${col.name}`,
+          target: 'column',
+          namespace,
+          tag: tagName,
+          args,
+        })
+
+        const ctx: TagContext = {
+          target: 'column',
+          objectName,
+          columnName: col.name,
+          columnType,
+          tag: { name: tagName, args },
+          namespaceTags,
+          siblingTags,
+          fileTags: [], // Placeholder
+          astNode: null,
+          fileStatements: statements,
+          config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
+          filePath,
+          atlasTable: obj,
+          atlasColumn: col,
+          atlasRealm: realm,
+        }
+
+        invokePlugin(
+          plugin,
+          tagHandler,
+          ctx,
+          { namespace, tag: tagName, rawArgs: atag.Args },
+          sqlOutputs,
+          codeOutputs,
+          docsMeta,
+          errors,
+        )
+      }
+    }
+  }
+}
+
+// ── Shared plugin invocation ──────────────────────────────────────────
+
+function invokePlugin(
+  plugin: NamespacePlugin,
+  tagHandler: ((ctx: TagContext) => SqlOutput[] | TagOutput | undefined) | undefined,
+  ctx: TagContext,
+  tag: { namespace: string; tag: string | null; rawArgs: string | null },
+  sqlOutputs: SqlOutput[],
+  codeOutputs: CodeOutput[],
+  docsMeta: DocsMeta[],
+  errors: Array<{ namespace: string; message: string }>,
+): void {
+  // Call onTag (or legacy generateSQL)
+  if (tagHandler) {
+    try {
+      const result = tagHandler(ctx)
+      if (result) {
+        const tagLabel = tag.tag
+          ? `@${tag.namespace}.${tag.tag}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`
+          : `@${tag.namespace}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`
+
+        // Support both SqlOutput[] and TagOutput return types
+        const sqlResults = Array.isArray(result) ? result : result.sql
+        if (sqlResults && sqlResults.length > 0) {
+          for (const out of sqlResults) {
+            if (!out.sourceTag) out.sourceTag = tagLabel
+          }
+          sqlOutputs.push(...sqlResults)
+        }
+        if (!Array.isArray(result) && result.docs) {
+          docsMeta.push(result.docs)
+        }
+      }
+    } catch (err: any) {
+      errors.push({
+        namespace: tag.namespace,
+        message: err?.message ?? String(err),
+      })
+    }
+  }
+
+  // Call generateCode
+  if (plugin.generateCode) {
+    try {
+      const result = plugin.generateCode(ctx)
+      if (result && result.length > 0) {
+        codeOutputs.push(...result)
+      }
+    } catch (err: any) {
+      errors.push({
+        namespace: tag.namespace,
+        message: err?.message ?? String(err),
+      })
+    }
+  }
+}
+
+// ── Merged SQL output ─────────────────────────────────────────────────
+
+function buildMergedOutput(source: string, sqlOutputs: SqlOutput[], adapter: SqlAstAdapter): string {
+  const sourceComments = adapter.parseComments(source)
+  const generatedSql = sqlOutputs.map((o) => o.sql).join('\n')
+  const generatedComments = generatedSql.trim() ? adapter.parseComments(generatedSql) : []
+  return buildMergedSql(source, sqlOutputs, sourceComments, generatedComments)
+}
+
+/** Comment out COMMENT ON statements in source SQL using line numbers */
+function commentOutSourceComments(source: string, comments: SqlCommentOn[]): string {
+  if (comments.length === 0) return source
+
+  const lines = source.split('\n')
+  const commentedLines = new Set<number>()
+
+  for (const c of comments) {
+    // c.line is 1-based, array is 0-based
+    const startLine = c.line - 1
+    for (let j = startLine; j < lines.length; j++) {
+      commentedLines.add(j)
+      if (lines[j].trim().endsWith(';')) break
+    }
+  }
+
+  return lines.map((line, i) => (commentedLines.has(i) ? `-- ${line}` : line)).join('\n')
+}
+
+function buildMergedSql(
+  source: string,
+  sqlOutputs: SqlOutput[],
+  sourceComments: SqlCommentOn[],
+  generatedComments: SqlCommentOn[],
+): string {
+  // 1. Build comment merge map: target -> content[]
+  const commentMap = new Map<string, string[]>()
+  for (const c of sourceComments) {
+    commentMap.set(c.targetKey, [c.content])
+  }
+  for (const c of generatedComments) {
+    const existing = commentMap.get(c.targetKey) ?? []
+    existing.push(c.content)
+    commentMap.set(c.targetKey, existing)
+  }
+
+  // 2. Build set of generated comment targetKeys for filtering
+  const generatedTargets = new Set(generatedComments.map((c) => c.targetKey))
+
+  // 3. Filter out COMMENT ON outputs from the generated SQL list
+  const otherOutputs = sqlOutputs.filter((output) => {
+    // Check if this output matches any generated comment target
+    for (const target of generatedTargets) {
+      if (output.sql.includes(target)) return false
+    }
+    return true
+  })
+
+  // 4. Strip @tag comments, @import lines, and comment out original COMMENT ON
+  const strippedSource = stripTagsAndImports(source)
+  const cleanSource = commentOutSourceComments(strippedSource, sourceComments).trimEnd()
+
+  // 5. Build merged COMMENT ON statements
+  const mergedComments: string[] = []
+  for (const [target, contents] of commentMap) {
+    const unique = [...new Set(contents)]
+    const escaped = unique.map((c) => c.replace(/'/g, "''")).join('\\n')
+    const sql =
+      unique.length > 1
+        ? `COMMENT ON ${target} IS E'${escaped}';`
+        : `COMMENT ON ${target} IS '${unique[0].replace(/'/g, "''")}';`
+    mergedComments.push(sql)
+  }
+
+  if (otherOutputs.length === 0 && mergedComments.length === 0) {
+    return source
+  }
+
+  const parts = [cleanSource]
+  parts.push('')
+  parts.push('-- Generated by sqldoc')
+
+  let lastSourceTag = ''
+  for (const output of otherOutputs) {
+    if (output.sourceTag && output.sourceTag !== lastSourceTag) {
+      parts.push(`-- sqldoc: ${output.sourceTag}`)
+      lastSourceTag = output.sourceTag
+    }
+    if (output.comment) {
+      parts.push(`-- ${output.comment}`)
+    }
+    parts.push(output.sql)
+  }
+
+  for (const sql of mergedComments) {
+    parts.push(sql)
+  }
+
+  parts.push('')
+  return parts.join('\n')
+}
+
+// ── Atlas helpers ─────────────────────────────────────────────────────
+
+/**
+ * Split an Atlas tag Name into namespace and tag name.
+ * - "audit.track" -> { namespace: "audit", tag: "track" }
+ * - "searchable"  -> { namespace: "searchable", tag: null } ($self pattern)
+ */
+function splitTagName(name: string): { namespace: string; tag: string | null } {
+  const dotIdx = name.indexOf('.')
+  if (dotIdx === -1) return { namespace: name, tag: null }
+  return { namespace: name.substring(0, dotIdx), tag: name.substring(dotIdx + 1) }
+}
+
+/**
+ * Type guard: check if an Atlas attr is a tag (has Name + Args, no Expr).
+ * Mirrors isTag from @sqldoc/atlas without importing.
+ */
+function isAtlasTag(attr: InternalAtlasAttr): attr is { Name: string; Args: string } {
+  return (
+    typeof attr === 'object' &&
+    attr !== null &&
+    'Name' in attr &&
+    typeof (attr as any).Name === 'string' &&
+    'Args' in attr &&
+    typeof (attr as any).Args === 'string' &&
+    !('Expr' in attr)
+  )
+}
+
+/** Extract all tag attrs from a mixed Attrs array */
+function findAtlasTags(attrs?: InternalAtlasAttr[]): Array<{ Name: string; Args: string }> {
+  if (!attrs) return []
+  return attrs.filter(isAtlasTag)
+}
+
+/** Parse Atlas tag args string into parsed values using the parser's parseArgs */
+function parseAtlasArgs(argsStr: string): Record<string, unknown> | unknown[] {
+  if (!argsStr) return {}
+  return parseArgs(argsStr).values
+}
+
+/** Build fileTags from collected Atlas tag occurrences */
+function buildAtlasFileTags(
+  occurrences: Array<{
+    objectName: string
+    target: SqlTarget
+    namespace: string
+    tag: string | null
+    args: Record<string, unknown> | unknown[]
+  }>,
+): TagContext['fileTags'] {
+  const map = new Map<
+    string,
+    {
+      objectName: string
+      target: SqlTarget
+      tags: Array<{ namespace: string; tag: string | null; args: Record<string, unknown> | unknown[] }>
+    }
+  >()
+
+  for (const occ of occurrences) {
+    const key = `${occ.objectName}:${occ.target}`
+    if (!map.has(key)) {
+      map.set(key, {
+        objectName: occ.objectName,
+        target: occ.target,
+        tags: [],
+      })
+    }
+    map.get(key)!.tags.push({
+      namespace: occ.namespace,
+      tag: occ.tag,
+      args: occ.args,
+    })
+  }
+
+  return Array.from(map.values())
+}
+
+// ── Tier 1 helpers ───────────────────────────────────────────────────
+
+function buildFileTags(blocks: TagBlock[]): TagContext['fileTags'] {
+  return blocks.map((block) => {
+    // Use table.column format for column targets (matches Atlas convention)
+    const objectName =
+      block.ast.target === 'column' && block.ast.columnName
+        ? `${block.ast.objectName ?? 'unknown'}.${block.ast.columnName}`
+        : (block.ast.objectName ?? 'unknown')
+
+    return {
+      objectName,
+      target: block.ast.target,
+      tags: block.tags.map((t) => ({
+        namespace: t.namespace,
+        tag: t.tag,
+        args: parsedArgsToValue(t.rawArgs),
+      })),
+    }
+  })
+}
+
+function parsedArgsToValue(rawArgs: string | null): Record<string, unknown> | unknown[] {
+  if (rawArgs === null) return {}
+  const parsed = parseArgs(rawArgs)
+  return parsed.values
+}
+
+/**
+ * Merge parser-derived tags into Atlas-derived fileTags.
+ * Adds tags that Atlas doesn't see (e.g. @lint.ignore) to the right objects.
+ */
+function mergeParserTags(atlasFileTags: TagContext['fileTags'], parserFileTags: TagContext['fileTags']): void {
+  // Index existing objects by name
+  const byName = new Map<string, (typeof atlasFileTags)[0]>()
+  for (const obj of atlasFileTags) {
+    byName.set(obj.objectName, obj)
+  }
+
+  for (const pObj of parserFileTags) {
+    for (const pTag of pObj.tags) {
+      // Only add tags that Atlas doesn't already have (non-SQL-generating tags)
+      const existing = byName.get(pObj.objectName)
+      if (existing) {
+        // Check if this tag already exists
+        const alreadyHas = existing.tags.some((t) => t.namespace === pTag.namespace && t.tag === pTag.tag)
+        if (!alreadyHas) {
+          existing.tags.push(pTag)
+        }
+      } else {
+        // Object not in Atlas (e.g. it's on a function or something Atlas didn't process)
+        const newObj = { objectName: pObj.objectName, target: pObj.target, tags: [pTag] }
+        atlasFileTags.push(newObj)
+        byName.set(pObj.objectName, newObj)
+      }
+    }
+  }
+}
+
+/**
+ * Strip @tag comments and @import lines from the source SQL.
+ * - Lines that are entirely comment with @tags are removed
+ * - Inline @tags (after SQL on the same line) have the comment portion removed
+ * - Blank `--` comments left behind are removed
+ * - Consecutive blank lines are collapsed
+ */
+function stripTagsAndImports(source: string): string {
+  const TAG_RE = /@\w+(?:\.\w+)?(?:\([^)]*\))?/
+  const IMPORT_RE = /^\s*--\s*@import\s/
+  const lines = source.split('\n')
+  const result: string[] = []
+
+  for (const line of lines) {
+    // Remove @import lines entirely
+    if (IMPORT_RE.test(line)) continue
+
+    // Check if line has a comment with a tag
+    const commentIdx = line.indexOf('--')
+    if (commentIdx >= 0) {
+      const commentPart = line.substring(commentIdx)
+      if (TAG_RE.test(commentPart)) {
+        const sqlPart = line.substring(0, commentIdx).trimEnd()
+        if (sqlPart) {
+          // Inline tag — keep the SQL, remove the comment
+          result.push(sqlPart)
+        }
+        // Else: entire line was a tag comment — skip it
+        continue
+      }
+    }
+
+    // Remove blank comments (just `--` with optional whitespace)
+    if (/^\s*--\s*$/.test(line)) continue
+
+    result.push(line)
+  }
+
+  // Collapse consecutive blank lines to a single blank line
+  const collapsed: string[] = []
+  let lastBlank = false
+  for (const line of result) {
+    const isBlank = line.trim() === ''
+    if (isBlank && lastBlank) continue
+    collapsed.push(line)
+    lastBlank = isBlank
+  }
+
+  return collapsed.join('\n')
+}

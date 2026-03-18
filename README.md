@@ -1,0 +1,3 @@
+# SQLDoc
+
+SQLDoc is a tag-driven SQL compiler that turns annotated PostgreSQL schema files into augmented SQL, typed code, documentation, migrations, and lint diagnostics — all from one source of truth. You annotate your SQL with @namespace.tag() comments, import extensible namespace plugins per-file, and the compiler handles the rest. It ships as a single binary with a VSCode extension for real-time validation.

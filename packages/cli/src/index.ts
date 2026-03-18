@@ -1,0 +1,103 @@
+// Suppress Node experimental warnings (WASI)
+process.removeAllListeners('warning')
+
+import { createRequire } from 'node:module'
+import { Command } from 'commander'
+import pc from 'picocolors'
+import { codegenCommand } from './commands/codegen.ts'
+import { doctorCommand } from './commands/doctor.ts'
+import { lintCommand } from './commands/lint.ts'
+import { migrateCommand } from './commands/migrate.ts'
+import { schemaDiffCommand, schemaInspectCommand } from './commands/schema.ts'
+import { validateCommand } from './commands/validate.ts'
+import { CliError } from './errors.ts'
+
+const req = createRequire(import.meta.url)
+const version: string = req('../package.json').version
+
+const program = new Command()
+
+program.name('sqldoc').description('SQL documentation and code generation tool').version(version)
+
+program
+  .command('codegen')
+  .description('Run code generation plugins (templates, docs, etc.)')
+  .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('-p, --plugins <names>', 'Comma-separated project-level plugin names to run (default: all)')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .action(codegenCommand)
+
+program
+  .command('validate')
+  .description('Validate tags in SQL files')
+  .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .action(validateCommand)
+
+program
+  .command('lint')
+  .description('Run lint rules from namespace plugins against SQL files')
+  .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('-v, --verbose', 'Show ignored rules')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .action(lintCommand)
+
+const schema = program.command('schema').description('Schema inspection and comparison')
+
+schema
+  .command('inspect')
+  .description('Inspect schema from SQL files, directory, or database')
+  .argument('[source]', 'SQL file, directory, or database URL (defaults to config schema)')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('-f, --format <format>', 'Output format: sql, json', 'sql')
+  .option('--dev-url <url>', 'Dev database URL (pglite, docker://<image>, dockerfile://<path>, postgres://...)')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .action(schemaInspectCommand)
+
+schema
+  .command('diff')
+  .description('Compare two schema states')
+  .option('--from <source>', 'Source state: SQL file, directory, or database URL (default: empty)')
+  .option('--to <source>', 'Target state: SQL file, directory, or database URL')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('-f, --format <format>', 'Output format: sql, json, pretty', 'sql')
+  .option('--dev-url <url>', 'Dev database URL (pglite, docker://<image>, dockerfile://<path>, postgres://...)')
+  .option('--check', 'Exit non-zero if schemas differ (CI mode)')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .action(schemaDiffCommand)
+
+program
+  .command('migrate')
+  .description('Generate migration files or check for schema drift')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .option('--check', 'Exit non-zero if schema differs from migrations (CI mode)')
+  .option('--name <name>', 'Custom migration name')
+  .option('--force', 'Allow destructive changes (DROP TABLE, DROP COLUMN, etc.)')
+  .action(migrateCommand)
+
+program.command('doctor').description('Check project setup and report status').action(doctorCommand)
+
+// Global handler — force exit on both success and error
+// (pglite/WASI worker threads keep the process alive otherwise)
+program
+  .parseAsync()
+  .then(() => {
+    process.exit(0)
+  })
+  .catch((err) => {
+    if (err instanceof CliError) {
+      console.error(pc.red(err.message))
+      process.exit(err.exitCode)
+    }
+    if (err?.code === 'ECONNREFUSED') {
+      console.error(pc.red('Cannot connect to database. Is it running?'))
+      process.exit(1)
+    }
+    console.error(pc.red(err?.message ?? String(err)))
+    if (err?.stack) console.error(pc.dim(err.stack))
+    process.exit(1)
+  })

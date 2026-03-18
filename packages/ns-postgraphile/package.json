@@ -1,0 +1,31 @@
+{
+  "type": "module",
+  "name": "@sqldoc/ns-postgraphile",
+  "version": "0.0.2",
+  "description": "PostGraphile smart comments namespace for sqldoc -- generates COMMENT ON statements with @tag syntax",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/__tests__",
+    "package.json"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@sqldoc/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@sqldoc/core": "workspace:*",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

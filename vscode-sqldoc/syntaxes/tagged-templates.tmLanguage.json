@@ -1,0 +1,88 @@
+{
+  "scopeName": "inline.sqldoc-templates",
+  "injectionSelector": "L:source.ts -string -comment, L:source.tsx -string -comment, L:source.js -string -comment, L:source.jsx -string -comment",
+  "patterns": [
+    { "include": "#ts-tagged-template" },
+    { "include": "#go-tagged-template" },
+    { "include": "#python-tagged-template" },
+    { "include": "#sql-tagged-template" },
+    { "include": "#java-tagged-template" },
+    { "include": "#kotlin-tagged-template" },
+    { "include": "#rust-tagged-template" },
+    { "include": "#csharp-tagged-template" }
+  ],
+  "repository": {
+    "ts-tagged-template": {
+      "name": "string.template.sqldoc.ts",
+      "contentName": "meta.embedded.inline.ts",
+      "begin": "(?<![\\w$])ts\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.ts" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.ts" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.ts" }]
+    },
+    "go-tagged-template": {
+      "name": "string.template.sqldoc.go",
+      "contentName": "meta.embedded.inline.go",
+      "begin": "(?<![\\w$])go\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.go" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.go" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.go" }]
+    },
+    "python-tagged-template": {
+      "name": "string.template.sqldoc.python",
+      "contentName": "meta.embedded.inline.python",
+      "begin": "(?<![\\w$])python\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.python" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.python" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.python" }]
+    },
+    "sql-tagged-template": {
+      "name": "string.template.sqldoc.sql",
+      "contentName": "meta.embedded.inline.sql",
+      "begin": "(?<![\\w$])sql\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.sql" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.sql" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.sql" }]
+    },
+    "java-tagged-template": {
+      "name": "string.template.sqldoc.java",
+      "contentName": "meta.embedded.inline.java",
+      "begin": "(?<![\\w$])java\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.java" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.java" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.java" }]
+    },
+    "kotlin-tagged-template": {
+      "name": "string.template.sqldoc.kotlin",
+      "contentName": "meta.embedded.inline.kotlin",
+      "begin": "(?<![\\w$])kotlin\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.kotlin" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.kotlin" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.kotlin" }]
+    },
+    "rust-tagged-template": {
+      "name": "string.template.sqldoc.rust",
+      "contentName": "meta.embedded.inline.rust",
+      "begin": "(?<![\\w$])rust\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.rust" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.rust" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.rust" }]
+    },
+    "csharp-tagged-template": {
+      "name": "string.template.sqldoc.csharp",
+      "contentName": "meta.embedded.inline.csharp",
+      "begin": "(?<![\\w$])csharp\\s*(`)",
+      "beginCaptures": { "0": { "name": "string.template.csharp" } },
+      "end": "`",
+      "endCaptures": { "0": { "name": "string.template.csharp" } },
+      "patterns": [{ "include": "source.ts#template-substitution-element" }, { "include": "source.cs" }]
+    }
+  }
+}

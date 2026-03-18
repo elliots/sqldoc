@@ -1,0 +1,71 @@
+/**
+ * Integration test for @sqldoc/templates/drizzle
+ * Connects to real Postgres via drizzle-orm, verifies generated schema works.
+ */
+import { drizzle } from 'drizzle-orm/node-postgres'
+import { eq } from 'drizzle-orm'
+import pg from 'pg'
+import * as schema from './schema.ts'
+
+const DATABASE_URL = process.env.DATABASE_URL
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL not set')
+  process.exit(1)
+}
+
+const pool = new pg.Pool({ connectionString: DATABASE_URL })
+const db = drizzle(pool, { schema })
+
+let failed = 0
+function assert(condition: boolean, msg: string) {
+  if (!condition) {
+    console.error(`FAIL: ${msg}`)
+    failed++
+  } else {
+    console.log(`  ok: ${msg}`)
+  }
+}
+
+async function run() {
+  try {
+    console.log('--- drizzle integration test ---')
+
+    // 1. Query known seeded user
+    const users = await db.select().from(schema.users).where(eq(schema.users.id, 1))
+    assert(users.length === 1, 'seeded user found')
+    assert(users[0].email === 'test@example.com', 'user email matches')
+    assert(users[0].name === 'Test User', 'user name matches')
+
+    // 2. Query known seeded post
+    const posts = await db.select().from(schema.posts).where(eq(schema.posts.id, 1))
+    assert(posts.length === 1, 'seeded post found')
+    assert(posts[0].title === 'Hello World', 'post title matches')
+
+    // 3. Insert a new post
+    await db.insert(schema.posts).values({
+      userId: 1,
+      title: 'Post from drizzle',
+      body: 'test body',
+      viewCount: 0,
+    })
+
+    // 4. Read it back
+    const newPosts = await db.select().from(schema.posts).where(eq(schema.posts.title, 'Post from drizzle'))
+    assert(newPosts.length === 1, 'inserted post found')
+    assert(newPosts[0].title === 'Post from drizzle', 'inserted post title matches')
+    assert(Number(newPosts[0].userId) === 1, 'inserted post user_id matches')
+
+    if (failed > 0) {
+      console.error(`\n${failed} assertion(s) failed`)
+      process.exit(1)
+    }
+    console.log('\nAll assertions passed!')
+  } finally {
+    await pool.end()
+  }
+}
+
+run().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

@@ -1,0 +1,38 @@
+{
+  "type": "module",
+  "name": "@sqldoc/atlas",
+  "version": "0.0.2",
+  "description": "Atlas WASI integration for sqldoc -- schema types, database adapters, WASI runner",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/__tests__",
+    "wasm",
+    "package.json"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "codegen:schema": "echo 'Types hand-crafted from atlas/sql/schema/schema.go -- see src/types.ts. tygo cannot handle Go interfaces (Attr, Type, Expr). Re-read schema.go and update src/types.ts manually when the Go source changes.'"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.4.0",
+    "@testcontainers/postgresql": "^11.13.0",
+    "pg": "^8.13.0",
+    "picocolors": "^1.1.1",
+    "testcontainers": "^11.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

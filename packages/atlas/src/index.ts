@@ -1,0 +1,97 @@
+// @sqldoc/atlas -- Atlas WASI integration for sqldoc
+// Schema types, database adapters, and WASI runner
+
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createDockerAdapter } from './db/docker.ts'
+import { createPgliteAdapter } from './db/pglite.ts'
+import { createPostgresAdapter } from './db/postgres.ts'
+import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
+import { createAtlasRunner } from './runner.ts'
+
+export { createDockerAdapter } from './db/docker.ts'
+export { createPgliteAdapter } from './db/pglite.ts'
+export { createPostgresAdapter } from './db/postgres.ts'
+export type { DatabaseAdapter, ExecResult, QueryResult } from './db/types.ts'
+export { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
+export type { AtlasRunner, AtlasRunnerOptions } from './runner.ts'
+export { createAtlasRunner } from './runner.ts'
+export * from './types.ts'
+
+export interface CreateRunnerConfig {
+  /** SQL dialect. Default: 'postgres' */
+  dialect?: 'postgres' | 'mysql' | 'sqlite'
+  /** Database connection URL. If omitted, uses pglite (in-memory postgres). */
+  devUrl?: string
+  /** SQL file contents to scan for CREATE EXTENSION statements */
+  sqlFiles?: string[]
+}
+
+/**
+ * Resolve the atlas.wasm binary.
+ * Binary mode: ATLAS_WASM_PATH env var set by binary entry point.
+ * Dev mode: walk up from current directory to find atlas.wasm.
+ */
+function resolveWasm(): string {
+  // Binary mode: WASM path set by binary entry point
+  if (process.env.ATLAS_WASM_PATH) {
+    return process.env.ATLAS_WASM_PATH
+  }
+
+  // Dev mode: walk up from current directory to find atlas.wasm
+  let dir = path.dirname(fileURLToPath(import.meta.url))
+  while (true) {
+    for (const candidate of [
+      path.join(dir, 'wasm', 'atlas.wasm'),
+      path.join(dir, '..', 'wasm', 'atlas.wasm'),
+      path.join(dir, 'node_modules', '@sqldoc', 'atlas', 'wasm', 'atlas.wasm'),
+      path.join(dir, 'packages', 'atlas', 'wasm', 'atlas.wasm'),
+    ]) {
+      if (fs.existsSync(candidate)) return candidate
+    }
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  throw new Error(
+    'atlas.wasm not found. Set ATLAS_WASM_PATH or build: cd atlas/cmd/atlas-wasi && GOOS=wasip1 GOARCH=wasm go build -o atlas.wasm .',
+  )
+}
+
+/**
+ * Create an Atlas runner with sensible defaults.
+ * Resolves the wasm binary, detects extensions from SQL files,
+ * validates them, and creates the appropriate DB adapter.
+ */
+export async function createRunner(config: CreateRunnerConfig = {}): Promise<import('./runner').AtlasRunner> {
+  const wasmPath = resolveWasm()
+  const dialect = config.dialect ?? 'postgres'
+  const devUrl = config.devUrl ?? 'pglite'
+
+  // Extract extensions from SQL (postgres only)
+  const { extensions } =
+    dialect === 'postgres' && config.sqlFiles ? extractExtensions(config.sqlFiles) : { extensions: [] }
+
+  let db: import('./db/types').DatabaseAdapter
+
+  if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
+    db = await createDockerAdapter(devUrl)
+    // Docker postgres — validate extensions are available
+    if (extensions.length > 0) {
+      await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+    }
+  } else if (devUrl.startsWith('postgres://') || devUrl.startsWith('postgresql://')) {
+    db = await createPostgresAdapter(devUrl)
+    // External postgres — validate extensions are available
+    if (extensions.length > 0) {
+      await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+    }
+  } else {
+    // pglite — validate and load extensions
+    const validExtensions = extensions.length > 0 ? await validatePgliteExtensions(extensions) : []
+    db = await createPgliteAdapter(validExtensions.length > 0 ? validExtensions : undefined)
+  }
+
+  return createAtlasRunner({ wasmPath, db })
+}

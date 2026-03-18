@@ -1,0 +1,163 @@
+{
+  "type": "module",
+  "name": "@sqldoc/templates",
+  "version": "0.0.2",
+  "description": "Code generation templates for sqldoc -- 18 templates across 6 languages plus tagged template syntax helpers",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tags": {
+      "types": "./src/tags/index.ts",
+      "import": "./src/tags/index.ts",
+      "default": "./src/tags/index.ts"
+    },
+    "./typescript": {
+      "types": "./src/typescript/index.ts",
+      "import": "./src/typescript/index.ts",
+      "default": "./src/typescript/index.ts"
+    },
+    "./zod": {
+      "types": "./src/zod/index.ts",
+      "import": "./src/zod/index.ts",
+      "default": "./src/zod/index.ts"
+    },
+    "./drizzle": {
+      "types": "./src/drizzle/index.ts",
+      "import": "./src/drizzle/index.ts",
+      "default": "./src/drizzle/index.ts"
+    },
+    "./prisma": {
+      "types": "./src/prisma/index.ts",
+      "import": "./src/prisma/index.ts",
+      "default": "./src/prisma/index.ts"
+    },
+    "./kysely": {
+      "types": "./src/kysely/index.ts",
+      "import": "./src/kysely/index.ts",
+      "default": "./src/kysely/index.ts"
+    },
+    "./knex": {
+      "types": "./src/knex/index.ts",
+      "import": "./src/knex/index.ts",
+      "default": "./src/knex/index.ts"
+    },
+    "./go-structs": {
+      "types": "./src/go-structs/index.ts",
+      "import": "./src/go-structs/index.ts",
+      "default": "./src/go-structs/index.ts"
+    },
+    "./gorm": {
+      "types": "./src/gorm/index.ts",
+      "import": "./src/gorm/index.ts",
+      "default": "./src/gorm/index.ts"
+    },
+    "./sqlc": {
+      "types": "./src/sqlc/index.ts",
+      "import": "./src/sqlc/index.ts",
+      "default": "./src/sqlc/index.ts"
+    },
+    "./python-dataclasses": {
+      "types": "./src/python-dataclasses/index.ts",
+      "import": "./src/python-dataclasses/index.ts",
+      "default": "./src/python-dataclasses/index.ts"
+    },
+    "./sqlalchemy": {
+      "types": "./src/sqlalchemy/index.ts",
+      "import": "./src/sqlalchemy/index.ts",
+      "default": "./src/sqlalchemy/index.ts"
+    },
+    "./pydantic": {
+      "types": "./src/pydantic/index.ts",
+      "import": "./src/pydantic/index.ts",
+      "default": "./src/pydantic/index.ts"
+    },
+    "./java-records": {
+      "types": "./src/java-records/index.ts",
+      "import": "./src/java-records/index.ts",
+      "default": "./src/java-records/index.ts"
+    },
+    "./jpa": {
+      "types": "./src/jpa/index.ts",
+      "import": "./src/jpa/index.ts",
+      "default": "./src/jpa/index.ts"
+    },
+    "./kotlin-data": {
+      "types": "./src/kotlin-data/index.ts",
+      "import": "./src/kotlin-data/index.ts",
+      "default": "./src/kotlin-data/index.ts"
+    },
+    "./rust-structs": {
+      "types": "./src/rust-structs/index.ts",
+      "import": "./src/rust-structs/index.ts",
+      "default": "./src/rust-structs/index.ts"
+    },
+    "./diesel": {
+      "types": "./src/diesel/index.ts",
+      "import": "./src/diesel/index.ts",
+      "default": "./src/diesel/index.ts"
+    },
+    "./csharp-records": {
+      "types": "./src/csharp-records/index.ts",
+      "import": "./src/csharp-records/index.ts",
+      "default": "./src/csharp-records/index.ts"
+    },
+    "./efcore": {
+      "types": "./src/efcore/index.ts",
+      "import": "./src/efcore/index.ts",
+      "default": "./src/efcore/index.ts"
+    },
+    "./json-schema": {
+      "types": "./src/json-schema/index.ts",
+      "import": "./src/json-schema/index.ts",
+      "default": "./src/json-schema/index.ts"
+    },
+    "./xsd": {
+      "types": "./src/xsd/index.ts",
+      "import": "./src/xsd/index.ts",
+      "default": "./src/xsd/index.ts"
+    },
+    "./protobuf": {
+      "types": "./src/protobuf/index.ts",
+      "import": "./src/protobuf/index.ts",
+      "default": "./src/protobuf/index.ts"
+    },
+    "./cobol-copybook": {
+      "types": "./src/cobol-copybook/index.ts",
+      "import": "./src/cobol-copybook/index.ts",
+      "default": "./src/cobol-copybook/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/__tests__",
+    "!src/**/test",
+    "package.json"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:docker": "bun test src/__tests__/docker-templates.test.ts"
+  },
+  "peerDependencies": {
+    "@sqldoc/atlas": "workspace:*",
+    "@sqldoc/core": "workspace:*",
+    "@sqldoc/ns-codegen": "workspace:*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.4.1",
+    "@types/pg": "^8.11.0",
+    "@electric-sql/pglite-socket": "^0.1.1",
+    "@sqldoc/atlas": "workspace:*",
+    "@sqldoc/core": "workspace:*",
+    "@sqldoc/ns-codegen": "workspace:*",
+    "@sqldoc/ns-validate": "workspace:*",
+    "pg": "^8.13.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

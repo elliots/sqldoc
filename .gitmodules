@@ -1,0 +1,4 @@
+[submodule "sqlparser-ts"]
+	path = sqlparser-ts
+	url = https://github.com/elliots/sqlparser-ts.git
+	branch = tempfork

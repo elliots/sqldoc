@@ -1,0 +1,38 @@
+{
+  "type": "module",
+  "name": "@sqldoc/cli",
+  "version": "0.0.2",
+  "description": "CLI tool for sqldoc -- compile and validate SQL files with tag-driven generation",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "bin": {
+    "sqldoc": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "!src/__tests__",
+    "package.json"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sqldoc/core": "workspace:*",
+    "@sqldoc/atlas": "workspace:*",
+    "commander": "^14.0.3",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

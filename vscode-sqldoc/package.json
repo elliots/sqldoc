@@ -1,0 +1,158 @@
+{
+  "name": "vscode-sqldoc",
+  "private": true,
+  "displayName": "SQLDoc",
+  "description": "Syntax highlighting and validation for SQL comment tags (@tag, @namespace.tag, @tag(args))",
+  "version": "0.0.4",
+  "publisher": "sqldoc",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:sql",
+    "onLanguage:pgsql",
+    "onLanguage:plpgsql",
+    "onLanguage:postgres"
+  ],
+  "contributes": {
+    "grammars": [
+      {
+        "scopeName": "comment.sqldoc",
+        "path": "./syntaxes/sqldoc.tmLanguage.json",
+        "injectTo": [
+          "source.sql",
+          "source.pgsql",
+          "source.plpgsql"
+        ]
+      },
+      {
+        "scopeName": "inline.sqldoc-templates",
+        "path": "./syntaxes/tagged-templates.tmLanguage.json",
+        "injectTo": [
+          "source.ts",
+          "source.tsx",
+          "source.js",
+          "source.jsx"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.inline.ts": "typescript",
+          "meta.embedded.inline.go": "go",
+          "meta.embedded.inline.python": "python",
+          "meta.embedded.inline.sql": "sql",
+          "meta.embedded.inline.java": "java",
+          "meta.embedded.inline.kotlin": "kotlin",
+          "meta.embedded.inline.rust": "rust",
+          "meta.embedded.inline.csharp": "csharp"
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "punctuation.definition.tag.sqldoc",
+            "settings": {
+              "foreground": "#C586C0",
+              "fontStyle": ""
+            }
+          },
+          {
+            "scope": "entity.name.tag.sqldoc",
+            "settings": {
+              "foreground": "#DCDCAA",
+              "fontStyle": ""
+            }
+          },
+          {
+            "scope": "entity.name.function.sqldoc",
+            "settings": {
+              "foreground": "#9CDCFE",
+              "fontStyle": ""
+            }
+          },
+          {
+            "scope": "keyword.control.import.sqldoc",
+            "settings": {
+              "foreground": "#C586C0",
+              "fontStyle": ""
+            }
+          },
+          {
+            "scope": "string.quoted.import-path.sqldoc",
+            "settings": {
+              "foreground": "#CE9178"
+            }
+          },
+          {
+            "scope": "punctuation.separator.dot.sqldoc",
+            "settings": {
+              "foreground": "#808080"
+            }
+          },
+          {
+            "scope": "punctuation.section.parens.begin.sqldoc, punctuation.section.parens.end.sqldoc",
+            "settings": {
+              "foreground": "#DCDCAA"
+            }
+          },
+          {
+            "scope": "variable.parameter.key.sqldoc",
+            "settings": {
+              "foreground": "#9CDCFE"
+            }
+          },
+          {
+            "scope": "keyword.operator.assignment.sqldoc",
+            "settings": {
+              "foreground": "#D4D4D4"
+            }
+          },
+          {
+            "scope": "string.quoted.single.sqldoc",
+            "settings": {
+              "foreground": "#CE9178"
+            }
+          },
+          {
+            "scope": "constant.other.enum.sqldoc",
+            "settings": {
+              "foreground": "#4EC9B0"
+            }
+          },
+          {
+            "scope": "punctuation.section.brackets.begin.sqldoc, punctuation.section.brackets.end.sqldoc",
+            "settings": {
+              "foreground": "#D4D4D4"
+            }
+          },
+          {
+            "scope": "punctuation.separator.comma.sqldoc",
+            "settings": {
+              "foreground": "#D4D4D4"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "npm run build -- --watch",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository",
+    "install-ext": "npm run package && code-insiders --force --install-extension sqldoc-*.vsix"
+  },
+  "dependencies": {
+    "@sqldoc/core": "workspace:*",
+    "esbuild-wasm": "^0.27.4"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.4",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - name: bun
+            version: latest
+          - name: node
+            version: "22"
+
+    name: test (${{ matrix.runtime.name }})
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: pnpm/action-setup@v4
+
+      - if: matrix.runtime.name == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.runtime.version }}
+          cache: pnpm
+
+      - if: matrix.runtime.name == 'bun'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.runtime.version }}
+      - if: matrix.runtime.name == 'bun'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Cache wasm-pack
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-pack
+          key: wasm-pack-${{ runner.os }}
+      - name: Install wasm-pack
+        run: command -v wasm-pack || cargo install wasm-pack
+      - name: Build sqlparser-ts
+        run: cd sqlparser-ts && wasm-pack build --target web --out-dir wasm && npx tsdown
+
+      - name: Run tests (bun)
+        if: matrix.runtime.name == 'bun'
+        run: bun test packages/
+
+      - name: Run tests (node)
+        if: matrix.runtime.name == 'node'
+        run: pnpm -r run test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Cache wasm-pack
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-pack
+          key: wasm-pack-${{ runner.os }}
+      - name: Install wasm-pack
+        run: command -v wasm-pack || cargo install wasm-pack
+      - name: Build sqlparser-ts
+        run: cd sqlparser-ts && wasm-pack build --target web --out-dir wasm && npx tsdown
+      - run: pnpm check
+
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check licenses
+        run: pnpm check:licenses

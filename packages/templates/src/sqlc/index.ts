@@ -1,0 +1,148 @@
+import { defineTemplate } from '@sqldoc/ns-codegen'
+import { activeTables, enrichRealm } from '../helpers/enrich.ts'
+import { toPascalCase } from '../helpers/naming.ts'
+import { pgToGo } from '../types/pg-to-go.ts'
+
+/**
+ * sqlc-style nullable type mapping.
+ * Nullable primitives use database/sql Null types instead of pointers.
+ */
+const SQLC_NULL_MAP: Record<string, [string, string]> = {
+  string: ['sql.NullString', 'database/sql'],
+  int16: ['sql.NullInt16', 'database/sql'],
+  int32: ['sql.NullInt32', 'database/sql'],
+  int64: ['sql.NullInt64', 'database/sql'],
+  float32: ['sql.NullFloat64', 'database/sql'],
+  float64: ['sql.NullFloat64', 'database/sql'],
+  bool: ['sql.NullBool', 'database/sql'],
+  'time.Time': ['sql.NullTime', 'database/sql'],
+}
+
+export default defineTemplate({
+  name: 'sqlc Models',
+  description: 'Generate Go structs matching sqlc naming conventions with sql.Null types',
+  language: 'go',
+
+  generate(ctx) {
+    const schema = enrichRealm(ctx)
+    const allImports = new Set<string>()
+    const structBlocks: string[] = []
+
+    // Enums
+    for (const e of schema.enums) {
+      const typeName = toPascalCase(e.name)
+      structBlocks.push(`type ${typeName} string`)
+      structBlocks.push('')
+      const constLines = e.values.map((v) => {
+        const constName = `${typeName}${toPascalCase(v)}`
+        return `\t${constName} ${typeName} = "${v}"`
+      })
+      structBlocks.push(`const (\n${constLines.join('\n')}\n)`)
+    }
+
+    // Composite types (collected from columns)
+    const composites = new Map<string, Array<{ name: string; type: string }>>()
+    for (const table of schema.tables) {
+      for (const col of table.columns) {
+        if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
+          composites.set(col.pgType, col.compositeFields)
+        }
+      }
+    }
+    for (const view of schema.views) {
+      for (const col of view.columns) {
+        if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
+          composites.set(col.pgType, col.compositeFields)
+        }
+      }
+    }
+    for (const [name, fields] of composites) {
+      const typeName = toPascalCase(name)
+      const fieldLines = fields.map((f) => {
+        const mapped = pgToGo(f.type, false)
+        for (const imp of mapped.imports) allImports.add(imp)
+        return `\t${toPascalCase(f.name)} ${mapped.type}`
+      })
+      structBlocks.push(`type ${typeName} struct {\n${fieldLines.join('\n')}\n}`)
+    }
+
+    // Helper to resolve sqlc-style Go type for a column
+    function resolveGoType(col: any): string {
+      if (col.typeOverride) return col.typeOverride
+      if (col.category === 'enum' && col.enumValues?.length) {
+        const enumType = toPascalCase(col.pgType)
+        if (col.nullable) {
+          // Use sql.NullString for nullable enums (sqlc convention)
+          allImports.add('database/sql')
+          return 'sql.NullString'
+        }
+        return enumType
+      }
+      if (col.category === 'composite' && col.compositeFields?.length) {
+        return col.nullable ? `*${toPascalCase(col.pgType)}` : toPascalCase(col.pgType)
+      }
+      // First get the non-nullable base type
+      const mapped = pgToGo(col.pgType, false, col.category)
+      const baseType = mapped.type
+      for (const imp of mapped.imports) allImports.add(imp)
+
+      if (col.nullable) {
+        // Check if this is an array type -- arrays stay as-is (nil slice is Go's nullable)
+        if (baseType.startsWith('[]')) {
+          return baseType
+        }
+        // Use sql.NullXxx for known types
+        const nullMapping = SQLC_NULL_MAP[baseType]
+        if (nullMapping) {
+          allImports.add(nullMapping[1])
+          return nullMapping[0]
+        }
+        // Fallback to pointer for complex types
+        return `*${baseType}`
+      }
+      return baseType
+    }
+
+    for (const table of activeTables(schema)) {
+      const fields: string[] = []
+
+      for (const col of table.columns) {
+        fields.push(`\t${col.pascalName} ${resolveGoType(col)}`)
+      }
+
+      structBlocks.push(`type ${table.pascalName} struct {\n${fields.join('\n')}\n}`)
+    }
+
+    // Views (read-only)
+    for (const view of schema.views.filter((v) => !v.skipped)) {
+      const fields: string[] = []
+
+      for (const col of view.columns) {
+        fields.push(`\t${col.pascalName} ${resolveGoType(col)}`)
+      }
+
+      structBlocks.push(
+        `// ${view.pascalName} is read-only (from view)\ntype ${view.pascalName} struct {\n${fields.join('\n')}\n}`,
+      )
+    }
+
+    let importBlock = ''
+    if (allImports.size > 0) {
+      const sorted = [...allImports].sort()
+      if (sorted.length === 1) {
+        importBlock = `import "${sorted[0]}"\n\n`
+      } else {
+        importBlock = `import (\n${sorted.map((i) => `\t"${i}"`).join('\n')}\n)\n\n`
+      }
+    }
+
+    const content = `// Generated by @sqldoc/templates/sqlc -- DO NOT EDIT
+package models
+
+${importBlock}${structBlocks.join('\n\n')}\n`
+
+    return {
+      files: [{ path: 'models.go', content }],
+    }
+  },
+})
