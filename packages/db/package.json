@@ -24,12 +24,16 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.4.0",
+    "@testcontainers/mysql": "^11.13.0",
     "@testcontainers/postgresql": "^11.13.0",
+    "better-sqlite3": "^12.8.0",
+    "mysql2": "^3.20.0",
     "pg": "^8.13.0",
     "picocolors": "^1.1.1",
     "testcontainers": "^11.13.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/pg": "^8.11.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

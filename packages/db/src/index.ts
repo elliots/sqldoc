@@ -5,14 +5,20 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createDockerAdapter } from './db/docker.ts'
+import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
+import { createMysqlAdapter } from './db/mysql.ts'
 import { createPgliteAdapter } from './db/pglite.ts'
 import { createPostgresAdapter } from './db/postgres.ts'
+import { createSqliteAdapter } from './db/sqlite.ts'
 import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
 import { createAtlasRunner } from './runner.ts'
 
 export { createDockerAdapter } from './db/docker.ts'
+export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
+export { createMysqlAdapter } from './db/mysql.ts'
 export { createPgliteAdapter } from './db/pglite.ts'
 export { createPostgresAdapter } from './db/postgres.ts'
+export { createSqliteAdapter } from './db/sqlite.ts'
 export type { DatabaseAdapter, ExecResult, QueryResult } from './db/types.ts'
 export { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
 export type { AtlasRunner, AtlasRunnerOptions } from './runner.ts'
@@ -87,22 +93,31 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
 
   let db: import('./db/types').DatabaseAdapter
 
-  if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
-    db = await createDockerAdapter(devUrl)
-    // Docker postgres — validate extensions are available
-    if (extensions.length > 0) {
-      await validatePostgresExtensions(extensions, (sql) => db.query(sql))
-    }
-  } else if (devUrl.startsWith('postgres://') || devUrl.startsWith('postgresql://')) {
-    db = await createPostgresAdapter(devUrl)
-    // External postgres — validate extensions are available
-    if (extensions.length > 0) {
-      await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+  if (dialect === 'sqlite') {
+    db = await createSqliteAdapter(devUrl)
+  } else if (dialect === 'mysql') {
+    if (devUrl.startsWith('docker://')) {
+      db = await createMysqlDockerAdapter(devUrl)
+    } else {
+      db = await createMysqlAdapter(devUrl)
     }
   } else {
-    // pglite — validate and load extensions
-    const validExtensions = extensions.length > 0 ? await validatePgliteExtensions(extensions) : []
-    db = await createPgliteAdapter(validExtensions.length > 0 ? validExtensions : undefined)
+    // postgres (existing logic preserved exactly)
+    if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
+      db = await createDockerAdapter(devUrl)
+      if (extensions.length > 0) {
+        await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+      }
+    } else if (devUrl.startsWith('postgres://') || devUrl.startsWith('postgresql://')) {
+      db = await createPostgresAdapter(devUrl)
+      if (extensions.length > 0) {
+        await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+      }
+    } else {
+      // pglite (in-memory postgres)
+      const validExtensions = extensions.length > 0 ? await validatePgliteExtensions(extensions) : []
+      db = await createPgliteAdapter(validExtensions.length > 0 ? validExtensions : undefined)
+    }
   }
 
   return createAtlasRunner({ wasmPath, db })
