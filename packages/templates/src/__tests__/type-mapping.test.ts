@@ -104,6 +104,76 @@ describe('pgToTs', () => {
   it('category with nullable null-union', () => {
     expect(pgToTs('custom_int', true, { nullableStyle: 'null-union' }, 'integer')).toBe('number | null')
   })
+
+  // MySQL raw type mappings (without category fallback)
+  describe('MySQL raw types', () => {
+    it('maps tinyint to number', () => {
+      expect(pgToTs('tinyint', false)).toBe('number')
+    })
+
+    it('maps mediumint to number', () => {
+      expect(pgToTs('mediumint', false)).toBe('number')
+    })
+
+    it('maps datetime to Date', () => {
+      expect(pgToTs('datetime', false)).toBe('Date')
+    })
+
+    it('maps mediumtext to string', () => {
+      expect(pgToTs('mediumtext', false)).toBe('string')
+    })
+
+    it('maps longtext to string', () => {
+      expect(pgToTs('longtext', false)).toBe('string')
+    })
+
+    it('maps tinytext to string', () => {
+      expect(pgToTs('tinytext', false)).toBe('string')
+    })
+
+    it('maps blob to Buffer', () => {
+      expect(pgToTs('blob', false)).toBe('Buffer')
+    })
+
+    it('maps mediumblob to Buffer', () => {
+      expect(pgToTs('mediumblob', false)).toBe('Buffer')
+    })
+
+    it('maps longblob to Buffer', () => {
+      expect(pgToTs('longblob', false)).toBe('Buffer')
+    })
+
+    it('maps enum to string', () => {
+      expect(pgToTs('enum', false)).toBe('string')
+    })
+
+    it('maps set to string', () => {
+      expect(pgToTs('set', false)).toBe('string')
+    })
+
+    it('maps json to unknown', () => {
+      expect(pgToTs('json', false)).toBe('unknown')
+    })
+  })
+
+  // SQLite raw type mappings (without category fallback)
+  describe('SQLite raw types', () => {
+    it('maps integer to number', () => {
+      expect(pgToTs('integer', false)).toBe('number')
+    })
+
+    it('maps real to number', () => {
+      expect(pgToTs('real', false)).toBe('number')
+    })
+
+    it('maps text to string', () => {
+      expect(pgToTs('text', false)).toBe('string')
+    })
+
+    it('maps blob to Buffer', () => {
+      expect(pgToTs('blob', false)).toBe('Buffer')
+    })
+  })
 })
 
 describe('pgToGo', () => {

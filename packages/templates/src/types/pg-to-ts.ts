@@ -97,6 +97,19 @@ const PG_TO_TS: Record<string, string> = {
   tsvector: 'string',
   tsquery: 'string',
   oid: 'number',
+
+  // MySQL types
+  tinyint: 'number',
+  mediumint: 'number',
+  datetime: 'Date',
+  tinytext: 'string',
+  mediumtext: 'string',
+  longtext: 'string',
+  blob: 'Buffer',
+  mediumblob: 'Buffer',
+  longblob: 'Buffer',
+  enum: 'string',
+  set: 'string',
 }
 
 /** Temporal API mappings — each SQL date/time type maps to the right Temporal type */
