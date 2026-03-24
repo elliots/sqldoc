@@ -54,7 +54,7 @@ export async function codegenCommand(
   )
 
   if (projectPlugins.length > 0) {
-    const dialect = config.dialect ?? 'postgres'
+    const dialect = config.dialect
     const allFileTags = outputs.map((o) => ({
       sourceFile: o.sourceFile,
       objects: o.fileTags.map((ft) => ({
@@ -87,6 +87,7 @@ export async function codegenCommand(
     for (const [nsName, plugin] of projectPlugins) {
       const hook = plugin.afterCompile ?? plugin.generateProject
       const ctx: ProjectContext = {
+        dialect: config.dialect,
         outputs,
         mergedSql,
         allFileTags,

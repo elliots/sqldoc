@@ -135,7 +135,7 @@ describe('pglite extension loading (integration)', { timeout: 30_000 }, () => {
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
       CREATE TABLE users (id uuid DEFAULT uuid_generate_v4() PRIMARY KEY, name text);
     `
-    const runner = await createRunner({ sqlFiles: [sql] })
+    const runner = await createRunner({ dialect: 'postgres', sqlFiles: [sql] })
     try {
       const result = await runner.inspect([sql], { schema: 'public', dialect: 'postgres' })
       expect(result.error).toBeUndefined()

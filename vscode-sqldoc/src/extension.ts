@@ -110,6 +110,7 @@ async function validateDocument(doc: vscode.TextDocument) {
   let initFailed = false
   try {
     if (!astAdapter) {
+      // TODO: read dialect from workspace sqldoc.config.ts
       astAdapter = new SqlparserTsAdapter()
       await astAdapter.init()
     }

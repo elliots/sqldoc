@@ -2,6 +2,8 @@ import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
 
 const plugin: NamespacePlugin = {
   apiVersion: 1,
+  databases: ['postgres'],
+  description: 'Row-Level Security policies for PostgreSQL',
   name: 'rls',
   tags: {
     policy: {

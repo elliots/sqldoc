@@ -87,6 +87,8 @@ function buildGraphqlLabel(
 
 const plugin: NamespacePlugin = {
   apiVersion: 1,
+  databases: ['postgres'],
+  description: 'PostGraphile smart comments for PostgreSQL',
   name: 'pg',
   tags: {
     omit: {

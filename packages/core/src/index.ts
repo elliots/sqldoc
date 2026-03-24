@@ -44,6 +44,18 @@ export type { ArgValue, ImportStatement, ParsedArgs, ParsedTag, ParseResult } fr
 // Parser
 export { parse, parseArgs } from './parser.ts'
 
+// SQL Emitter
+export type { Dialect } from './sql-emitter.ts'
+export {
+  autoIncrementType,
+  commentOn,
+  currentTimestamp,
+  escapeString,
+  escapeStringWithNewlines,
+  jsonObjectFunction,
+  quoteIdentifier,
+} from './sql-emitter.ts'
+
 // TS import helper
 export { tsImport } from './ts-import.ts'
 export type {

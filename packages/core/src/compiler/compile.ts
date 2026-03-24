@@ -64,6 +64,17 @@ interface InternalAtlasColumn {
 
 type InternalAtlasAttr = { Name: string; Args: string } | Record<string, unknown>
 
+// ── Plugin compatibility ─────────────────────────────────────────────
+
+/**
+ * Check if a plugin supports the current dialect.
+ * Plugins without a databases field are compatible with all dialects.
+ */
+function isPluginCompatible(plugin: NamespacePlugin, dialect: 'postgres' | 'mysql' | 'sqlite'): boolean {
+  if (!plugin.databases) return true
+  return plugin.databases.includes(dialect)
+}
+
 // ── Public API ───────────────────────────────────────────────────────
 
 export interface CompileOptions {
@@ -142,6 +153,7 @@ function compileTier1(
   const fileTags = buildFileTags(blocks)
 
   // 4. Process each block
+  const skippedPlugins = new Set<string>()
   for (const block of blocks) {
     const { objectName, target, columnName, columnType, astNode } = block.ast
 
@@ -149,6 +161,20 @@ function compileTier1(
     for (const tag of block.tags) {
       const plugin = plugins.get(tag.namespace)
       if (!plugin) continue
+
+      // Check plugin compatibility with target dialect
+      const dialect = config.dialect
+      if (!isPluginCompatible(plugin, dialect)) {
+        if (!skippedPlugins.has(plugin.name)) {
+          skippedPlugins.add(plugin.name)
+          errors.push({
+            namespace: plugin.name,
+            message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
+          })
+        }
+        continue
+      }
+
       const tagHandler = plugin.onTag ?? plugin.generateSQL
       if (!tagHandler && !plugin.generateCode) continue
 
@@ -168,6 +194,7 @@ function compileTier1(
       }))
 
       const ctx: TagContext = {
+        dialect: config.dialect,
         target,
         objectName: objectName ?? 'unknown',
         columnName,
@@ -220,6 +247,7 @@ function compileAtlas(
     args: Record<string, unknown> | unknown[]
   }> = []
 
+  const skippedPlugins = new Set<string>()
   for (const schema of realm.schemas) {
     // Process tables
     if (schema.tables) {
@@ -238,6 +266,7 @@ function compileAtlas(
           docsMeta,
           errors,
           allTagOccurrences,
+          skippedPlugins,
         )
       }
     }
@@ -259,6 +288,7 @@ function compileAtlas(
           docsMeta,
           errors,
           allTagOccurrences,
+          skippedPlugins,
         )
       }
     }
@@ -294,6 +324,7 @@ function processAtlasObject(
     tag: string | null
     args: Record<string, unknown> | unknown[]
   }>,
+  skippedPlugins: Set<string>,
 ): void {
   // Extract tags from object-level attrs
   const objectTags = findAtlasTags(obj.attrs)
@@ -320,6 +351,20 @@ function processAtlasObject(
     const { namespace, tag: tagName } = splitTagName(atag.Name)
     const plugin = plugins.get(namespace)
     if (!plugin) continue
+
+    // Check plugin compatibility with target dialect
+    const dialect = config.dialect
+    if (!isPluginCompatible(plugin, dialect)) {
+      if (!skippedPlugins.has(plugin.name)) {
+        skippedPlugins.add(plugin.name)
+        errors.push({
+          namespace: plugin.name,
+          message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
+        })
+      }
+      continue
+    }
+
     const tagHandler = plugin.onTag ?? plugin.generateSQL
     if (!tagHandler && !plugin.generateCode) continue
 
@@ -341,6 +386,7 @@ function processAtlasObject(
     allTagOccurrences.push({ objectName, target, namespace, tag: tagName, args })
 
     const ctx: TagContext = {
+      dialect: config.dialect,
       target,
       objectName,
       tag: { name: tagName, args },
@@ -375,6 +421,20 @@ function processAtlasObject(
         const { namespace, tag: tagName } = splitTagName(atag.Name)
         const plugin = plugins.get(namespace)
         if (!plugin) continue
+
+        // Check plugin compatibility with target dialect
+        const dialect = config.dialect
+        if (!isPluginCompatible(plugin, dialect)) {
+          if (!skippedPlugins.has(plugin.name)) {
+            skippedPlugins.add(plugin.name)
+            errors.push({
+              namespace: plugin.name,
+              message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
+            })
+          }
+          continue
+        }
+
         const tagHandler = plugin.onTag ?? plugin.generateSQL
         if (!tagHandler && !plugin.generateCode) continue
 
@@ -403,6 +463,7 @@ function processAtlasObject(
         })
 
         const ctx: TagContext = {
+          dialect: config.dialect,
           target: 'column',
           objectName,
           columnName: col.name,

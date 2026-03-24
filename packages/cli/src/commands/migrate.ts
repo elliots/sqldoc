@@ -46,7 +46,7 @@ export async function migrateCommand(options: {
     throw new CliError('No "migrations.dir" configured. Set "migrations.dir" in sqldoc.config.ts')
   }
 
-  const dialect = config.dialect ?? 'postgres'
+  const dialect = config.dialect
   const format = config.migrations.format ?? 'plain'
   const namingConfig = config.migrations.naming ?? 'timestamp'
 

@@ -36,13 +36,16 @@ export interface AtlasRunnerOptions {
 
 export interface AtlasRunner {
   /** Execute SQL files and return parsed schema with tags */
-  inspect(files: string[], options?: { schema?: string; dialect?: string; fileNames?: string[] }): Promise<AtlasResult>
+  inspect(
+    files: string[],
+    options: { dialect: 'postgres' | 'mysql' | 'sqlite'; schema?: string; fileNames?: string[] },
+  ): Promise<AtlasResult>
 
   /** Compare two schema states and return migration SQL */
   diff(
     from: string[],
     to: string[],
-    options?: { schema?: string; dialect?: string; renames?: AtlasRename[] },
+    options: { dialect: 'postgres' | 'mysql' | 'sqlite'; schema?: string; renames?: AtlasRename[] },
   ): Promise<AtlasResult>
 
   /** Clean up resources */
@@ -228,14 +231,14 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
   return {
     async inspect(
       files: string[],
-      opts?: { schema?: string; dialect?: string; fileNames?: string[] },
+      opts: { dialect: 'postgres' | 'mysql' | 'sqlite'; schema?: string; fileNames?: string[] },
     ): Promise<AtlasResult> {
       const command: AtlasCommand = {
         type: 'inspect',
-        dialect: (opts?.dialect as AtlasCommand['dialect']) ?? 'postgres',
+        dialect: opts.dialect,
         files,
-        fileNames: opts?.fileNames,
-        schema: opts?.schema,
+        fileNames: opts.fileNames,
+        schema: opts.schema,
       }
       return runCommand(wasmPath, db, command)
     },
@@ -243,15 +246,15 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     async diff(
       from: string[],
       to: string[],
-      opts?: { schema?: string; dialect?: string; renames?: AtlasRename[] },
+      opts: { dialect: 'postgres' | 'mysql' | 'sqlite'; schema?: string; renames?: AtlasRename[] },
     ): Promise<AtlasResult> {
       const command: AtlasCommand = {
         type: 'diff',
-        dialect: (opts?.dialect as AtlasCommand['dialect']) ?? 'postgres',
+        dialect: opts.dialect,
         from,
         to,
-        schema: opts?.schema,
-        renames: opts?.renames,
+        schema: opts.schema,
+        renames: opts.renames,
       }
       return runCommand(wasmPath, db, command)
     },

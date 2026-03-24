@@ -62,7 +62,7 @@ export async function schemaInspectCommand(
   if (!resolvedSource) {
     throw new CliError('No source provided. Specify a path argument or set "schema" in sqldoc.config.ts')
   }
-  const dialect = (config.dialect ?? 'postgres') as 'postgres' | 'mysql' | 'sqlite'
+  const dialect = config.dialect
   const format = (options.format ?? 'sql') as Format
 
   try {
@@ -124,7 +124,7 @@ export async function schemaDiffCommand(options: {
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const config = resolveProject(rawConfig, options.project)
   if (options.devUrl) config.devUrl = options.devUrl
-  const dialect = (config.dialect ?? 'postgres') as 'postgres' | 'mysql' | 'sqlite'
+  const dialect = config.dialect
   const format = (options.format ?? 'sql') as Format
 
   // Default --to to config.schema, --from to config.migrations.dir when both omitted

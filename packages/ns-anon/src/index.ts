@@ -2,6 +2,8 @@ import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
 
 const plugin: NamespacePlugin = {
   apiVersion: 1,
+  databases: ['postgres'],
+  description: 'PostgreSQL Anonymizer security labels',
   name: 'anon',
   tags: {
     mask: {

@@ -58,6 +58,8 @@ export type NamespaceConfig = Record<string, unknown>
 
 /** Rich context passed to onTag for each tag occurrence */
 export interface TagContext {
+  /** Target database dialect */
+  dialect: 'postgres' | 'mysql' | 'sqlite'
   /** The SQL object this tag is attached to */
   target: SqlTarget
   /** Name of the SQL object (table name, function name, etc.) */
@@ -113,6 +115,8 @@ export type CompilerContext = TagContext
 
 /** Context for afterCompile hook — receives ALL compiled file data */
 export interface ProjectContext {
+  /** Target database dialect */
+  dialect: 'postgres' | 'mysql' | 'sqlite'
   /** All compiled file outputs */
   outputs: CompilerOutput[]
   /** The merged SQL from all files combined */
@@ -301,6 +305,12 @@ export interface LintConfig {
 export interface NamespacePlugin extends TagNamespace {
   /** API version for forward compatibility. Must be 1 for v1. */
   apiVersion: 1
+  /** Which databases this plugin supports. Omit = all databases. */
+  databases?: Array<'postgres' | 'mysql' | 'sqlite'>
+  /** Human-readable description of the plugin */
+  description?: string
+  /** Discovery keywords for plugin search */
+  keywords?: string[]
   /** JSON Schema or Zod-like descriptor for namespace config (optional). Reserved for future validation. */
   configSchema?: unknown
   /** Called for each tag occurrence — returns SQL statements and/or docs metadata */

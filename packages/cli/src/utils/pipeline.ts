@@ -45,11 +45,11 @@ export async function runCompilePipeline(
   }
 
   // Initialize AST adapter once
-  const adapter = new SqlparserTsAdapter()
+  const adapter = new SqlparserTsAdapter(config.dialect)
   await adapter.init()
 
   // ── Atlas -- required for compilation ──────────────────────────────
-  const dialect = config.dialect ?? 'postgres'
+  const dialect = config.dialect
   const allRawContents = sqlFiles.map((f) => fs.readFileSync(f, 'utf-8'))
 
   // Detect goose migration format and warn once

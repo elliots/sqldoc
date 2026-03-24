@@ -9,6 +9,11 @@ import type { SqlColumn, SqlCommentOn, SqlStatement } from './types.ts'
 export class SqlparserTsAdapter implements SqlAstAdapter {
   private initialized = false
   private parseFn!: (sql: string, dialect?: any) => any[]
+  private dialect: string
+
+  constructor(dialect: 'postgres' | 'mysql' | 'sqlite' = 'postgres') {
+    this.dialect = dialect
+  }
 
   async init(): Promise<void> {
     if (this.initialized) return
@@ -24,7 +29,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
 
     let ast: any[]
     try {
-      ast = this.parseFn(sql, 'postgresql')
+      ast = this.parseFn(sql, this.dialect)
     } catch {
       // Full parse failed — try statement by statement
       return this.parseStatementByStatement(sql)
@@ -53,7 +58,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
       // Count newlines before this chunk to get line offset
       const lineOffset = sql.substring(0, charOffset + chunk.indexOf(trimmed[0])).split('\n').length - 1
       try {
-        const ast = this.parseFn(`${trimmed};`, 'postgresql')
+        const ast = this.parseFn(`${trimmed};`, this.dialect)
         for (const stmt of ast) {
           const mapped = mapStatement(stmt)
           if (mapped) {
@@ -81,7 +86,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
 
     let ast: any[]
     try {
-      ast = this.parseFn(sql, 'postgresql')
+      ast = this.parseFn(sql, this.dialect)
     } catch {
       return []
     }

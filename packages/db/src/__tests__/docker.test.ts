@@ -68,7 +68,7 @@ describeDocker('Docker adapter', () => {
 
   it('works with createRunner docker:// scheme', async () => {
     const { createRunner } = await import('../index')
-    const runner = await createRunner({ devUrl: 'docker://postgres:16' })
+    const runner = await createRunner({ dialect: 'postgres', devUrl: 'docker://postgres:16' })
 
     try {
       const result = await runner.inspect(['CREATE TABLE docker_test (id bigserial PRIMARY KEY, name text);'], {

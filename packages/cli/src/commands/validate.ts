@@ -73,7 +73,7 @@ export async function validateCommand(
     // Parse SQL AST for enriched validation
     let statements: SqlStatement[] = []
     try {
-      const adapter = new SqlparserTsAdapter()
+      const adapter = new SqlparserTsAdapter(config.dialect)
       await adapter.init()
       statements = adapter.parseStatements(source)
     } catch {

@@ -36,6 +36,7 @@ describe.skipIf(!canRun)('atlas runner (integration)', () => {
 
   it('inspect with simple CREATE TABLE returns schema', async () => {
     const result = await runner.inspect(['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL);'], {
+      dialect: 'postgres',
       schema: 'public',
     })
 
@@ -68,7 +69,7 @@ CREATE TABLE orders (
 );`,
     ]
 
-    const result = await runner.inspect(sql, { schema: 'public' })
+    const result = await runner.inspect(sql, { dialect: 'postgres', schema: 'public' })
 
     expect(result.error).toBeUndefined()
     expect(result.schema).toBeDefined()
@@ -96,6 +97,7 @@ CREATE TABLE orders (
 
   it('diff with empty from and CREATE TABLE to returns statements', async () => {
     const result = await runner.diff([], ['CREATE TABLE items (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);'], {
+      dialect: 'postgres',
       schema: 'public',
     })
 
@@ -111,7 +113,7 @@ CREATE TABLE orders (
   it('diff with non-empty from and modified to returns ALTER statements', async () => {
     const from = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);']
     const to = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT);']
-    const result = await runner.diff(from, to, { schema: 'public' })
+    const result = await runner.diff(from, to, { dialect: 'postgres', schema: 'public' })
     // If single-DB problem exists, result.error will be set. Document this.
     if (result.error) {
       console.warn('KNOWN ISSUE: Atlas WASI single-DB problem --', result.error)
@@ -147,5 +149,5 @@ if (!wasmExists) {
   console.log(`[SKIP] atlas.wasm not found at: ${WASM_PATH}`)
 }
 if (!workerExists) {
-  console.log(`[SKIP] Built worker not found at: ${WORKER_PATH}. Run 'pnpm build' first.`)
+  console.log(`[SKIP] Built worker not found at: ${WORKER_JS} or ${WORKER_TS}. Run 'pnpm build' first.`)
 }

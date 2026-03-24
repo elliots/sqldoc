@@ -20,9 +20,9 @@ export { createAtlasRunner } from './runner.ts'
 export * from './types.ts'
 
 export interface CreateRunnerConfig {
-  /** SQL dialect. Default: 'postgres' */
-  dialect?: 'postgres' | 'mysql' | 'sqlite'
-  /** Database connection URL. If omitted, uses pglite (in-memory postgres). */
+  /** SQL dialect (required) */
+  dialect: 'postgres' | 'mysql' | 'sqlite'
+  /** Database connection URL. If omitted, uses dialect-specific default. */
   devUrl?: string
   /** SQL file contents to scan for CREATE EXTENSION statements */
   sqlFiles?: string[]
@@ -59,15 +59,27 @@ function resolveWasm(): string {
   )
 }
 
+/** Return the default dev database URL for each dialect */
+function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
+  switch (dialect) {
+    case 'postgres':
+      return 'pglite'
+    case 'sqlite':
+      return ':memory:'
+    case 'mysql':
+      return 'docker://mysql:8'
+  }
+}
+
 /**
  * Create an Atlas runner with sensible defaults.
  * Resolves the wasm binary, detects extensions from SQL files,
  * validates them, and creates the appropriate DB adapter.
  */
-export async function createRunner(config: CreateRunnerConfig = {}): Promise<import('./runner').AtlasRunner> {
+export async function createRunner(config: CreateRunnerConfig): Promise<import('./runner').AtlasRunner> {
   const wasmPath = resolveWasm()
-  const dialect = config.dialect ?? 'postgres'
-  const devUrl = config.devUrl ?? 'pglite'
+  const dialect = config.dialect
+  const devUrl = config.devUrl ?? defaultDevUrl(dialect)
 
   // Extract extensions from SQL (postgres only)
   const { extensions } =
