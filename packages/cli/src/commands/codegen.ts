@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { createRunner } from '@sqldoc/atlas'
+import { createRunner } from '@sqldoc/db'
 import type { DocsMeta, ProjectContext, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import pc from 'picocolors'

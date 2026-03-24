@@ -38,6 +38,8 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
     return results
   }
 
+  // Fallback: when the full-file parse fails (e.g. due to dialect-specific syntax),
+  // each statement is parsed individually so partial results are still available.
   private parseStatementByStatement(sql: string): SqlStatement[] {
     const results: SqlStatement[] = []
     const chunks = splitStatements(sql)

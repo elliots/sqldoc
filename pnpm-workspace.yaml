@@ -3,3 +3,4 @@ packages:
   - 'apps/*'
   - 'vscode-sqldoc'
   - 'sqlparser-ts'
+  - 'tests'

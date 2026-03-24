@@ -1,4 +1,4 @@
-import type { CompilerContext, NamespacePlugin, SqlOutput } from '@sqldoc/core'
+import type { TagContext, NamespacePlugin, SqlOutput } from '@sqldoc/core'
 
 function escapeSql(str: string): string {
   return str.replace(/'/g, "''")
@@ -22,7 +22,7 @@ const plugin: NamespacePlugin = {
     },
   },
 
-  generateSQL(ctx: CompilerContext): SqlOutput[] | undefined {
+  onTag(ctx: TagContext): SqlOutput[] | undefined {
     const { tag, target, objectName, columnName } = ctx
 
     if (tag.name !== '$self' && tag.name !== null) {

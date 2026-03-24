@@ -6,6 +6,7 @@ dist/
 **/*.vsix
 vscode-sqldoc/out
 docs/
+.planning
 
 out.sql
 
@@ -15,10 +16,12 @@ out.sql
 .sqldoc/
 
 # Atlas WASI binary (built externally, ~14MB)
-packages/atlas/wasm/*.wasm
+packages/db/wasm/*.wasm
 
 # Compiled sqldoc binary
 /sqldoc
 /sqldoc-*
 
 out/
+
+CLAUDE.md

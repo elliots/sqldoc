@@ -2,7 +2,7 @@
  * Enrichment layer — preprocesses Atlas realm + tags into a rich,
  * template-friendly structure. Computed once, used by all templates.
  */
-import type { AtlasColumn, AtlasTable, TypeCategory } from '@sqldoc/atlas'
+import type { AtlasColumn, AtlasTable, TypeCategory } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 import { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './atlas.ts'
 import { toPascalCase } from './naming.ts'

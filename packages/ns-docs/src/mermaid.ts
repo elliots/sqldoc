@@ -1,4 +1,4 @@
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 
 /**
  * Generate a Mermaid erDiagram string from an Atlas schema realm.

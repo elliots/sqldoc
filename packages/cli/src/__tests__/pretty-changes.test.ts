@@ -1,4 +1,4 @@
-import type { AtlasChange } from '@sqldoc/atlas'
+import type { AtlasChange } from '@sqldoc/db'
 import { describe, expect, it } from 'vitest'
 import { renderChanges } from '../utils/pretty-changes.ts'
 

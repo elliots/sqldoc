@@ -1,4 +1,4 @@
-// @sqldoc/atlas -- Atlas WASI integration for sqldoc
+// @sqldoc/db -- Atlas WASI integration for sqldoc
 // Schema types, database adapters, and WASI runner
 
 import * as fs from 'node:fs'
@@ -45,8 +45,8 @@ function resolveWasm(): string {
     for (const candidate of [
       path.join(dir, 'wasm', 'atlas.wasm'),
       path.join(dir, '..', 'wasm', 'atlas.wasm'),
-      path.join(dir, 'node_modules', '@sqldoc', 'atlas', 'wasm', 'atlas.wasm'),
-      path.join(dir, 'packages', 'atlas', 'wasm', 'atlas.wasm'),
+      path.join(dir, 'node_modules', '@sqldoc', 'db', 'wasm', 'atlas.wasm'),
+      path.join(dir, 'packages', 'db', 'wasm', 'atlas.wasm'),
     ]) {
       if (fs.existsSync(candidate)) return candidate
     }

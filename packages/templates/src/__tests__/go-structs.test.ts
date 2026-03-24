@@ -3,7 +3,7 @@ import goStructs from '../go-structs/index.ts'
 
 const generate = goStructs.generate
 
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 
 const testRealm: AtlasRealm = {

@@ -22,11 +22,11 @@
   },
   "peerDependencies": {
     "@sqldoc/core": "workspace:*",
-    "@sqldoc/atlas": "workspace:*"
+    "@sqldoc/db": "workspace:*"
   },
   "devDependencies": {
     "@sqldoc/core": "workspace:*",
-    "@sqldoc/atlas": "workspace:*",
+    "@sqldoc/db": "workspace:*",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

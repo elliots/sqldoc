@@ -1,4 +1,4 @@
-import type { AtlasColumn, AtlasRealm, AtlasTable, AtlasView } from '@sqldoc/atlas'
+import type { AtlasColumn, AtlasRealm, AtlasTable, AtlasView } from '@sqldoc/db'
 
 /** Extract all tables from all schemas in a realm */
 export function getTablesFromRealm(realm: AtlasRealm): AtlasTable[] {

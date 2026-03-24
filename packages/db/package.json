@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@sqldoc/atlas",
+  "name": "@sqldoc/db",
   "version": "0.0.2",
   "description": "Atlas WASI integration for sqldoc -- schema types, database adapters, WASI runner",
   "exports": {

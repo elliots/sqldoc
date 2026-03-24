@@ -1,4 +1,4 @@
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import type { ArgType, DocsMeta, InferSchema } from '@sqldoc/core'
 
 /** Config for the codegen namespace in sqldoc.config.ts namespaces.codegen */

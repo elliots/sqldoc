@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@sqldoc/core": "workspace:*",
-    "@sqldoc/atlas": "workspace:*",
+    "@sqldoc/db": "workspace:*",
     "commander": "^14.0.3",
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1"

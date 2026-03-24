@@ -1,4 +1,4 @@
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import { describe, expect, it } from 'vitest'
 import { generateMermaidERD } from '../mermaid'
 

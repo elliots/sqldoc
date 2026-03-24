@@ -1,5 +1,5 @@
 import * as path from 'node:path'
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
 import { findSqldocDir, tsImport, unwrapDefault } from '@sqldoc/core'
 import type { CodegenConfig, TemplateContext } from './types.ts'

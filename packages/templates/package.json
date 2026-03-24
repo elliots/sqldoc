@@ -143,7 +143,7 @@
     "test:docker": "bun test src/__tests__/docker-templates.test.ts"
   },
   "peerDependencies": {
-    "@sqldoc/atlas": "workspace:*",
+    "@sqldoc/db": "workspace:*",
     "@sqldoc/core": "workspace:*",
     "@sqldoc/ns-codegen": "workspace:*"
   },
@@ -151,7 +151,7 @@
     "@electric-sql/pglite": "^0.4.1",
     "@types/pg": "^8.11.0",
     "@electric-sql/pglite-socket": "^0.1.1",
-    "@sqldoc/atlas": "workspace:*",
+    "@sqldoc/db": "workspace:*",
     "@sqldoc/core": "workspace:*",
     "@sqldoc/ns-codegen": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",

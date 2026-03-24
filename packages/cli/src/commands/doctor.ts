@@ -83,15 +83,15 @@ export async function doctorCommand(): Promise<void> {
     wasmFound = true
     wasmPath = process.env.ATLAS_WASM_PATH
   } else {
-    // Walk up from current file's directory looking for atlas.wasm (same logic as @sqldoc/atlas)
+    // Walk up from current file's directory looking for atlas.wasm (same logic as @sqldoc/db)
     let dir = path.dirname(fileURLToPath(import.meta.url))
     const searched: string[] = []
     outer: while (true) {
       for (const candidate of [
         path.join(dir, 'wasm', 'atlas.wasm'),
         path.join(dir, '..', 'wasm', 'atlas.wasm'),
-        path.join(dir, 'node_modules', '@sqldoc', 'atlas', 'wasm', 'atlas.wasm'),
-        path.join(dir, 'packages', 'atlas', 'wasm', 'atlas.wasm'),
+        path.join(dir, 'node_modules', '@sqldoc', 'db', 'wasm', 'atlas.wasm'),
+        path.join(dir, 'packages', 'db', 'wasm', 'atlas.wasm'),
       ]) {
         searched.push(candidate)
         if (fs.existsSync(candidate)) {
@@ -115,7 +115,7 @@ export async function doctorCommand(): Promise<void> {
   let pgliteOk = false
   let pgliteDetail: string | undefined
   try {
-    const { createPgliteAdapter } = await import('@sqldoc/atlas')
+    const { createPgliteAdapter } = await import('@sqldoc/db')
     const adapter = await createPgliteAdapter()
     const result = await adapter.query('SELECT 1 AS ok')
     pgliteOk = result.rows.length > 0

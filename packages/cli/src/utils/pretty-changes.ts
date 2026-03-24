@@ -1,4 +1,4 @@
-import type { AtlasChange } from '@sqldoc/atlas'
+import type { AtlasChange } from '@sqldoc/db'
 import pc from 'picocolors'
 
 /**

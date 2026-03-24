@@ -8,7 +8,7 @@
  * This module now provides conversion utilities from Atlas WASI types
  * to the ns-docs internal types used by merge.ts and renderers.
  */
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import type { AtlasSchema } from './types.ts'
 
 /** Convert Atlas WASI realm to ns-docs AtlasSchema format */

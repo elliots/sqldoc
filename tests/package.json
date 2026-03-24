@@ -1,0 +1,20 @@
+{
+  "name": "@sqldoc/tests",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@sqldoc/core": "workspace:*",
+    "@sqldoc/ns-anon": "workspace:*",
+    "@sqldoc/ns-audit": "workspace:*",
+    "@sqldoc/ns-comment": "workspace:*",
+    "@sqldoc/ns-deprecated": "workspace:*",
+    "@sqldoc/ns-postgraphile": "workspace:*",
+    "@sqldoc/ns-rls": "workspace:*",
+    "@sqldoc/ns-validate": "workspace:*",
+    "vitest": "^4.1.0"
+  }
+}

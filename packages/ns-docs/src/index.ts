@@ -1,4 +1,4 @@
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
 import { realmToDocsSchema } from './atlas.ts'
 import { mergeSchemaWithTags } from './merge.ts'

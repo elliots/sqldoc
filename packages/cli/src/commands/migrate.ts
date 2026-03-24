@@ -1,7 +1,7 @@
 import * as path from 'node:path'
 import * as readline from 'node:readline'
-import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/atlas'
-import { createRunner } from '@sqldoc/atlas'
+import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
+import { createRunner } from '@sqldoc/db'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import pc from 'picocolors'
@@ -97,7 +97,7 @@ export async function migrateCommand(options: {
   const runner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: allSql })
 
   let upStatements: string[]
-  let upChanges: import('@sqldoc/atlas').AtlasChange[] | undefined
+  let upChanges: import('@sqldoc/db').AtlasChange[] | undefined
   let downStatements: string[]
 
   try {

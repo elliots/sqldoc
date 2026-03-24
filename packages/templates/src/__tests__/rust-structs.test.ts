@@ -3,7 +3,7 @@ import rustStructs from '../rust-structs/index'
 
 const generate = rustStructs.generate
 
-import type { AtlasRealm } from '@sqldoc/atlas'
+import type { AtlasRealm } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 
 const testRealm: AtlasRealm = {

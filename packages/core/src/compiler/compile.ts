@@ -27,8 +27,8 @@ import type {
   TagOutput,
 } from './types.ts'
 
-// ── Internal Atlas types (mirrors @sqldoc/atlas without importing) ────
-// Core must NOT depend on @sqldoc/atlas. These mirror the shapes for internal use.
+// ── Internal Atlas types (mirrors @sqldoc/db without importing) ────
+// Core must NOT depend on @sqldoc/db. These mirror the shapes for internal use.
 // Schema fields use lowercase (matching marshal.go json tags).
 // Attr variants (Tag, Comment, Check) use PascalCase (map[string]string in Go).
 
@@ -520,6 +520,13 @@ function commentOutSourceComments(source: string, comments: SqlCommentOn[]): str
   return lines.map((line, i) => (commentedLines.has(i) ? `-- ${line}` : line)).join('\n')
 }
 
+/**
+ * COMMENT ON merging strategy: source COMMENT ON statements are commented out in the
+ * original SQL, then all comments (source + generated) are merged by target key and
+ * emitted as combined COMMENT ON statements at the end. Multiple comments for the same
+ * target are joined with `\n` using `E'...'` (Postgres-specific -- Phase 3 will make
+ * this dialect-aware).
+ */
 function buildMergedSql(
   source: string,
   sqlOutputs: SqlOutput[],
@@ -608,7 +615,7 @@ function splitTagName(name: string): { namespace: string; tag: string | null } {
 
 /**
  * Type guard: check if an Atlas attr is a tag (has Name + Args, no Expr).
- * Mirrors isTag from @sqldoc/atlas without importing.
+ * Mirrors isTag from @sqldoc/db without importing.
  */
 function isAtlasTag(attr: InternalAtlasAttr): attr is { Name: string; Args: string } {
   return (
@@ -702,7 +709,10 @@ function parsedArgsToValue(rawArgs: string | null): Record<string, unknown> | un
 
 /**
  * Merge parser-derived tags into Atlas-derived fileTags.
- * Adds tags that Atlas doesn't see (e.g. @lint.ignore) to the right objects.
+ *
+ * Atlas tag matching only sees tags that produce attrs in the Atlas schema inspection.
+ * Tags like @lint.ignore that don't produce SQL output are invisible to Atlas, so the
+ * parser-derived tags are merged in to ensure complete fileTags for lint rules and docs.
  */
 function mergeParserTags(atlasFileTags: TagContext['fileTags'], parserFileTags: TagContext['fileTags']): void {
   // Index existing objects by name

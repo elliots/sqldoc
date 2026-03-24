@@ -49,7 +49,7 @@ export function extractExtensions(
 export async function validatePgliteExtensions(requested: string[]): Promise<string[]> {
   if (requested.length === 0) return []
 
-  // Resolve from this package's directory (pglite is a dep of @sqldoc/atlas)
+  // Resolve from this package's directory (pglite is a dep of @sqldoc/db)
   const req = createRequire(import.meta.url)
 
   const results: Array<{ name: string; available: boolean }> = []
