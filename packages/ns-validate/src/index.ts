@@ -1,3 +1,4 @@
+import { quoteIdentifier } from '@sqldoc/core'
 import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
 
 function isTextType(type: string | undefined): boolean {
@@ -69,39 +70,51 @@ const plugin: NamespacePlugin = {
       },
     },
     pattern: {
-      description: 'Add a CHECK constraint using a PostgreSQL regex pattern',
+      description: 'Add a CHECK constraint using a regex pattern (~ for Postgres, REGEXP for MySQL)',
       targets: ['column'],
       args: [{ type: 'string' }],
     },
   },
 
   onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName, columnName } = ctx
+    const { tag, objectName, columnName, dialect } = ctx
+    const q = (name: string) => quoteIdentifier(name, dialect)
 
     switch (tag.name) {
       case 'check': {
         const expression = Array.isArray(tag.args)
           ? (tag.args[0] as string)
           : ((tag.args as Record<string, unknown>).positional as string)
+
+        if (dialect === 'sqlite') {
+          return { docs: undefined }
+        }
+
         return {
           sql: [
             {
-              sql: `ALTER TABLE "${objectName}" ADD CONSTRAINT "${objectName}_${columnName}_check" CHECK (${expression});`,
+              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_check`)} CHECK (${expression});`,
             },
           ],
         }
       }
 
       case 'notEmpty': {
+        const docs = {
+          columns: [{ header: 'Validation', object: objectName, column: columnName, value: 'Not empty' }],
+        }
+
+        if (dialect === 'sqlite') {
+          return { docs }
+        }
+
         return {
           sql: [
             {
-              sql: `ALTER TABLE "${objectName}" ADD CONSTRAINT "${objectName}_${columnName}_not_empty" CHECK (length(trim("${columnName}")) > 0);`,
+              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_not_empty`)} CHECK (length(trim(${q(columnName!)})) > 0);`,
             },
           ],
-          docs: {
-            columns: [{ header: 'Validation', object: objectName, column: columnName, value: 'Not empty' }],
-          },
+          docs,
         }
       }
 
@@ -109,15 +122,23 @@ const plugin: NamespacePlugin = {
         const args = tag.args as Record<string, unknown>
         const min = args.min as number
         const max = args.max as number
+        const docs = {
+          columns: [
+            { header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}\u2013${max}` },
+          ],
+        }
+
+        if (dialect === 'sqlite') {
+          return { docs }
+        }
+
         return {
           sql: [
             {
-              sql: `ALTER TABLE "${objectName}" ADD CONSTRAINT "${objectName}_${columnName}_range" CHECK ("${columnName}" >= ${min} AND "${columnName}" <= ${max});`,
+              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_range`)} CHECK (${q(columnName!)} >= ${min} AND ${q(columnName!)} <= ${max});`,
             },
           ],
-          docs: {
-            columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}–${max}` }],
-          },
+          docs,
         }
       }
 
@@ -128,24 +149,30 @@ const plugin: NamespacePlugin = {
         let checkExpr: string
         let label: string
         if (min != null && max != null) {
-          checkExpr = `length("${columnName}") >= ${min} AND length("${columnName}") <= ${max}`
-          label = `Length: ${min}–${max}`
+          checkExpr = `length(${q(columnName!)}) >= ${min} AND length(${q(columnName!)}) <= ${max}`
+          label = `Length: ${min}\u2013${max}`
         } else if (min != null) {
-          checkExpr = `length("${columnName}") >= ${min}`
+          checkExpr = `length(${q(columnName!)}) >= ${min}`
           label = `Min length: ${min}`
         } else {
-          checkExpr = `length("${columnName}") <= ${max}`
+          checkExpr = `length(${q(columnName!)}) <= ${max}`
           label = `Max length: ${max}`
         }
+        const docs = {
+          columns: [{ header: 'Validation', object: objectName, column: columnName, value: label }],
+        }
+
+        if (dialect === 'sqlite') {
+          return { docs }
+        }
+
         return {
           sql: [
             {
-              sql: `ALTER TABLE "${objectName}" ADD CONSTRAINT "${objectName}_${columnName}_length" CHECK (${checkExpr});`,
+              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_length`)} CHECK (${checkExpr});`,
             },
           ],
-          docs: {
-            columns: [{ header: 'Validation', object: objectName, column: columnName, value: label }],
-          },
+          docs,
         }
       }
 
@@ -153,15 +180,22 @@ const plugin: NamespacePlugin = {
         const pattern = Array.isArray(tag.args)
           ? (tag.args[0] as string)
           : ((tag.args as Record<string, unknown>).positional as string)
+        const docs = {
+          columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Pattern: ${pattern}` }],
+        }
+
+        if (dialect === 'sqlite') {
+          return { docs }
+        }
+
+        const regexOp = dialect === 'mysql' ? 'REGEXP' : '~'
         return {
           sql: [
             {
-              sql: `ALTER TABLE "${objectName}" ADD CONSTRAINT "${objectName}_${columnName}_pattern" CHECK ("${columnName}" ~ '${pattern}');`,
+              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_pattern`)} CHECK (${q(columnName!)} ${regexOp} '${pattern}');`,
             },
           ],
-          docs: {
-            columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Pattern: ${pattern}` }],
-          },
+          docs,
         }
       }
 
@@ -183,8 +217,6 @@ const plugin: NamespacePlugin = {
             // Skip objects that look like column-level tags (table.column)
             if (obj.objectName.includes('.')) continue
 
-            // Check if any tag indicates a primary key exists
-            // We need to check the Atlas realm if available, or inspect the source SQL
             const hasPk = checkTableHasPk(output, obj.objectName)
             if (!hasPk) {
               diagnostics.push({

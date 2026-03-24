@@ -1,4 +1,130 @@
+/**
+ * Audit namespace plugin -- generates audit triggers for Postgres, MySQL, and SQLite.
+ *
+ * Postgres: PL/pgSQL trigger function + multi-event trigger with row_to_json.
+ * MySQL: Separate per-event triggers with inline bodies using JSON_OBJECT and explicit columns.
+ * SQLite: Separate per-event triggers with inline bodies using json_object and explicit columns.
+ */
+
+import {
+  autoIncrementType,
+  currentTimestamp,
+  jsonObjectFunction,
+  jsonType,
+  quoteIdentifier,
+  timestampType,
+  type Dialect,
+} from '@sqldoc/core'
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
+
+// -- Minimal type shapes for AtlasTable/AtlasColumn (ctx.atlasTable is typed as unknown) --
+
+interface AuditColumn {
+  name: string
+}
+
+interface AuditTable {
+  name: string
+  columns?: AuditColumn[]
+}
+
+// -- Helper functions --
+
+/** Generate the audit log table DDL with dialect-correct types. */
+function generateAuditTableSql(destination: string, dialect: Dialect): string {
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  return `CREATE TABLE IF NOT EXISTS ${q(destination)} (
+  id ${autoIncrementType('bigint', dialect)} PRIMARY KEY,
+  table_name TEXT NOT NULL,
+  operation TEXT NOT NULL,
+  old_data ${jsonType(dialect)},
+  new_data ${jsonType(dialect)},
+  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${currentTimestamp(dialect)}
+);`
+}
+
+/** Build a JSON serialization expression for a row reference (OLD or NEW). */
+function generateColumnJsonExpr(ref: 'OLD' | 'NEW', columns: AuditColumn[], dialect: Dialect): string {
+  const jsonFn = jsonObjectFunction(dialect)
+  const pairs = columns.map((c) => `'${c.name}', ${ref}.${quoteIdentifier(c.name, dialect)}`).join(', ')
+  return `${jsonFn}(${pairs})`
+}
+
+/** Generate separate per-event triggers for MySQL/SQLite (no multi-event, no CREATE FUNCTION). */
+function generatePerEventTriggers(
+  objectName: string,
+  destination: string,
+  operations: string[],
+  columns: AuditColumn[],
+  dialect: Dialect,
+): SqlOutput[] {
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  const ts = currentTimestamp(dialect)
+  const outputs: SqlOutput[] = []
+
+  for (const op of operations) {
+    const opLower = op.toLowerCase()
+    const opUpper = op.toUpperCase()
+    const triggerName = `${objectName}_audit_after_${opLower}`
+    const hasOld = opLower !== 'insert'
+    const hasNew = opLower !== 'delete'
+
+    const oldExpr = hasOld ? generateColumnJsonExpr('OLD', columns, dialect) : 'NULL'
+    const newExpr = hasNew ? generateColumnJsonExpr('NEW', columns, dialect) : 'NULL'
+
+    outputs.push({
+      sql: `CREATE TRIGGER ${q(triggerName)}
+  AFTER ${opUpper} ON ${q(objectName)}
+  FOR EACH ROW
+BEGIN
+  INSERT INTO ${q(destination)} (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('${objectName}', '${opUpper}', ${oldExpr}, ${newExpr}, ${ts});
+END;`,
+    })
+  }
+
+  return outputs
+}
+
+/** Generate Postgres PL/pgSQL function + multi-event trigger (unchanged from original). */
+function generatePostgresTriggers(objectName: string, destination: string, operations: string[]): SqlOutput[] {
+  const ops = operations.map((op) => op.toUpperCase())
+  const triggerEvents = ops.join(' OR ')
+
+  const hasInsert = ops.includes('INSERT')
+  const hasDelete = ops.includes('DELETE')
+
+  let oldExpr = 'row_to_json(OLD)'
+  let newExpr = 'row_to_json(NEW)'
+  let returnExpr = 'RETURN NEW;'
+
+  if (hasInsert && !hasDelete) {
+    oldExpr = "CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END"
+  } else if (hasDelete && !hasInsert) {
+    newExpr = "CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END"
+    returnExpr = "RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;"
+  } else if (hasInsert && hasDelete) {
+    oldExpr = "CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END"
+    newExpr = "CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END"
+    returnExpr = "RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;"
+  }
+
+  const fnSql = `CREATE OR REPLACE FUNCTION "${objectName}_audit_fn"() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO "${destination}" (table_name, operation, old_data, new_data, changed_at)
+  VALUES (TG_TABLE_NAME, TG_OP, ${oldExpr}, ${newExpr}, now());
+  ${returnExpr}
+END;
+$$ LANGUAGE plpgsql;`
+
+  const triggerSql = `CREATE TRIGGER "${objectName}_audit_trigger"
+  AFTER ${triggerEvents} ON "${objectName}"
+  FOR EACH ROW EXECUTE FUNCTION "${objectName}_audit_fn"();`
+
+  return [{ sql: fnSql }, { sql: triggerSql }]
+}
+
+// -- Plugin definition --
 
 const plugin: NamespacePlugin = {
   apiVersion: 1,
@@ -19,7 +145,6 @@ const plugin: NamespacePlugin = {
         strategy: { type: 'enum', values: ['hash', 'mask', 'omit'], required: true },
       },
       validate: (ctx) => {
-        // Check the parent table for @audit across the whole file
         const objName = ctx.objectName?.toLowerCase()
         const hasAudit = ctx.fileTags.some(
           (ft) =>
@@ -36,6 +161,7 @@ const plugin: NamespacePlugin = {
 
   onTag(ctx: TagContext): TagOutput | undefined {
     const { tag, objectName } = ctx
+    const dialect = ctx.dialect
 
     if (tag.name === 'redact') return undefined
     if (tag.name !== '$self' && tag.name !== null) return undefined
@@ -44,49 +170,34 @@ const plugin: NamespacePlugin = {
     const operations = (args.on as string[] | undefined) ?? ['insert', 'update', 'delete']
     const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_audit_log`
 
-    const ops = operations.map((op) => op.toUpperCase())
-    const triggerEvents = ops.join(' OR ')
+    // Audit log table DDL (dialect-aware types)
+    const auditTableSql: SqlOutput = { sql: generateAuditTableSql(destination, dialect) }
 
-    const hasInsert = ops.includes('INSERT')
-    const hasDelete = ops.includes('DELETE')
+    // Trigger generation depends on dialect
+    let triggerSqls: SqlOutput[]
+    let extraAnnotations: Array<{ object: string; text: string }> = []
 
-    let oldExpr = 'row_to_json(OLD)'
-    let newExpr = 'row_to_json(NEW)'
-    let returnExpr = 'RETURN NEW;'
+    if (dialect === 'postgres') {
+      // Postgres: PL/pgSQL function + multi-event trigger (unchanged behavior)
+      triggerSqls = generatePostgresTriggers(objectName, destination, operations)
+    } else {
+      // MySQL/SQLite: need column info from atlasTable for JSON serialization
+      const table = ctx.atlasTable as AuditTable | undefined
+      const columns = table?.columns
 
-    if (hasInsert && !hasDelete) {
-      oldExpr = "CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END"
-    } else if (hasDelete && !hasInsert) {
-      newExpr = "CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END"
-      returnExpr = "RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;"
-    } else if (hasInsert && hasDelete) {
-      oldExpr = "CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END"
-      newExpr = "CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END"
-      returnExpr = "RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;"
+      if (!columns || columns.length === 0) {
+        // Cannot generate triggers without column info -- emit table DDL only with annotation
+        triggerSqls = []
+        extraAnnotations.push({
+          object: objectName,
+          text: 'Audit triggers require Tier 2 compilation for MySQL/SQLite (column enumeration needed for JSON serialization)',
+        })
+      } else {
+        triggerSqls = generatePerEventTriggers(objectName, destination, operations, columns, dialect)
+      }
     }
 
-    const tableSql = `CREATE TABLE IF NOT EXISTS "${destination}" (
-  id BIGSERIAL PRIMARY KEY,
-  table_name TEXT NOT NULL,
-  operation TEXT NOT NULL,
-  old_data JSONB,
-  new_data JSONB,
-  changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);`
-
-    const fnSql = `CREATE OR REPLACE FUNCTION "${objectName}_audit_fn"() RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO "${destination}" (table_name, operation, old_data, new_data, changed_at)
-  VALUES (TG_TABLE_NAME, TG_OP, ${oldExpr}, ${newExpr}, now());
-  ${returnExpr}
-END;
-$$ LANGUAGE plpgsql;`
-
-    const triggerSql = `CREATE TRIGGER "${objectName}_audit_trigger"
-  AFTER ${triggerEvents} ON "${objectName}"
-  FOR EACH ROW EXECUTE FUNCTION "${objectName}_audit_fn"();`
-
-    const sql: SqlOutput[] = [{ sql: tableSql }, { sql: fnSql }, { sql: triggerSql }]
+    const sql: SqlOutput[] = [auditTableSql, ...triggerSqls]
 
     return {
       sql,
@@ -104,6 +215,7 @@ $$ LANGUAGE plpgsql;`
             object: objectName,
             text: `Audited (${operations.join(', ')})`,
           },
+          ...extraAnnotations,
         ],
       },
     }
@@ -117,7 +229,6 @@ $$ LANGUAGE plpgsql;`
       check(ctx) {
         const diagnostics = []
         for (const output of ctx.outputs) {
-          // Collect all table-level objects
           const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
 
           for (const obj of tableObjects) {

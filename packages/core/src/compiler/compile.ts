@@ -14,6 +14,8 @@ import type { SqlCommentOn, SqlStatement } from '../ast/types.ts'
 import type { TagBlock } from '../blocks.ts'
 import { buildBlocks } from '../blocks.ts'
 import { parse, parseArgs } from '../parser.ts'
+import { escapeString, escapeStringWithNewlines } from '../sql-emitter.ts'
+import type { Dialect } from '../sql-emitter.ts'
 import type { SqlTarget } from '../types.ts'
 import type {
   CodeOutput,
@@ -217,7 +219,7 @@ function compileTier1(
   }
 
   // 5. Build merged SQL: original source + generated SQL appended
-  const mergedSql = buildMergedOutput(source, sqlOutputs, adapter)
+  const mergedSql = buildMergedOutput(source, sqlOutputs, adapter, config.dialect)
 
   return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
 }
@@ -298,7 +300,7 @@ function compileAtlas(
   const fileTags = buildAtlasFileTags(allTagOccurrences)
 
   // Build merged SQL output
-  const mergedSql = buildMergedOutput(source, sqlOutputs, adapter)
+  const mergedSql = buildMergedOutput(source, sqlOutputs, adapter, config.dialect)
 
   return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
 }
@@ -555,11 +557,11 @@ function invokePlugin(
 
 // ── Merged SQL output ─────────────────────────────────────────────────
 
-function buildMergedOutput(source: string, sqlOutputs: SqlOutput[], adapter: SqlAstAdapter): string {
+function buildMergedOutput(source: string, sqlOutputs: SqlOutput[], adapter: SqlAstAdapter, dialect: Dialect): string {
   const sourceComments = adapter.parseComments(source)
   const generatedSql = sqlOutputs.map((o) => o.sql).join('\n')
   const generatedComments = generatedSql.trim() ? adapter.parseComments(generatedSql) : []
-  return buildMergedSql(source, sqlOutputs, sourceComments, generatedComments)
+  return buildMergedSql(source, sqlOutputs, sourceComments, generatedComments, dialect)
 }
 
 /** Comment out COMMENT ON statements in source SQL using line numbers */
@@ -585,14 +587,14 @@ function commentOutSourceComments(source: string, comments: SqlCommentOn[]): str
  * COMMENT ON merging strategy: source COMMENT ON statements are commented out in the
  * original SQL, then all comments (source + generated) are merged by target key and
  * emitted as combined COMMENT ON statements at the end. Multiple comments for the same
- * target are joined with `\n` using `E'...'` (Postgres-specific -- Phase 3 will make
- * this dialect-aware).
+ * target are joined with `\n` using dialect-aware string escaping.
  */
 function buildMergedSql(
   source: string,
   sqlOutputs: SqlOutput[],
   sourceComments: SqlCommentOn[],
   generatedComments: SqlCommentOn[],
+  dialect: Dialect,
 ): string {
   // 1. Build comment merge map: target -> content[]
   const commentMap = new Map<string, string[]>()
@@ -625,11 +627,9 @@ function buildMergedSql(
   const mergedComments: string[] = []
   for (const [target, contents] of commentMap) {
     const unique = [...new Set(contents)]
-    const escaped = unique.map((c) => c.replace(/'/g, "''")).join('\\n')
-    const sql =
-      unique.length > 1
-        ? `COMMENT ON ${target} IS E'${escaped}';`
-        : `COMMENT ON ${target} IS '${unique[0].replace(/'/g, "''")}';`
+    const joined = unique.join('\n')
+    const escaped = unique.length > 1 ? escapeStringWithNewlines(joined, dialect) : escapeString(unique[0], dialect)
+    const sql = `COMMENT ON ${target} IS ${escaped};`
     mergedComments.push(sql)
   }
 

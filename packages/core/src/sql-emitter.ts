@@ -118,3 +118,37 @@ export function jsonObjectFunction(dialect: Dialect): string {
       return 'json_object'
   }
 }
+
+/**
+ * Get the timestamp column type for the target dialect.
+ * Postgres: TIMESTAMPTZ (timezone-aware)
+ * MySQL: TIMESTAMP
+ * SQLite: TEXT (no native timestamp type)
+ */
+export function timestampType(dialect: Dialect): string {
+  switch (dialect) {
+    case 'postgres':
+      return 'TIMESTAMPTZ'
+    case 'mysql':
+      return 'TIMESTAMP'
+    case 'sqlite':
+      return 'TEXT'
+  }
+}
+
+/**
+ * Get the JSON column type for the target dialect.
+ * Postgres: JSONB (binary JSON with indexing)
+ * MySQL: JSON
+ * SQLite: TEXT (no native JSON type)
+ */
+export function jsonType(dialect: Dialect): string {
+  switch (dialect) {
+    case 'postgres':
+      return 'JSONB'
+    case 'mysql':
+      return 'JSON'
+    case 'sqlite':
+      return 'TEXT'
+  }
+}

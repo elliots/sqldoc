@@ -53,7 +53,9 @@ export {
   escapeString,
   escapeStringWithNewlines,
   jsonObjectFunction,
+  jsonType,
   quoteIdentifier,
+  timestampType,
 } from './sql-emitter.ts'
 
 // TS import helper

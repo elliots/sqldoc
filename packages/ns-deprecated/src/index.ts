@@ -1,32 +1,5 @@
+import { escapeString, quoteIdentifier } from '@sqldoc/core'
 import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
-
-function commentOnSql(target: string, qualifiedName: string, message: string): string {
-  return `COMMENT ON ${target} ${qualifiedName} IS '${message}';`
-}
-
-function targetKeyword(target: string): string {
-  switch (target) {
-    case 'table':
-      return 'TABLE'
-    case 'column':
-      return 'COLUMN'
-    case 'view':
-      return 'VIEW'
-    case 'function':
-      return 'FUNCTION'
-    case 'type':
-      return 'TYPE'
-    default:
-      return target.toUpperCase()
-  }
-}
-
-function qualifiedName(ctx: TagContext): string {
-  if (ctx.target === 'column') {
-    return `"${ctx.objectName}"."${ctx.columnName}"`
-  }
-  return `"${ctx.objectName}"`
-}
 
 const plugin: NamespacePlugin = {
   apiVersion: 1,
@@ -49,44 +22,79 @@ const plugin: NamespacePlugin = {
   },
 
   onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag } = ctx
-    const keyword = targetKeyword(ctx.target)
-    const name = qualifiedName(ctx)
-    const docTarget =
-      ctx.target === 'column' ? { object: ctx.objectName, column: ctx.columnName } : { object: ctx.objectName }
+    const { tag, target, objectName, columnName, dialect } = ctx
+    const q = (name: string) => quoteIdentifier(name, dialect)
+    const esc = (s: string) => escapeString(s, dialect)
 
+    const docTarget = target === 'column' ? { object: objectName, column: columnName } : { object: objectName }
+
+    // Determine the deprecation message and docs value
+    let message: string
+    let docsValue: string
     switch (tag.name) {
       case '$self':
-      case null: {
-        return {
-          sql: [{ sql: commentOnSql(keyword, name, 'DEPRECATED') }],
-          docs: {
-            columns: [{ header: 'Status', ...docTarget, value: 'Deprecated' }],
-          },
-        }
-      }
+      case null:
+        message = 'DEPRECATED'
+        docsValue = 'Deprecated'
+        break
       case 'replace': {
         const args = tag.args as unknown[]
         const newName = args[0] as string
-        return {
-          sql: [{ sql: commentOnSql(keyword, name, `DEPRECATED: use ${newName} instead`) }],
-          docs: {
-            columns: [{ header: 'Status', ...docTarget, value: `Deprecated → ${newName}` }],
-          },
-        }
+        message = `DEPRECATED: use ${newName} instead`
+        docsValue = `Deprecated \u2192 ${newName}`
+        break
       }
       case 'remove': {
         const args = tag.args as unknown[]
         const date = args[0] as string
-        return {
-          sql: [{ sql: commentOnSql(keyword, name, `DEPRECATED: scheduled for removal after ${date}`) }],
-          docs: {
-            columns: [{ header: 'Status', ...docTarget, value: `Remove after ${date}` }],
-          },
-        }
+        message = `DEPRECATED: scheduled for removal after ${date}`
+        docsValue = `Remove after ${date}`
+        break
       }
       default:
         return undefined
+    }
+
+    const docs = {
+      columns: [{ header: 'Status', ...docTarget, value: docsValue }],
+    }
+
+    // Generate dialect-specific SQL
+    switch (dialect) {
+      case 'postgres': {
+        const keyword = target.toUpperCase()
+        const name = target === 'column' ? `${q(objectName)}.${q(columnName!)}` : q(objectName)
+        return {
+          sql: [{ sql: `COMMENT ON ${keyword} ${name} IS ${esc(message)};` }],
+          docs,
+        }
+      }
+
+      case 'mysql': {
+        if (target === 'table') {
+          return {
+            sql: [{ sql: `ALTER TABLE ${q(objectName)} COMMENT = ${esc(message)};` }],
+            docs,
+          }
+        }
+        if (target === 'column') {
+          const colType = ctx.columnType ?? 'TEXT'
+          return {
+            sql: [
+              {
+                sql: `ALTER TABLE ${q(objectName)} MODIFY COLUMN ${q(columnName!)} ${colType} COMMENT ${esc(message)};`,
+              },
+            ],
+            docs,
+          }
+        }
+        // MySQL cannot comment on views, functions, or types -- docs-only output
+        return { sql: [], docs }
+      }
+
+      case 'sqlite':
+        // SQLite has no comment support -- docs-only output
+        return { sql: [], docs }
     }
   },
 }

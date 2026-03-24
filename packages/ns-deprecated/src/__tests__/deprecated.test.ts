@@ -4,6 +4,7 @@ import plugin from '../index'
 
 function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
   return {
+    dialect: 'postgres',
     target: 'table',
     objectName: 'users',
     tag: { name: '$self', args: {} },
@@ -33,9 +34,10 @@ describe('ns-deprecated plugin', () => {
     expect(plugin.tags).toHaveProperty('remove')
   })
 
-  describe('onTag', () => {
+  describe('onTag — Postgres', () => {
     it('@deprecated on a table generates COMMENT ON TABLE', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'table',
         objectName: 'users',
         tag: { name: '$self', args: {} },
@@ -46,6 +48,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated with null tag name generates COMMENT ON TABLE', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'table',
         objectName: 'users',
         tag: { name: null, args: {} },
@@ -56,6 +59,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated on a column generates COMMENT ON COLUMN with qualified name', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'column',
         objectName: 'users',
         columnName: 'email',
@@ -67,6 +71,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated on a view generates COMMENT ON VIEW', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'view',
         objectName: 'active_users',
         tag: { name: '$self', args: {} },
@@ -77,6 +82,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated on a function generates COMMENT ON FUNCTION', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'function',
         objectName: 'get_user',
         tag: { name: '$self', args: {} },
@@ -87,6 +93,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated on a type generates COMMENT ON TYPE', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'type',
         objectName: 'status_enum',
         tag: { name: '$self', args: {} },
@@ -97,6 +104,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated.replace generates COMMENT with replacement suggestion', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'table',
         objectName: 'old_users',
         tag: { name: 'replace', args: ['accounts'] },
@@ -107,6 +115,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated.remove generates COMMENT with removal date', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'table',
         objectName: 'legacy_data',
         tag: { name: 'remove', args: ['2025-06-01'] },
@@ -119,6 +128,7 @@ describe('ns-deprecated plugin', () => {
 
     it('@deprecated.replace on a column generates correct qualified COMMENT', () => {
       const ctx = makeCtx({
+        dialect: 'postgres',
         target: 'column',
         objectName: 'users',
         columnName: 'name',
@@ -126,6 +136,121 @@ describe('ns-deprecated plugin', () => {
       })
       const result = plugin.onTag!(ctx) as any
       expect(result.sql).toEqual([{ sql: `COMMENT ON COLUMN "users"."name" IS 'DEPRECATED: use full_name instead';` }])
+    })
+  })
+
+  describe('onTag — MySQL', () => {
+    it('@deprecated on a table generates ALTER TABLE COMMENT', () => {
+      const ctx = makeCtx({
+        dialect: 'mysql',
+        target: 'table',
+        objectName: 'users',
+        tag: { name: '$self', args: {} },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([{ sql: "ALTER TABLE `users` COMMENT = 'DEPRECATED';" }])
+      expect(result.docs).toBeDefined()
+    })
+
+    it('@deprecated on a column generates ALTER TABLE MODIFY COLUMN', () => {
+      const ctx = makeCtx({
+        dialect: 'mysql',
+        target: 'column',
+        objectName: 'users',
+        columnName: 'email',
+        columnType: 'VARCHAR(255)',
+        tag: { name: '$self', args: {} },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([
+        { sql: "ALTER TABLE `users` MODIFY COLUMN `email` VARCHAR(255) COMMENT 'DEPRECATED';" },
+      ])
+    })
+
+    it('@deprecated.replace on a MySQL table includes replacement text', () => {
+      const ctx = makeCtx({
+        dialect: 'mysql',
+        target: 'table',
+        objectName: 'old_users',
+        tag: { name: 'replace', args: ['accounts'] },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([{ sql: "ALTER TABLE `old_users` COMMENT = 'DEPRECATED: use accounts instead';" }])
+    })
+
+    it('@deprecated on a MySQL view returns docs-only output (no sql)', () => {
+      const ctx = makeCtx({
+        dialect: 'mysql',
+        target: 'view',
+        objectName: 'active_users',
+        tag: { name: '$self', args: {} },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([])
+      expect(result.docs).toBeDefined()
+    })
+
+    it('@deprecated on a MySQL function returns docs-only output (no sql)', () => {
+      const ctx = makeCtx({
+        dialect: 'mysql',
+        target: 'function',
+        objectName: 'get_user',
+        tag: { name: '$self', args: {} },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([])
+      expect(result.docs).toBeDefined()
+    })
+
+    it('@deprecated on a MySQL type returns docs-only output (no sql)', () => {
+      const ctx = makeCtx({
+        dialect: 'mysql',
+        target: 'type',
+        objectName: 'status_enum',
+        tag: { name: '$self', args: {} },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([])
+      expect(result.docs).toBeDefined()
+    })
+  })
+
+  describe('onTag — SQLite', () => {
+    it('@deprecated on SQLite table returns docs-only output (no sql)', () => {
+      const ctx = makeCtx({
+        dialect: 'sqlite',
+        target: 'table',
+        objectName: 'users',
+        tag: { name: '$self', args: {} },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([])
+      expect(result.docs).toBeDefined()
+    })
+
+    it('@deprecated.replace on SQLite returns docs-only with replacement info', () => {
+      const ctx = makeCtx({
+        dialect: 'sqlite',
+        target: 'table',
+        objectName: 'old_users',
+        tag: { name: 'replace', args: ['accounts'] },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([])
+      expect(result.docs.columns[0].value).toBe('Deprecated \u2192 accounts')
+    })
+
+    it('@deprecated.remove on SQLite returns docs-only with removal date', () => {
+      const ctx = makeCtx({
+        dialect: 'sqlite',
+        target: 'column',
+        objectName: 'users',
+        columnName: 'email',
+        tag: { name: 'remove', args: ['2025-06-01'] },
+      })
+      const result = plugin.onTag!(ctx) as any
+      expect(result.sql).toEqual([])
+      expect(result.docs.columns[0].value).toBe('Remove after 2025-06-01')
     })
   })
 
