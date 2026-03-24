@@ -12,7 +12,7 @@ describe('block resolution from tags.sql', () => {
   let stmts: SqlStatement[]
 
   beforeAll(async () => {
-    const adapter = new SqlparserTsAdapter()
+    const adapter = new SqlparserTsAdapter('postgres')
     await adapter.init()
     stmts = adapter.parseStatements(fixture)
   })

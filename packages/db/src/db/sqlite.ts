@@ -77,8 +77,8 @@ async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter
     async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
       if (args && args.length > 0) {
         const stmt = db.query(sql)
-        stmt.run(...args)
-        return { rowsAffected: db.changes }
+        const result = stmt.run(...args)
+        return { rowsAffected: result.changes ?? 0 }
       }
       db.exec(sql)
       return { rowsAffected: 0 }

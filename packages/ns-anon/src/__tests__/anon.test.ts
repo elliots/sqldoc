@@ -13,7 +13,7 @@ function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
     fileTags: [],
     astNode: null,
     fileStatements: [],
-    config: {},
+    config: { dialect: 'postgres' },
     filePath: 'test.sql',
     ...overrides,
   }

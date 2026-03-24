@@ -111,7 +111,7 @@ async function validateDocument(doc: vscode.TextDocument) {
   try {
     if (!astAdapter) {
       // TODO: read dialect from workspace sqldoc.config.ts
-      astAdapter = new SqlparserTsAdapter()
+      astAdapter = new SqlparserTsAdapter('postgres')
       await astAdapter.init()
     }
     statements = astAdapter.parseStatements(text)

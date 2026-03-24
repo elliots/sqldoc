@@ -47,7 +47,7 @@ describe('TagContext atlas fields', () => {
       fileTags: [],
       astNode: null,
       fileStatements: [],
-      config: {},
+      config: { dialect: 'postgres' },
       filePath: 'test.sql',
     }
     expect(ctx.atlasTable).toBeUndefined()

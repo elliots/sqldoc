@@ -23,7 +23,7 @@ describe('SqlparserTsAdapter', () => {
   let stmts: SqlStatement[]
 
   beforeAll(async () => {
-    adapter = new SqlparserTsAdapter()
+    adapter = new SqlparserTsAdapter('postgres')
     await adapter.init()
     stmts = adapter.parseStatements(TEST_SQL)
   })

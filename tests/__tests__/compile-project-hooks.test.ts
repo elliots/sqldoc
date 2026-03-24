@@ -107,7 +107,7 @@ describe('E2E: project-level hooks via CLI compile flow', () => {
   let tmpDir: string
 
   beforeAll(async () => {
-    adapter = new SqlparserTsAdapter()
+    adapter = new SqlparserTsAdapter('postgres')
     await adapter.init()
   })
 

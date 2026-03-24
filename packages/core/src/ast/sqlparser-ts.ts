@@ -11,7 +11,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
   private parseFn!: (sql: string, dialect?: any) => any[]
   private dialect: string
 
-  constructor(dialect: 'postgres' | 'mysql' | 'sqlite' = 'postgres') {
+  constructor(dialect: 'postgres' | 'mysql' | 'sqlite') {
     this.dialect = dialect
   }
 

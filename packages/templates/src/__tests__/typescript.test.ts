@@ -69,7 +69,7 @@ function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext {
     realm: testRealm,
     allFileTags: [],
     docsMeta: [],
-    config: {},
+    config: { dialect: 'postgres' },
     output: './out',
     templateName: 'typescript',
     ...overrides,

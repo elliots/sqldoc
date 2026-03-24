@@ -8,7 +8,7 @@ function makeCtx(overrides: Partial<ProjectContext> = {}): ProjectContext {
     mergedSql: '',
     allFileTags: [],
     docsMeta: [],
-    config: {},
+    config: { dialect: 'postgres' },
     projectRoot: '/tmp/test',
     atlasRealm: { schemas: [{ name: 'public', tables: [] }] },
     ...overrides,
@@ -44,7 +44,7 @@ describe('ns-codegen plugin', () => {
     })
 
     it('returns empty files when config.templates is undefined', async () => {
-      const ctx = makeCtx({ config: {} })
+      const ctx = makeCtx({ config: { dialect: 'postgres' } })
       const result = await plugin.afterCompile!(ctx)
       expect(result.files).toEqual([])
     })
@@ -142,7 +142,7 @@ describe('ns-codegen plugin', () => {
             {
               template: templatePath,
               output: 'src/generated',
-              config: {},
+              config: { dialect: 'postgres' },
             },
           ],
         },

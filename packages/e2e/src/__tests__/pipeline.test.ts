@@ -14,7 +14,7 @@ describe('E2E: full compile pipeline', () => {
   let adapter: SqlparserTsAdapter
 
   beforeAll(async () => {
-    adapter = new SqlparserTsAdapter()
+    adapter = new SqlparserTsAdapter('postgres')
     await adapter.init()
   })
 
@@ -28,7 +28,7 @@ describe('E2E: full compile pipeline', () => {
     )
     const plugins = new Map<string, NamespacePlugin>([...namespaces].map(([k, v]) => [k, v as NamespacePlugin]))
     const statements = adapter.parseStatements(source)
-    return compile({ source, filePath, plugins, statements, adapter, config: {} })
+    return compile({ source, filePath, plugins, statements, adapter, config: { dialect: 'postgres' } })
   }
 
   describe('ns-anon: anon-test.sql', () => {
