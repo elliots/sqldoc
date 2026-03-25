@@ -15,7 +15,13 @@ const workerExists = fs.existsSync(WORKER_JS) || fs.existsSync(WORKER_TS)
 
 const canRun = wasmExists && workerExists
 
-describe.skipIf(!canRun)('atlas runner (integration)', () => {
+describe('atlas runner (integration)', () => {
+  if (!canRun) {
+    it('requires atlas.wasm and worker to exist', () => {
+      throw new Error(`Missing: ${!wasmExists ? 'atlas.wasm' : ''} ${!workerExists ? 'worker.ts/js' : ''}`.trim())
+    })
+    return
+  }
   let runner: AtlasRunner
   let db: DatabaseAdapter
 

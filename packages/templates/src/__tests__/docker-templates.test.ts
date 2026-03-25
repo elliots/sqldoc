@@ -37,22 +37,11 @@ function discoverTemplates(): string[] {
 
 const templates = discoverTemplates()
 
-function hasDocker(): boolean {
-  try {
-    execSync('docker info', { stdio: 'pipe', timeout: 5000 })
-    return true
-  } catch {
-    return false
-  }
-}
-
 function dockerExec(cmd: string, timeout = 30_000) {
   return execSync(cmd, { stdio: 'pipe', timeout }).toString()
 }
 
-const describeDocker = hasDocker() ? describe : describe.skip
-
-describeDocker('docker template tests', () => {
+describe('docker template tests', () => {
   beforeAll(async () => {
     // Clean up any leftovers from previous runs, then create fresh
     try {
@@ -144,4 +133,4 @@ describeDocker('docker template tests', () => {
       }, 180_000)
     }
   })
-}) // end describeDocker
+})

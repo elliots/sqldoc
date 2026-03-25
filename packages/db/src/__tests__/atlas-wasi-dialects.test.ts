@@ -67,19 +67,7 @@ describe('Atlas WASI dialect validation', () => {
     }, 30_000)
   })
 
-  const hasDocker = (() => {
-    try {
-      const { execSync } = require('node:child_process')
-      execSync('docker info', { stdio: 'ignore' })
-      return true
-    } catch {
-      return false
-    }
-  })()
-
-  const describeDocker = hasDocker ? describe : describe.skip
-
-  describeDocker('MySQL', () => {
+  describe('MySQL', () => {
     let runner: AtlasRunner
 
     afterAll(async () => {

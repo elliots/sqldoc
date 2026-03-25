@@ -5,20 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { createDockerAdapter } from '../db/docker'
 import type { DatabaseAdapter } from '../db/types'
 
-// These tests require Docker — skip if not available
-const hasDocker = (() => {
-  try {
-    const { execSync } = require('node:child_process')
-    execSync('docker info', { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
-})()
-
-const describeDocker = hasDocker ? describe : describe.skip
-
-describeDocker('Docker adapter', () => {
+describe('Docker adapter', () => {
   const adapters: DatabaseAdapter[] = []
 
   afterAll(async () => {

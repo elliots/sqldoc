@@ -2,19 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { createMysqlDockerAdapter } from '../db/mysql-docker'
 import type { DatabaseAdapter } from '../db/types'
 
-const hasDocker = (() => {
-  try {
-    const { execSync } = require('node:child_process')
-    execSync('docker info', { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
-})()
-
-const describeDocker = hasDocker ? describe : describe.skip
-
-describeDocker('MySQL Docker adapter', () => {
+describe('MySQL Docker adapter', () => {
   const adapters: DatabaseAdapter[] = []
 
   afterAll(async () => {
