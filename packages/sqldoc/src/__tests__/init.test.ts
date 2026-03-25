@@ -25,7 +25,9 @@ describe('initCommand', () => {
   }
 
   beforeEach(() => {
-    exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any)
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new Error(`process.exit(${code})`)
+    }) as any)
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -81,7 +83,7 @@ describe('initCommand', () => {
     mkdirSync(join(root, '.sqldoc'))
 
     const { initCommand } = await import('../commands/init.ts')
-    await initCommand(root)
+    await expect(initCommand(root)).rejects.toThrow('process.exit(1)')
 
     expect(exitSpy).toHaveBeenCalledWith(1)
     const errorOutput = consoleErrorSpy.mock.calls.map((c: any[]) => String(c[0])).join(' ')
