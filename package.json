@@ -6,7 +6,8 @@
   "scripts": {
     "build": "cd vscode-sqldoc && node build.mjs && cd .. && bash scripts/build-binary.sh",
     "install-vscode-extension": "cd vscode-sqldoc && pnpm run install-ext",
-    "test": "pnpm -r run test",
+    "test:node": "pnpm -r run test",
+    "test:bun": "bun test tests/__tests__ && bun test packages",
     "test-docs": "./scripts/test-docs.sh",
     "format": "biome format --write .",
     "check": "biome check --fix . && pnpm -r run typecheck",

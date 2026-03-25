@@ -60,10 +60,93 @@ describe('Atlas WASI dialect validation', () => {
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
       expect(result.statements!.length).toBeGreaterThan(0)
-      // SQLite ALTER TABLE ADD COLUMN
       const stmts = result.statements!.join('\n').toLowerCase()
       expect(stmts).toContain('alter table')
       expect(stmts).toContain('price')
+    }, 30_000)
+
+    it('inspect captures views in SQLite schema', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'sqlite' })
+
+      const sql = `
+        CREATE TABLE orders (id INTEGER PRIMARY KEY, customer TEXT, total REAL);
+        CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
+      `
+
+      const result = await runner.inspect([sql], { dialect: 'sqlite' })
+
+      expect(result.error).toBeUndefined()
+      const schemas = result.schema!.schemas
+      const views = schemas.flatMap((s) => (s as any).views ?? [])
+      expect(views.length).toBe(1)
+      expect(views[0].name).toBe('order_summary')
+    }, 30_000)
+
+    it('diff produces CREATE VIEW for new SQLite view', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'sqlite' })
+
+      const from = 'CREATE TABLE orders (id INTEGER PRIMARY KEY, customer TEXT, total REAL);'
+      const to = `
+        CREATE TABLE orders (id INTEGER PRIMARY KEY, customer TEXT, total REAL);
+        CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
+      `
+
+      const result = await runner.diff([from], [to], { dialect: 'sqlite' })
+
+      expect(result.error).toBeUndefined()
+      expect(result.statements).toBeDefined()
+      const stmts = result.statements!.join('\n').toUpperCase()
+      expect(stmts).toContain('CREATE VIEW')
+      expect(stmts).toContain('ORDER_SUMMARY')
+    }, 30_000)
+
+    it('inspect captures triggers in SQLite schema', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'sqlite' })
+
+      const sql = `
+        CREATE TABLE audit (id INTEGER PRIMARY KEY, action TEXT, ts TEXT DEFAULT (datetime('now')));
+        CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);
+        CREATE TRIGGER items_after_insert AFTER INSERT ON items
+        BEGIN
+          INSERT INTO audit (action) VALUES ('insert:' || NEW.name);
+        END;
+      `
+
+      const result = await runner.inspect([sql], { dialect: 'sqlite' })
+
+      expect(result.error).toBeUndefined()
+      const schemas = result.schema!.schemas
+      const tables = schemas.flatMap((s) => s.tables ?? [])
+      const itemsTable = tables.find((t) => t.name === 'items')
+      expect(itemsTable).toBeDefined()
+      const triggers = (itemsTable as any).triggers ?? []
+      expect(triggers.length).toBe(1)
+      expect(triggers[0].name).toBe('items_after_insert')
+    }, 30_000)
+
+    it('diff produces CREATE TRIGGER for new SQLite trigger', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'sqlite' })
+
+      const from = `
+        CREATE TABLE audit (id INTEGER PRIMARY KEY, action TEXT);
+        CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);
+      `
+      const to = `
+        CREATE TABLE audit (id INTEGER PRIMARY KEY, action TEXT);
+        CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);
+        CREATE TRIGGER items_after_delete AFTER DELETE ON items
+        BEGIN
+          INSERT INTO audit (action) VALUES ('deleted:' || OLD.name);
+        END;
+      `
+
+      const result = await runner.diff([from], [to], { dialect: 'sqlite' })
+
+      expect(result.error).toBeUndefined()
+      expect(result.statements).toBeDefined()
+      const stmts = result.statements!.join('\n').toUpperCase()
+      expect(stmts).toContain('CREATE TRIGGER')
+      expect(stmts).toContain('ITEMS_AFTER_DELETE')
     }, 30_000)
   })
 
