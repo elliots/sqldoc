@@ -131,6 +131,43 @@ CREATE TABLE orders (
     const hasAlter = result.statements!.some((s) => s.toUpperCase().includes('ALTER TABLE'))
     expect(hasAlter).toBe(true)
   }, 30_000)
+
+  it('includes RLS policies in diff output', async () => {
+    const from: string[] = []
+    const to = [
+      `CREATE TABLE users (id BIGSERIAL PRIMARY KEY, org_id BIGINT NOT NULL);
+       ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+       CREATE POLICY org_isolation ON users USING (org_id = current_setting('app.org_id')::bigint);`,
+    ]
+    // Realm-level diff to capture all objects
+    const result = await runner.diff(from, to, { dialect: 'postgres' })
+
+    expect(result.error).toBeUndefined()
+    expect(result.statements).toBeDefined()
+
+    const allSql = result.statements!.join('\n').toUpperCase()
+    expect(allSql).toContain('CREATE TABLE')
+    expect(allSql).toContain('ROW LEVEL SECURITY')
+    expect(allSql).toContain('CREATE POLICY')
+  }, 30_000)
+
+  it('includes event triggers in realm-level diff output', async () => {
+    const from: string[] = []
+    const to = [
+      `CREATE TABLE audit_log (id BIGSERIAL PRIMARY KEY, event TEXT);
+       CREATE OR REPLACE FUNCTION log_ddl() RETURNS event_trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO audit_log (event) VALUES (tg_tag); END $$;
+       CREATE EVENT TRIGGER ddl_logger ON ddl_command_end EXECUTE FUNCTION log_ddl();`,
+    ]
+    // No schema filter — realm-level diff captures event triggers
+    const result = await runner.diff(from, to, { dialect: 'postgres' })
+
+    expect(result.error).toBeUndefined()
+    expect(result.statements).toBeDefined()
+
+    const allSql = result.statements!.join('\n').toUpperCase()
+    expect(allSql).toContain('CREATE TABLE')
+    expect(allSql).toContain('CREATE EVENT TRIGGER')
+  }, 30_000)
 })
 
 describe('atlas runner (unit)', () => {
