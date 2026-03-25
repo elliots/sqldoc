@@ -45,7 +45,13 @@ export interface AtlasRunner {
   diff(
     from: string[],
     to: string[],
-    options: { dialect: 'postgres' | 'mysql' | 'sqlite'; schema?: string; renames?: AtlasRename[] },
+    options: {
+      dialect: 'postgres' | 'mysql' | 'sqlite'
+      schema?: string
+      renames?: AtlasRename[]
+      fromDb?: DatabaseAdapter
+      toDb?: DatabaseAdapter
+    },
   ): Promise<AtlasResult>
 
   /** Clean up resources */
@@ -98,7 +104,12 @@ function resolveWorkerPath(): { workerPath: string; execArgv: string[] } {
  * 4. Write response to shared buffer
  * 5. Repeat until DONE signal
  */
-async function runCommand(wasmPath: string, db: DatabaseAdapter, command: AtlasCommand): Promise<AtlasResult> {
+async function runCommand(
+  wasmPath: string,
+  db: DatabaseAdapter,
+  command: AtlasCommand,
+  extraAdapters?: Record<string, DatabaseAdapter>,
+): Promise<AtlasResult> {
   const buffers = createBridgeBuffers()
   const stdinData = JSON.stringify(command)
   const { workerPath, execArgv } = resolveWorkerPath()
@@ -151,7 +162,7 @@ async function runCommand(wasmPath: string, db: DatabaseAdapter, command: AtlasC
     })
 
     // Start the bridge loop (runs on main thread, async)
-    handleBridgeLoop(buffers, db).catch((err) => {
+    handleBridgeLoop(buffers, db, extraAdapters).catch((err) => {
       if (!settled) {
         settled = true
         worker.terminate()
@@ -165,7 +176,11 @@ async function runCommand(wasmPath: string, db: DatabaseAdapter, command: AtlasC
  * Main-thread bridge loop: handles atlas_sql requests from the worker.
  * Runs until the worker signals DONE.
  */
-async function handleBridgeLoop(buffers: BridgeBuffers, db: DatabaseAdapter): Promise<void> {
+async function handleBridgeLoop(
+  buffers: BridgeBuffers,
+  db: DatabaseAdapter,
+  extraAdapters?: Record<string, DatabaseAdapter>,
+): Promise<void> {
   while (true) {
     const signal = await bridgeWaitForSignal(buffers)
 
@@ -187,13 +202,19 @@ async function handleBridgeLoop(buffers: BridgeBuffers, db: DatabaseAdapter): Pr
 
     let response: Record<string, unknown>
     try {
-      const req = JSON.parse(reqJson) as { type: string; sql: string; args?: unknown[] }
+      const req = JSON.parse(reqJson) as { type: string; sql: string; args?: unknown[]; connection?: string }
+
+      // Route to the right adapter based on connection field
+      const adapter =
+        req.connection && req.connection !== 'dev' && extraAdapters?.[req.connection]
+          ? extraAdapters[req.connection]
+          : db
 
       if (req.type === 'query') {
-        const result = await db.query(req.sql, req.args)
+        const result = await adapter.query(req.sql, req.args)
         response = { columns: result.columns, rows: result.rows }
       } else {
-        const result = await db.exec(req.sql, req.args)
+        const result = await adapter.exec(req.sql, req.args)
         response = { rows_affected: result.rowsAffected }
       }
     } catch (err: unknown) {
@@ -246,7 +267,13 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     async diff(
       from: string[],
       to: string[],
-      opts: { dialect: 'postgres' | 'mysql' | 'sqlite'; schema?: string; renames?: AtlasRename[] },
+      opts: {
+        dialect: 'postgres' | 'mysql' | 'sqlite'
+        schema?: string
+        renames?: AtlasRename[]
+        fromDb?: DatabaseAdapter
+        toDb?: DatabaseAdapter
+      },
     ): Promise<AtlasResult> {
       const command: AtlasCommand = {
         type: 'diff',
@@ -255,8 +282,13 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
         to,
         schema: opts.schema,
         renames: opts.renames,
+        fromConnection: opts.fromDb ? 'from' : undefined,
+        toConnection: opts.toDb ? 'to' : undefined,
       }
-      return runCommand(wasmPath, db, command)
+      const extraAdapters: Record<string, DatabaseAdapter> = {}
+      if (opts.fromDb) extraAdapters.from = opts.fromDb
+      if (opts.toDb) extraAdapters.to = opts.toDb
+      return runCommand(wasmPath, db, command, extraAdapters)
     },
 
     async close(): Promise<void> {

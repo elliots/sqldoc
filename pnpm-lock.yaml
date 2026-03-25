@@ -339,6 +339,9 @@ importers:
       '@sqldoc/core':
         specifier: workspace:*
         version: link:../packages/core
+      '@sqldoc/db':
+        specifier: workspace:*
+        version: link:../packages/db
       '@sqldoc/ns-anon':
         specifier: workspace:*
         version: link:../packages/ns-anon

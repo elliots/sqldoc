@@ -35,6 +35,8 @@ export interface AtlasCommand {
   fileNames?: string[]
   from?: string[]
   to?: string[]
+  fromConnection?: string
+  toConnection?: string
   renames?: AtlasRename[]
 }
 

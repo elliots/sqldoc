@@ -8,6 +8,7 @@
   },
   "devDependencies": {
     "@sqldoc/core": "workspace:*",
+    "@sqldoc/db": "workspace:*",
     "@sqldoc/ns-anon": "workspace:*",
     "@sqldoc/ns-audit": "workspace:*",
     "@sqldoc/ns-comment": "workspace:*",
