@@ -28,7 +28,7 @@ describe('Atlas WASI dialect validation', () => {
         );
       `
 
-      const result = await runner.inspect([sql], { dialect: 'sqlite' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       expect(result.schema).toBeDefined()
@@ -55,7 +55,7 @@ describe('Atlas WASI dialect validation', () => {
       const from = 'CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);'
       const to = 'CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT, price REAL);'
 
-      const result = await runner.diff([from], [to], { dialect: 'sqlite' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
@@ -73,7 +73,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
       `
 
-      const result = await runner.inspect([sql], { dialect: 'sqlite' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       const schemas = result.schema!.schemas
@@ -91,7 +91,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
       `
 
-      const result = await runner.diff([from], [to], { dialect: 'sqlite' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
@@ -112,7 +112,7 @@ describe('Atlas WASI dialect validation', () => {
         END;
       `
 
-      const result = await runner.inspect([sql], { dialect: 'sqlite' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       const schemas = result.schema!.schemas
@@ -140,7 +140,7 @@ describe('Atlas WASI dialect validation', () => {
         END;
       `
 
-      const result = await runner.diff([from], [to], { dialect: 'sqlite' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
@@ -176,7 +176,7 @@ describe('Atlas WASI dialect validation', () => {
         );
       `
 
-      const result = await runner.inspect([sql], { dialect: 'mysql' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       expect(result.schema).toBeDefined()
@@ -198,7 +198,7 @@ describe('Atlas WASI dialect validation', () => {
       const from = 'CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));'
       const to = 'CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), price DECIMAL(10,2));'
 
-      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
@@ -216,7 +216,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
       `
 
-      const result = await runner.inspect([sql], { dialect: 'mysql' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       const schemas = result.schema!.schemas
@@ -235,7 +235,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
       `
 
-      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
@@ -253,7 +253,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE TRIGGER items_after_insert AFTER INSERT ON items FOR EACH ROW INSERT INTO audit (action) VALUES (CONCAT('insert:', NEW.name));
       `
 
-      const result = await runner.inspect([sql], { dialect: 'mysql' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       const schemas = result.schema!.schemas
@@ -278,7 +278,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE TRIGGER items_after_delete AFTER DELETE ON items FOR EACH ROW INSERT INTO audit (action) VALUES (CONCAT('deleted:', OLD.name));
       `
 
-      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()
@@ -294,7 +294,7 @@ describe('Atlas WASI dialect validation', () => {
         CREATE FUNCTION add_tax(price DECIMAL(10,2)) RETURNS DECIMAL(10,2) DETERMINISTIC RETURN price * 1.1;
       `
 
-      const result = await runner.inspect([sql], { dialect: 'mysql' })
+      const result = await runner.inspect([sql])
 
       expect(result.error).toBeUndefined()
       const schemas = result.schema!.schemas
@@ -310,7 +310,7 @@ describe('Atlas WASI dialect validation', () => {
       const from = ''
       const to = `CREATE FUNCTION double_it(x INT) RETURNS INT DETERMINISTIC RETURN x * 2;`
 
-      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+      const result = await runner.diff([from], [to])
 
       expect(result.error).toBeUndefined()
       expect(result.statements).toBeDefined()

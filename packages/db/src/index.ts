@@ -114,11 +114,11 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
         await validatePostgresExtensions(extensions, (sql) => db.query(sql))
       }
     } else {
-      // pglite (in-memory postgres)
+      // pglite (in-memory embedded postgres)
       const validExtensions = extensions.length > 0 ? await validatePgliteExtensions(extensions) : []
       db = await createPgliteAdapter(validExtensions.length > 0 ? validExtensions : undefined)
     }
   }
 
-  return createAtlasRunner({ wasmPath, db })
+  return createAtlasRunner({ wasmPath, db, dialect })
 }

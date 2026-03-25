@@ -104,7 +104,6 @@ export async function migrateCommand(options: {
     // First diff: pass known renames, get back SQL + candidates
     const upResult = await runner.diff(currentSql ? [currentSql] : [], [desiredSql], {
       schema: schemaOpt,
-      dialect,
       renames: knownRenames.length > 0 ? knownRenames : undefined,
     })
 
@@ -124,7 +123,6 @@ export async function migrateCommand(options: {
         const allRenames = [...knownRenames, ...accepted]
         const rediffResult = await runner.diff(currentSql ? [currentSql] : [], [desiredSql], {
           schema: schemaOpt,
-          dialect,
           renames: allRenames,
         })
 
@@ -138,7 +136,7 @@ export async function migrateCommand(options: {
     }
 
     // ── Step 5: Diff desired -> current (down migration) ──────────────
-    const downResult = await runner.diff([desiredSql], currentSql ? [currentSql] : [], { schema: schemaOpt, dialect })
+    const downResult = await runner.diff([desiredSql], currentSql ? [currentSql] : [], { schema: schemaOpt })
 
     if (downResult.error) {
       throw new CliError(`Schema diff (reverse) error: ${downResult.error}`)

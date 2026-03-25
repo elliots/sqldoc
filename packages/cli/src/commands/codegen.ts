@@ -74,7 +74,6 @@ export async function codegenCommand(
       const freshRunner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: [mergedSql] })
       const postCompileResult = await freshRunner.inspect([mergedSql], {
         schema: dialect === 'postgres' ? 'public' : undefined,
-        dialect,
       })
       await freshRunner.close()
 

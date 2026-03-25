@@ -60,7 +60,6 @@ describe('Docker adapter', () => {
     try {
       const result = await runner.inspect(['CREATE TABLE docker_test (id bigserial PRIMARY KEY, name text);'], {
         schema: 'public',
-        dialect: 'postgres',
       })
 
       expect(result.error).toBeUndefined()

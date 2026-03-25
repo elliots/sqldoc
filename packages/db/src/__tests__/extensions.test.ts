@@ -137,7 +137,7 @@ describe('pglite extension loading (integration)', { timeout: 30_000 }, () => {
     `
     const runner = await createRunner({ dialect: 'postgres', sqlFiles: [sql] })
     try {
-      const result = await runner.inspect([sql], { schema: 'public', dialect: 'postgres' })
+      const result = await runner.inspect([sql], { schema: 'public' })
       expect(result.error).toBeUndefined()
       const tables = result.schema?.schemas?.[0]?.tables ?? []
       expect(tables.some((t) => t.name === 'users')).toBe(true)

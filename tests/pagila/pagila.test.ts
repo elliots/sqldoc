@@ -12,34 +12,27 @@ const pagilaSQL =
   `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN CREATE ROLE postgres SUPERUSER; END IF; END $$;\n` +
   rawPagilaSQL;
 
-describe("pagila schema round-trip", () => {
-  it("self-diff produces zero changes", async () => {
+// loop through postgres versions and pglite
+["postgres:17", "postgres:15", "postgres:14", undefined].forEach((version) => {
+  describe("pagila schema", async () => {
+    const devUrl = version ? `docker://${version}` : undefined;
+    const testTitle = version ?? "pglite";
+
     const runner = await createRunner({
       dialect: "postgres",
       devUrl: "docker://postgres:16",
     });
-    try {
-      const result = await runner.diff([pagilaSQL], [pagilaSQL], {
-        dialect: "postgres",
-      });
+
+    it(`${testTitle}: self-diff produces zero changes`, async () => {
+      const result = await runner.diff([pagilaSQL], [pagilaSQL]);
       expect(result.error).toBeUndefined();
       const stmts = result.statements ?? [];
       if (stmts.length > 0) console.log("Self-diff statements:", stmts);
       expect(stmts).toHaveLength(0);
-    } finally {
-      await runner.close();
-    }
-  }, 120_000);
+    }, 120_000);
 
-  it("inspect returns expected tables", async () => {
-    const runner = await createRunner({
-      dialect: "postgres",
-      devUrl: "docker://postgres:16",
-    });
-    try {
-      const result = await runner.inspect([pagilaSQL], {
-        dialect: "postgres",
-      });
+    it(`${testTitle}: inspect returns expected tables`, async () => {
+      const result = await runner.inspect([pagilaSQL]);
       expect(result.error).toBeUndefined();
       expect(result.schema).toBeDefined();
 
@@ -51,86 +44,58 @@ describe("pagila schema round-trip", () => {
       expect(tableNames).toContain("film");
       expect(tableNames).toContain("customer");
       expect(tableNames).toContain("rental");
-    } finally {
-      await runner.close();
-    }
-  }, 120_000);
+    }, 120_000);
 
-  it("live DB diff against same SQL produces zero changes", async () => {
-    const runner = await createRunner({
-      dialect: "postgres",
-      devUrl: "docker://postgres:16",
-    });
-    const liveDb = await createDockerAdapter("docker://postgres:16");
-    try {
-      await liveDb.exec(pagilaSQL);
+    it(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
+      const liveDb = await createDockerAdapter("docker://postgres:16");
+      try {
+        await liveDb.exec(pagilaSQL); // execute original SQL directly
 
-      const result = await runner.diff([], [pagilaSQL], {
-        dialect: "postgres",
-        fromDb: liveDb,
-      });
-      expect(result.error).toBeUndefined();
-      const stmts = result.statements ?? [];
-      if (stmts.length > 0) console.log("Live DB diff statements:", stmts);
-      expect(stmts).toHaveLength(0);
-    } finally {
-      await liveDb.close();
-      await runner.close();
-    }
-  }, 120_000);
+        const result = await runner.diff([], [pagilaSQL], {
+          fromDb: liveDb,
+        });
+        expect(result.error).toBeUndefined();
+        const stmts = result.statements ?? [];
+        if (stmts.length > 0) console.log("Live DB diff statements:", stmts);
+        expect(stmts).toHaveLength(0);
+      } finally {
+        await liveDb.close();
+      }
+    }, 120_000);
 
-  it("empty-to-schema migration round-trips correctly", async () => {
-    const runner = await createRunner({
-      dialect: "postgres",
-      devUrl: "docker://postgres:16",
-    });
-    try {
-      const migrationResult = await runner.diff([], [pagilaSQL], {
-        dialect: "postgres",
-      });
+    it(`${testTitle}: empty-to-schema migration round-trips correctly`, async () => {
+      const migrationResult = await runner.diff([], [pagilaSQL]);
       expect(migrationResult.error).toBeUndefined();
       expect(migrationResult.statements).toBeDefined();
       expect(migrationResult.statements!.length).toBeGreaterThan(0);
 
       const migrationSQL = migrationResult.statements!.join(";\n") + ";";
 
-      const result = await runner.diff([migrationSQL], [pagilaSQL], {
-        dialect: "postgres",
-      });
+      const result = await runner.diff([migrationSQL], [pagilaSQL]);
       expect(result.error).toBeUndefined();
       const stmts = result.statements ?? [];
       if (stmts.length > 0)
         console.log("Migration round-trip statements:", stmts);
       expect(stmts).toHaveLength(0);
-    } finally {
-      await runner.close();
-    }
-  }, 120_000);
+    }, 120_000);
 
-  it("detects schema alteration correctly", async () => {
-    const runner = await createRunner({
-      dialect: "postgres",
-      devUrl: "docker://postgres:16",
-    });
-    try {
+    it(`${testTitle}: detects schema alteration correctly`, async () => {
       const altered =
         pagilaSQL +
         `
-      ALTER TABLE public.actor ADD COLUMN nickname VARCHAR(100);
-      CREATE TABLE public.reviews (
-        id BIGSERIAL PRIMARY KEY,
-        film_id INTEGER REFERENCES public.film(film_id),
-        rating INTEGER NOT NULL,
-        body TEXT
+      alter table public.actor add column nickname VARCHAR(100);
+      create table public.reviews (
+        id bigserial primary key,
+        film_id integer references public.film(film_id),
+        rating integer not null,
+        body text
       );
-      CREATE INDEX idx_reviews_film ON public.reviews(film_id);
+      create index idx_reviews_film on public.reviews(film_id);
     `;
 
-      const result = await runner.diff([pagilaSQL], [altered], {
-        dialect: "postgres",
-      });
+      const result = await runner.diff([pagilaSQL], [altered]);
       expect(result.error).toBeUndefined();
-      
+
       expect(result.changes).toMatchObject([
         {
           type: "add_column",
@@ -139,22 +104,26 @@ describe("pagila schema round-trip", () => {
           detail: "character varying",
         },
         { type: "add_table", table: "reviews" },
+        { type: "add_index", table: "reviews", name: "idx_reviews_film" },
       ]);
 
       expect(result.statements).toBeDefined();
-      expect(result.statements!.length).toBeGreaterThan(0);
+      expect(result.statements!.length).toBe(3);
 
-      const allSQL = result.statements!.join("\n").toUpperCase();
-      expect(allSQL).toContain("NICKNAME");
-      expect(allSQL).toContain("REVIEWS");
+      // console.log("Alteration diff statements:", result.statements);
+      // console.log("Alteration diff changes:", result.changes);
 
-      const recheck = await runner.diff([altered], [altered], {
-        dialect: "postgres",
-      });
+      expect(result.statements![0]).toContain('ADD COLUMN "nickname"');
+      expect(result.statements![1]).toContain(
+        'CREATE TABLE "public"."reviews"',
+      );
+      expect(result.statements![2]).toContain(
+        'CREATE INDEX "idx_reviews_film"',
+      );
+
+      const recheck = await runner.diff([altered], [altered]);
       expect(recheck.error).toBeUndefined();
       expect(recheck.statements ?? []).toHaveLength(0);
-    } finally {
-      await runner.close();
-    }
-  }, 120_000);
+    }, 120_000);
+  });
 });

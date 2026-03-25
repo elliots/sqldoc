@@ -33,6 +33,7 @@ describe('atlas runner (integration)', () => {
     runner = await createAtlasRunner({
       wasmPath: WASM_PATH,
       db,
+      dialect: 'postgres',
     })
   }, 60_000)
 
@@ -42,7 +43,6 @@ describe('atlas runner (integration)', () => {
 
   it('inspect with simple CREATE TABLE returns schema', async () => {
     const result = await runner.inspect(['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL);'], {
-      dialect: 'postgres',
       schema: 'public',
     })
 
@@ -75,7 +75,7 @@ CREATE TABLE orders (
 );`,
     ]
 
-    const result = await runner.inspect(sql, { dialect: 'postgres', schema: 'public' })
+    const result = await runner.inspect(sql, { schema: 'public' })
 
     expect(result.error).toBeUndefined()
     expect(result.schema).toBeDefined()
@@ -103,7 +103,6 @@ CREATE TABLE orders (
 
   it('diff with empty from and CREATE TABLE to returns statements', async () => {
     const result = await runner.diff([], ['CREATE TABLE items (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);'], {
-      dialect: 'postgres',
       schema: 'public',
     })
 
@@ -119,7 +118,7 @@ CREATE TABLE orders (
   it('diff with non-empty from and modified to returns ALTER statements', async () => {
     const from = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);']
     const to = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT);']
-    const result = await runner.diff(from, to, { dialect: 'postgres', schema: 'public' })
+    const result = await runner.diff(from, to, { schema: 'public' })
     // If single-DB problem exists, result.error will be set. Document this.
     if (result.error) {
       console.warn('KNOWN ISSUE: Atlas WASI single-DB problem --', result.error)
@@ -140,7 +139,7 @@ CREATE TABLE orders (
        CREATE POLICY org_isolation ON users USING (org_id = current_setting('app.org_id')::bigint);`,
     ]
     // Realm-level diff to capture all objects
-    const result = await runner.diff(from, to, { dialect: 'postgres' })
+    const result = await runner.diff(from, to)
 
     expect(result.error).toBeUndefined()
     expect(result.statements).toBeDefined()
@@ -159,7 +158,7 @@ CREATE TABLE orders (
        CREATE EVENT TRIGGER ddl_logger ON ddl_command_end EXECUTE FUNCTION log_ddl();`,
     ]
     // No schema filter — realm-level diff captures event triggers
-    const result = await runner.diff(from, to, { dialect: 'postgres' })
+    const result = await runner.diff(from, to)
 
     expect(result.error).toBeUndefined()
     expect(result.statements).toBeDefined()
@@ -183,7 +182,9 @@ describe('atlas runner (unit)', () => {
       async close() {},
     }
 
-    await expect(createAtlasRunner({ wasmPath: '/nonexistent/atlas.wasm', db: mockDb })).rejects.toThrow('not found')
+    await expect(
+      createAtlasRunner({ wasmPath: '/nonexistent/atlas.wasm', db: mockDb, dialect: 'postgres' }),
+    ).rejects.toThrow('not found')
   })
 })
 

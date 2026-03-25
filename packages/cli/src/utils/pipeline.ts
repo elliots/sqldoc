@@ -73,7 +73,6 @@ export async function runCompilePipeline(
     const relFiles = sqlFiles.map((f) => path.relative(process.cwd(), f))
     const inspectResult = await atlasRunner.inspect(allSqlContents, {
       schema: dialect === 'postgres' ? 'public' : undefined,
-      dialect,
       fileNames: relFiles,
     })
     if (!inspectResult.schema) {

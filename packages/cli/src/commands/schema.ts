@@ -74,7 +74,6 @@ export async function schemaInspectCommand(
       try {
         const result = await runner.inspect([], {
           schema: dialect === 'postgres' ? 'public' : undefined,
-          dialect,
         })
         if (result.error) {
           throw new CliError(`Inspect error: ${result.error}`)
@@ -163,7 +162,6 @@ export async function schemaDiffCommand(options: {
     try {
       const result = await runner.diff(fromSql, toSql, {
         schema: dialect === 'postgres' ? 'public' : undefined,
-        dialect,
       })
       outputDiff(result, format, options.check ?? false)
     } finally {
@@ -191,7 +189,7 @@ async function diffWithLiveDb(
   const liveRunner = await createRunner({ dialect, devUrl: liveSource.value })
   let liveRealm
   try {
-    const liveResult = await liveRunner.inspect([], { schema: schemaOpt, dialect })
+    const liveResult = await liveRunner.inspect([], { schema: schemaOpt })
     if (liveResult.error) throw new Error(`Live DB inspect: ${liveResult.error}`)
     liveRealm = liveResult.schema
   } finally {
@@ -201,7 +199,7 @@ async function diffWithLiveDb(
   const devRunner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: [sqlSource.value] })
   let sqlRealm
   try {
-    const sqlResult = await devRunner.inspect([sqlSource.value], { schema: schemaOpt, dialect })
+    const sqlResult = await devRunner.inspect([sqlSource.value], { schema: schemaOpt })
     if (sqlResult.error) throw new Error(`SQL inspect: ${sqlResult.error}`)
     sqlRealm = sqlResult.schema
   } finally {
@@ -226,7 +224,7 @@ async function diffWithLiveDb(
         return
       }
     }
-    const result = await diffRunner.diff(fromSql, toSql, { schema: schemaOpt, dialect })
+    const result = await diffRunner.diff(fromSql, toSql, { schema: schemaOpt })
     outputDiff(result, format, check)
   } finally {
     await diffRunner.close()
