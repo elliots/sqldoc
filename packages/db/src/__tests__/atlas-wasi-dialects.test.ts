@@ -207,5 +207,116 @@ describe('Atlas WASI dialect validation', () => {
       expect(stmts).toContain('alter table')
       expect(stmts).toContain('price')
     }, 120_000)
+
+    it('inspect captures views in MySQL schema', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'mysql' })
+
+      const sql = `
+        CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, customer VARCHAR(255), total DECIMAL(10,2));
+        CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
+      `
+
+      const result = await runner.inspect([sql], { dialect: 'mysql' })
+
+      expect(result.error).toBeUndefined()
+      const schemas = result.schema!.schemas
+      const views = schemas.flatMap((s) => (s as any).views ?? [])
+      expect(views.length).toBe(1)
+      expect(views[0].name).toBe('order_summary')
+    }, 120_000)
+
+    it('diff produces CREATE VIEW for new MySQL view', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'mysql' })
+
+      const from =
+        'CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, customer VARCHAR(255), total DECIMAL(10,2));'
+      const to = `
+        CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, customer VARCHAR(255), total DECIMAL(10,2));
+        CREATE VIEW order_summary AS SELECT customer, SUM(total) as revenue FROM orders GROUP BY customer;
+      `
+
+      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+
+      expect(result.error).toBeUndefined()
+      expect(result.statements).toBeDefined()
+      const stmts = result.statements!.join('\n').toUpperCase()
+      expect(stmts).toContain('CREATE')
+      expect(stmts).toContain('ORDER_SUMMARY')
+    }, 120_000)
+
+    it('inspect captures triggers in MySQL schema', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'mysql' })
+
+      const sql = `
+        CREATE TABLE audit (id INT AUTO_INCREMENT PRIMARY KEY, action VARCHAR(255));
+        CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));
+        CREATE TRIGGER items_after_insert AFTER INSERT ON items FOR EACH ROW INSERT INTO audit (action) VALUES (CONCAT('insert:', NEW.name));
+      `
+
+      const result = await runner.inspect([sql], { dialect: 'mysql' })
+
+      expect(result.error).toBeUndefined()
+      const schemas = result.schema!.schemas
+      const tables = schemas.flatMap((s) => s.tables ?? [])
+      const itemsTable = tables.find((t) => t.name === 'items')
+      expect(itemsTable).toBeDefined()
+      const triggers = (itemsTable as any).triggers ?? []
+      expect(triggers.length).toBe(1)
+      expect(triggers[0].name).toBe('items_after_insert')
+    }, 120_000)
+
+    it('diff produces CREATE TRIGGER for new MySQL trigger', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'mysql' })
+
+      const from = `
+        CREATE TABLE audit (id INT AUTO_INCREMENT PRIMARY KEY, action VARCHAR(255));
+        CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));
+      `
+      const to = `
+        CREATE TABLE audit (id INT AUTO_INCREMENT PRIMARY KEY, action VARCHAR(255));
+        CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));
+        CREATE TRIGGER items_after_delete AFTER DELETE ON items FOR EACH ROW INSERT INTO audit (action) VALUES (CONCAT('deleted:', OLD.name));
+      `
+
+      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+
+      expect(result.error).toBeUndefined()
+      expect(result.statements).toBeDefined()
+      const stmts = result.statements!.join('\n').toUpperCase()
+      expect(stmts).toContain('CREATE TRIGGER')
+      expect(stmts).toContain('ITEMS_AFTER_DELETE')
+    }, 120_000)
+
+    it('inspect captures functions in MySQL schema', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'mysql' })
+
+      const sql = `
+        CREATE FUNCTION add_tax(price DECIMAL(10,2)) RETURNS DECIMAL(10,2) DETERMINISTIC RETURN price * 1.1;
+      `
+
+      const result = await runner.inspect([sql], { dialect: 'mysql' })
+
+      expect(result.error).toBeUndefined()
+      const schemas = result.schema!.schemas
+      const funcs = schemas.flatMap((s) => s.funcs ?? [])
+      expect(funcs.length).toBeGreaterThanOrEqual(1)
+      const addTax = funcs.find((f: any) => f.name === 'add_tax')
+      expect(addTax).toBeDefined()
+    }, 120_000)
+
+    it('diff produces CREATE FUNCTION for new MySQL function', async () => {
+      if (!runner) runner = await createRunner({ dialect: 'mysql' })
+
+      const from = ''
+      const to = `CREATE FUNCTION double_it(x INT) RETURNS INT DETERMINISTIC RETURN x * 2;`
+
+      const result = await runner.diff([from], [to], { dialect: 'mysql' })
+
+      expect(result.error).toBeUndefined()
+      expect(result.statements).toBeDefined()
+      const stmts = result.statements!.join('\n').toUpperCase()
+      expect(stmts).toContain('CREATE FUNCTION')
+      expect(stmts).toContain('DOUBLE_IT')
+    }, 120_000)
   })
 })

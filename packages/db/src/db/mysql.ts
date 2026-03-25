@@ -34,7 +34,7 @@ export async function createMysqlAdapter(connectionString: string): Promise<Data
       }
     },
     async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
-      const [result] = await connection.execute(sql, args as any)
+      const [result] = await connection.query(sql, args as any)
       return { rowsAffected: (result as mysql.ResultSetHeader).affectedRows ?? 0 }
     },
     async close(): Promise<void> {
