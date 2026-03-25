@@ -16,7 +16,7 @@ out.sql
 .sqldoc/
 
 # Atlas WASI binary (built externally, ~14MB)
-packages/db/wasm/*.wasm
+# packages/db/wasm/*.wasm
 
 # Compiled sqldoc binary
 /sqldoc
