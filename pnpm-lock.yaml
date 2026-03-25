@@ -67,9 +67,6 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.4.0
         version: 0.4.1
-      '@testcontainers/mysql':
-        specifier: ^11.13.0
-        version: 11.13.0
       '@testcontainers/postgresql':
         specifier: ^11.13.0
         version: 11.13.0
@@ -1094,9 +1091,6 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
-
-  '@testcontainers/mysql@11.13.0':
-    resolution: {integrity: sha512-YnS8FcyuPsWzihe0VCysQOHxFvwn9v1y9vxxHWBVEwxU7qoUBS4g6zKgOWYU4LZMyf7YTcRRhj2mgeqO90jADg==}
 
   '@testcontainers/postgresql@11.13.0':
     resolution: {integrity: sha512-Y+HLf+IEu9+h3MgxRhnFunw9ldk3jxN2PO6zyejN5AiDd1aSeBQ7hfpc/4MlMm65St2DdLGf39oE/vdW1+hc/Q==}
@@ -3928,15 +3922,6 @@ snapshots:
   '@sindresorhus/merge-streams@2.3.0': {}
 
   '@standard-schema/spec@1.1.0': {}
-
-  '@testcontainers/mysql@11.13.0':
-    dependencies:
-      testcontainers: 11.13.0
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - react-native-b4a
-      - supports-color
 
   '@testcontainers/postgresql@11.13.0':
     dependencies:

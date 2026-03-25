@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.4.0",
-    "@testcontainers/mysql": "^11.13.0",
     "@testcontainers/postgresql": "^11.13.0",
     "better-sqlite3": "^12.8.0",
     "mysql2": "^3.20.0",

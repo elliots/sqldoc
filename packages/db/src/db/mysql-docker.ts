@@ -1,12 +1,9 @@
 /**
- * MySQL Docker adapter using @testcontainers/mysql.
- * Spins up an ephemeral MySQL container, connects via mysql2, and
- * automatically cleans up on close() (testcontainers + Ryuk handle
- * orphan cleanup even on process crash).
- *
- * Follows the same composition pattern as the Postgres Docker adapter (docker.ts).
+ * MySQL Docker adapter using testcontainers GenericContainer.
+ * Uses log-based wait strategy (same as Postgres adapter) for Bun compatibility —
+ * MySqlContainer's built-in health check hangs in Bun's runtime.
  */
-import { MySqlContainer } from '@testcontainers/mysql'
+import { GenericContainer, Wait } from 'testcontainers'
 import { createMysqlAdapter } from './mysql.ts'
 import type { DatabaseAdapter } from './types.ts'
 
@@ -17,14 +14,34 @@ import type { DatabaseAdapter } from './types.ts'
 export async function createMysqlDockerAdapter(devUrl: string): Promise<DatabaseAdapter> {
   const imageName = devUrl.slice('docker://'.length)
 
-  const container = await new MySqlContainer(imageName)
-    .withDatabase('sqldoc_dev')
-    .withRootPassword('sqldoc')
+  const container = await new GenericContainer(imageName)
+    .withEnvironment({
+      MYSQL_ROOT_PASSWORD: 'sqldoc',
+      MYSQL_DATABASE: 'sqldoc_dev',
+    })
     .withExposedPorts(3306)
+    .withWaitStrategy(Wait.forLogMessage(/ready for connections.*port: 3306/, 2))
     .start()
 
-  const connectionUri = `mysql://${container.getUsername()}:${container.getUserPassword()}@${container.getHost()}:${container.getMappedPort(3306)}/${container.getDatabase()}`
-  const mysqlAdapter = await createMysqlAdapter(connectionUri)
+  const host = container.getHost()
+  const port = container.getMappedPort(3306)
+  const connectionUri = `mysql://root:sqldoc@${host}:${port}/sqldoc_dev`
+
+  // Retry connection — container may need a moment after port is mapped
+  let mysqlAdapter: DatabaseAdapter | undefined
+  for (let i = 0; i < 10; i++) {
+    try {
+      mysqlAdapter = await createMysqlAdapter(connectionUri)
+      break
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+  }
+
+  if (!mysqlAdapter) {
+    await container.stop()
+    throw new Error(`Failed to connect to Docker MySQL at ${connectionUri}`)
+  }
 
   return {
     query: mysqlAdapter.query,
