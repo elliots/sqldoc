@@ -1,5 +1,5 @@
-import { escapeString, quoteIdentifier } from '@sqldoc/core'
 import type { NamespacePlugin, SqlOutput, TagContext } from '@sqldoc/core'
+import { escapeString, quoteIdentifier } from '@sqldoc/core'
 
 const plugin: NamespacePlugin = {
   apiVersion: 1,

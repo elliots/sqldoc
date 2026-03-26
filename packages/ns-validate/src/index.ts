@@ -1,5 +1,5 @@
-import { quoteIdentifier } from '@sqldoc/core'
 import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
+import { quoteIdentifier } from '@sqldoc/core'
 
 function isTextType(type: string | undefined): boolean {
   if (!type) return false

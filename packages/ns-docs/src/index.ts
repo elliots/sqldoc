@@ -1,5 +1,5 @@
-import type { AtlasRealm } from '@sqldoc/db'
 import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
+import type { AtlasRealm } from '@sqldoc/db'
 import { realmToDocsSchema } from './atlas.ts'
 import { mergeSchemaWithTags } from './merge.ts'
 import { generateMermaidERD } from './mermaid.ts'

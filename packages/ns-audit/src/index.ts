@@ -6,16 +6,16 @@
  * SQLite: Separate per-event triggers with inline bodies using json_object and explicit columns.
  */
 
+import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
   autoIncrementType,
   currentTimestamp,
+  type Dialect,
   jsonObjectFunction,
   jsonType,
   quoteIdentifier,
   timestampType,
-  type Dialect,
 } from '@sqldoc/core'
-import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 
 // -- Minimal type shapes for AtlasTable/AtlasColumn (ctx.atlasTable is typed as unknown) --
 
@@ -175,7 +175,7 @@ const plugin: NamespacePlugin = {
 
     // Trigger generation depends on dialect
     let triggerSqls: SqlOutput[]
-    let extraAnnotations: Array<{ object: string; text: string }> = []
+    const extraAnnotations: Array<{ object: string; text: string }> = []
 
     if (dialect === 'postgres') {
       // Postgres: PL/pgSQL function + multi-event trigger (unchanged behavior)

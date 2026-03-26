@@ -14,8 +14,8 @@ import type { SqlCommentOn, SqlStatement } from '../ast/types.ts'
 import type { TagBlock } from '../blocks.ts'
 import { buildBlocks } from '../blocks.ts'
 import { parse, parseArgs } from '../parser.ts'
-import { escapeString, escapeStringWithNewlines } from '../sql-emitter.ts'
 import type { Dialect } from '../sql-emitter.ts'
+import { escapeString, escapeStringWithNewlines } from '../sql-emitter.ts'
 import type { SqlTarget } from '../types.ts'
 import type {
   CodeOutput,
