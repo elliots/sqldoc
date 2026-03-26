@@ -19,6 +19,6 @@ export { toCamelCase, toPascalCase, toScreamingSnake } from './helpers/naming.ts
 // Tag lookup helpers
 export { findRename, findTypeOverride, isSkipped } from './helpers/tags.ts'
 // Tag functions (re-exported for convenience)
-export { csharp, dedent, go, java, kotlin, python, rust, sql, ts } from './tags.ts'
-export type { TsTypeOptions } from './types.ts'
-export { pgToCsharp, pgToGo, pgToJava, pgToKotlin, pgToPython, pgToRust, pgToTs } from './types.ts'
+export { csharp, dedent, go, java, kotlin, python, rust, sql, ts } from './tags/index.ts'
+export type { TsTypeOptions } from './types/index.ts'
+export { pgToCsharp, pgToGo, pgToJava, pgToKotlin, pgToPython, pgToRust, pgToTs } from './types/index.ts'

@@ -64,7 +64,7 @@ const testRealm: AtlasRealm = {
   ],
 }
 
-function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext {
+function makeCtx(overrides?: Partial<TemplateContext>): any {
   return {
     realm: testRealm,
     allFileTags: [],

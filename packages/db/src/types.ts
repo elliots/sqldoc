@@ -142,6 +142,7 @@ export type TypeCategory =
   | 'spatial'
   | 'enum'
   | 'composite'
+  | 'array'
   | 'unknown'
 
 export interface AtlasColumnType {
