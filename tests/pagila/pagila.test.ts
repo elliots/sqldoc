@@ -1,7 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDockerAdapter, createRunner } from "@sqldoc/db";
+import { PGlite } from "@electric-sql/pglite";
+import { pgDump } from "@electric-sql/pglite-tools/pg_dump";
+import { createDockerAdapter, createPgliteAdapter, createRunner } from "@sqldoc/db";
 
 const rawPagilaSQL = fs.readFileSync(
   path.join(__dirname, "pagila-schema.sql"),
@@ -20,7 +22,7 @@ const pagilaSQL =
 
     const runner = await createRunner({
       dialect: "postgres",
-      devUrl: "docker://postgres:16",
+      devUrl,
     });
 
     it(`${testTitle}: self-diff produces zero changes`, async () => {
@@ -47,13 +49,11 @@ const pagilaSQL =
     }, 120_000);
 
     it(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
-      const liveDb = await createDockerAdapter("docker://postgres:16");
+      const liveDb = devUrl ? await createDockerAdapter(devUrl) : await createPgliteAdapter();
       try {
         await liveDb.exec(pagilaSQL); // execute original SQL directly
 
-        const result = await runner.diff([], [pagilaSQL], {
-          fromDb: liveDb,
-        });
+        const result = await runner.diff(liveDb, [pagilaSQL]);
         expect(result.error).toBeUndefined();
         const stmts = result.statements ?? [];
         if (stmts.length > 0) console.log("Live DB diff statements:", stmts);
@@ -77,6 +77,26 @@ const pagilaSQL =
       if (stmts.length > 0)
         console.log("Migration round-trip statements:", stmts);
       expect(stmts).toHaveLength(0);
+      
+      if (!version) {
+        // for pglite, also test applying the migration, dumping via pg_dump, then diffing against original SQL
+        const pg = await PGlite.create();
+        try {
+          await pg.exec(migrationSQL);
+          const dump = await pgDump({ pg });
+          const dumpSQL = await dump.text();
+          expect(dumpSQL.length).toBeGreaterThan(0);
+
+          const reDiffResult = await runner.diff([dumpSQL], [pagilaSQL]);
+          expect(reDiffResult.error).toBeUndefined();
+          const reDiffStmts = reDiffResult.statements ?? [];
+          if (reDiffStmts.length > 0)
+            console.log("Re-diff statements:", reDiffStmts);
+          expect(reDiffStmts).toHaveLength(0);
+        } finally {
+          await pg.close();
+        }
+      }
     }, 120_000);
 
     it(`${testTitle}: detects schema alteration correctly`, async () => {

@@ -36,21 +36,16 @@ export interface AtlasRunnerOptions {
   dialect: 'postgres' | 'mysql' | 'sqlite'
 }
 
+/** A diff source: SQL file contents (string[]) or a live database (DatabaseAdapter). */
+export type DiffSource = string[] | DatabaseAdapter
+
 export interface AtlasRunner {
   /** Execute SQL files and return parsed schema with tags */
   inspect(files: string[], options?: { schema?: string; fileNames?: string[] }): Promise<AtlasResult>
 
-  /** Compare two schema states and return migration SQL */
-  diff(
-    from: string[],
-    to: string[],
-    options?: {
-      schema?: string
-      renames?: AtlasRename[]
-      fromDb?: DatabaseAdapter
-      toDb?: DatabaseAdapter
-    },
-  ): Promise<AtlasResult>
+  /** Compare two schema states. Each side can be SQL or a live database.
+   * Live databases are only inspected, never written to. */
+  diff(from: DiffSource, to: DiffSource, options?: { schema?: string; renames?: AtlasRename[] }): Promise<AtlasResult>
 
   /** Clean up resources */
   close(): Promise<void>
@@ -260,28 +255,25 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     },
 
     async diff(
-      from: string[],
-      to: string[],
-      opts?: {
-        schema?: string
-        renames?: AtlasRename[]
-        fromDb?: DatabaseAdapter
-        toDb?: DatabaseAdapter
-      },
+      from: DiffSource,
+      to: DiffSource,
+      opts?: { schema?: string; renames?: AtlasRename[] },
     ): Promise<AtlasResult> {
+      const fromIsDb = !Array.isArray(from)
+      const toIsDb = !Array.isArray(to)
       const command: AtlasCommand = {
         type: 'diff',
         dialect,
-        from,
-        to,
+        from: fromIsDb ? [] : from,
+        to: toIsDb ? [] : to,
         schema: opts?.schema,
         renames: opts?.renames,
-        fromConnection: opts?.fromDb ? 'from' : undefined,
-        toConnection: opts?.toDb ? 'to' : undefined,
+        fromConnection: fromIsDb ? 'from' : undefined,
+        toConnection: toIsDb ? 'to' : undefined,
       }
       const extraAdapters: Record<string, DatabaseAdapter> = {}
-      if (opts?.fromDb) extraAdapters.from = opts.fromDb
-      if (opts?.toDb) extraAdapters.to = opts.toDb
+      if (fromIsDb) extraAdapters.from = from as DatabaseAdapter
+      if (toIsDb) extraAdapters.to = to as DatabaseAdapter
       return runCommand(wasmPath, db, command, extraAdapters)
     },
 

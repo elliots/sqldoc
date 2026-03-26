@@ -21,7 +21,7 @@ export { createPostgresAdapter } from './db/postgres.ts'
 export { createSqliteAdapter } from './db/sqlite.ts'
 export type { DatabaseAdapter, ExecResult, QueryResult } from './db/types.ts'
 export { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
-export type { AtlasRunner, AtlasRunnerOptions } from './runner.ts'
+export type { AtlasRunner, AtlasRunnerOptions, DiffSource } from './runner.ts'
 export { createAtlasRunner } from './runner.ts'
 export * from './types.ts'
 

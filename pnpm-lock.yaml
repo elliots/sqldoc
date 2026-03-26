@@ -336,6 +336,12 @@ importers:
 
   tests:
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.4.2
+        version: 0.4.2
+      '@electric-sql/pglite-tools':
+        specifier: ^0.3.2
+        version: 0.3.2(@electric-sql/pglite@0.4.2)
       '@sqldoc/core':
         specifier: workspace:*
         version: link:../packages/core
@@ -536,8 +542,16 @@ packages:
     peerDependencies:
       '@electric-sql/pglite': 0.4.1
 
+  '@electric-sql/pglite-tools@0.3.2':
+    resolution: {integrity: sha512-F1KSCIRwcpG1qjTcOM/VkM+BZqpwJUUnp0HoC5RwP9GSgS7fzKuAcMfiFr5+LNChexF3DDjuuhAt5+9egN5ILA==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.4.2
+
   '@electric-sql/pglite@0.4.1':
     resolution: {integrity: sha512-mZ9NzzUSYPOCnxHH1oAHPRzoMFJHY472raDKwXl/+6oPbpdJ7g8LsCN4FSaIIfkiCKHhb3iF/Zqo3NYxaIhU7Q==}
+
+  '@electric-sql/pglite@0.4.2':
+    resolution: {integrity: sha512-1GUUl/MZpy5QWgWisD3Epho3GkJrZ1MzVgQpo2pifQWUs96F9rXKZxeVLPhkwFYck34CH/kQ8lis6wX9ifn3kg==}
 
   '@emnapi/core@1.9.0':
     resolution: {integrity: sha512-0DQ98G9ZQZOxfUcQn1waV2yS8aWdZ6kJMbYCJB3oUBecjWYO1fqJ+a1DRfPF3O5JEkwqwP1A9QEN/9mYm2Yd0w==}
@@ -3496,7 +3510,13 @@ snapshots:
     dependencies:
       '@electric-sql/pglite': 0.4.1
 
+  '@electric-sql/pglite-tools@0.3.2(@electric-sql/pglite@0.4.2)':
+    dependencies:
+      '@electric-sql/pglite': 0.4.2
+
   '@electric-sql/pglite@0.4.1': {}
+
+  '@electric-sql/pglite@0.4.2': {}
 
   '@emnapi/core@1.9.0':
     dependencies:
