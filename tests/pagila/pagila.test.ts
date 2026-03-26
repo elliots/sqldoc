@@ -15,7 +15,7 @@ const pagilaSQL =
   rawPagilaSQL;
 
 // loop through postgres versions and pglite
-["postgres:17", "postgres:15", "postgres:14", undefined].forEach((version) => {
+["postgres:17", "postgres:16", "postgres:15", "postgres:14", undefined].forEach((version) => {
   describe("pagila schema", async () => {
     const devUrl = version ? `docker://${version}` : undefined;
     const testTitle = version ?? "pglite";

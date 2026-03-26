@@ -130,17 +130,17 @@ describe('pglite extension loading (integration)', { timeout: 30_000 }, () => {
     }
   })
 
-  it('auto-detects extensions via createRunner sqlFiles', async () => {
+  it('loads extensions via createRunner config', async () => {
     const sql = `
-      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-      CREATE TABLE users (id uuid DEFAULT uuid_generate_v4() PRIMARY KEY, name text);
+      CREATE EXTENSION IF NOT EXISTS hstore;
+      CREATE TABLE settings (id serial PRIMARY KEY, data hstore);
     `
-    const runner = await createRunner({ dialect: 'postgres', sqlFiles: [sql] })
+    const runner = await createRunner({ dialect: 'postgres', extensions: ['hstore'] })
     try {
       const result = await runner.inspect([sql], { schema: 'public' })
       expect(result.error).toBeUndefined()
       const tables = result.schema?.schemas?.[0]?.tables ?? []
-      expect(tables.some((t) => t.name === 'users')).toBe(true)
+      expect(tables.some((t) => t.name === 'settings')).toBe(true)
     } finally {
       await runner.close()
     }

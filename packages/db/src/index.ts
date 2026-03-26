@@ -10,7 +10,7 @@ import { createMysqlAdapter } from './db/mysql.ts'
 import { createPgliteAdapter } from './db/pglite.ts'
 import { createPostgresAdapter } from './db/postgres.ts'
 import { createSqliteAdapter } from './db/sqlite.ts'
-import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
+import { validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
 import { createAtlasRunner } from './runner.ts'
 
 export { createDockerAdapter } from './db/docker.ts'
@@ -30,8 +30,8 @@ export interface CreateRunnerConfig {
   dialect: 'postgres' | 'mysql' | 'sqlite'
   /** Database connection URL. If omitted, uses dialect-specific default. */
   devUrl?: string
-  /** SQL file contents to scan for CREATE EXTENSION statements */
-  sqlFiles?: string[]
+  /** Postgres extensions to load. Validated against the dev database; loaded automatically in PGlite. */
+  extensions?: string[]
 }
 
 /**
@@ -87,9 +87,7 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
   const dialect = config.dialect
   const devUrl = config.devUrl ?? defaultDevUrl(dialect)
 
-  // Extract extensions from SQL (postgres only)
-  const { extensions } =
-    dialect === 'postgres' && config.sqlFiles ? extractExtensions(config.sqlFiles) : { extensions: [] }
+  const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
 
   let db: import('./db/types').DatabaseAdapter
 

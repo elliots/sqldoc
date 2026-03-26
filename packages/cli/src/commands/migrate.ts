@@ -1,7 +1,7 @@
 import * as path from 'node:path'
 import * as readline from 'node:readline'
 import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
-import { createRunner } from '@sqldoc/db'
+import { createRunner, extractExtensions } from '@sqldoc/db'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import pc from 'picocolors'
@@ -92,9 +92,9 @@ export async function migrateCommand(options: {
   // ── Step 4: Diff current -> desired (up migration) ─────────────────
   const schemaOpt = dialect === 'postgres' ? 'public' : undefined
 
-  // We need a runner that has both SQL contents loaded for extension detection
   const allSql = [currentSql, desiredSql].filter(Boolean)
-  const runner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: allSql })
+  const { extensions } = extractExtensions(allSql)
+  const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
 
   let upStatements: string[]
   let upChanges: import('@sqldoc/db').AtlasChange[] | undefined

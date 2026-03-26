@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { createRunner } from '@sqldoc/db'
+import { createRunner, extractExtensions } from '@sqldoc/db'
 import type { DocsMeta, ProjectContext, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import pc from 'picocolors'
@@ -71,7 +71,11 @@ export async function codegenCommand(
 
     if (hasGeneratedSql) {
       // Re-inspect with the merged SQL (includes generated tables like audit_log)
-      const freshRunner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: [mergedSql] })
+      const freshRunner = await createRunner({
+        dialect,
+        devUrl: config.devUrl,
+        extensions: extractExtensions([mergedSql]).extensions,
+      })
       const postCompileResult = await freshRunner.inspect([mergedSql], {
         schema: dialect === 'postgres' ? 'public' : undefined,
       })

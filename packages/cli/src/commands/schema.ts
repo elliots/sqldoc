@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { AtlasResult } from '@sqldoc/db'
-import { createRunner } from '@sqldoc/db'
+import { createRunner, extractExtensions } from '@sqldoc/db'
 import type { ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import pc from 'picocolors'
@@ -156,9 +156,9 @@ export async function schemaDiffCommand(options: {
       return
     }
 
-    // Pass both from + to SQL so extensions are detected and loaded
     const allSql = [...fromSql, ...toSql].filter(Boolean)
-    const runner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: allSql })
+    const { extensions } = extractExtensions(allSql)
+    const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
     try {
       const result = await runner.diff(fromSql, toSql, {
         schema: dialect === 'postgres' ? 'public' : undefined,
@@ -196,7 +196,11 @@ async function diffWithLiveDb(
     await liveRunner.close()
   }
 
-  const devRunner = await createRunner({ dialect, devUrl: config.devUrl, sqlFiles: [sqlSource.value] })
+  const devRunner = await createRunner({
+    dialect,
+    devUrl: config.devUrl,
+    extensions: extractExtensions([sqlSource.value]).extensions,
+  })
   let sqlRealm
   try {
     const sqlResult = await devRunner.inspect([sqlSource.value], { schema: schemaOpt })
@@ -206,10 +210,11 @@ async function diffWithLiveDb(
     await devRunner.close()
   }
 
+  const diffSql = [...(from.type !== 'database' ? [from.value] : []), ...(to.type !== 'database' ? [to.value] : [])]
   const diffRunner = await createRunner({
     dialect,
     devUrl: config.devUrl,
-    sqlFiles: [...(from.type !== 'database' ? [from.value] : []), ...(to.type !== 'database' ? [to.value] : [])],
+    extensions: extractExtensions(diffSql).extensions,
   })
   try {
     const fromSql = from.type === 'database' ? [] : [from.value]
