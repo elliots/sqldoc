@@ -1,103 +1,102 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { describe, expect, it } from "vitest";
-import { PGlite } from "@electric-sql/pglite";
-import { pgDump } from "@electric-sql/pglite-tools/pg_dump";
-import { createDockerAdapter, createPgliteAdapter, createRunner } from "@sqldoc/db";
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { before, describe, it } from 'node:test'
+import { PGlite } from '@electric-sql/pglite'
+import { pgDump } from '@electric-sql/pglite-tools/pg_dump'
+import { createPgliteAdapter, createPostgresDockerAdapter, createRunner } from '@sqldoc/db'
+import { expect } from '@sqldoc/test-utils'
 
-const rawPagilaSQL = fs.readFileSync(
-  path.join(__dirname, "pagila-schema.sql"),
-  "utf-8",
-);
+const rawPagilaSQL = fs.readFileSync(path.join(import.meta.dirname, 'pagila-schema.sql'), 'utf-8')
 // pg_dump output uses OWNER TO postgres — ensure the role exists
 const pagilaSQL =
   `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN CREATE ROLE postgres SUPERUSER; END IF; END $$;\n` +
-  rawPagilaSQL;
+  rawPagilaSQL
 
 // loop through postgres versions and pglite
-["postgres:17", "postgres:16", "postgres:15", "postgres:14", undefined].forEach((version) => {
-  describe("pagila schema", async () => {
-    const devUrl = version ? `docker://${version}` : undefined;
-    const testTitle = version ?? "pglite";
+;['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined].forEach((version) => {
+  describe(`pagila schema - ${version ?? 'pglite'}`, { timeout: 120_000 }, () => {
+    const devUrl = version ? `docker://${version}` : undefined
+    const testTitle = version ?? 'pglite'
+    let runner: ReturnType<typeof createRunner> extends Promise<infer T> ? T : never
 
-    const runner = await createRunner({
-      dialect: "postgres",
-      devUrl,
-    });
+    before(async () => {
+      runner = await createRunner({
+        dialect: 'postgres',
+        devUrl,
+      })
+    })
 
     it(`${testTitle}: self-diff produces zero changes`, async () => {
-      const result = await runner.diff([pagilaSQL], [pagilaSQL]);
-      expect(result.error).toBeUndefined();
-      const stmts = result.statements ?? [];
-      if (stmts.length > 0) console.log("Self-diff statements:", stmts);
-      expect(stmts).toHaveLength(0);
-    }, 120_000);
+      const result = await runner.diff([pagilaSQL], [pagilaSQL])
+      expect(result.error).toBe(undefined)
+      const stmts = result.statements ?? []
+      if (stmts.length > 0) console.log('Self-diff statements:', stmts)
+      expect(stmts).toHaveLength(0)
+    })
 
     it(`${testTitle}: inspect returns expected tables`, async () => {
-      const result = await runner.inspect([pagilaSQL]);
-      expect(result.error).toBeUndefined();
-      expect(result.schema).toBeDefined();
+      const result = await runner.inspect([pagilaSQL])
+      expect(result.error).toBe(undefined)
+      expect(result.schema).not.toBe(undefined)
 
-      const tables = result.schema!.schemas.flatMap((s) => s.tables ?? []);
-      expect(tables.length).toBeGreaterThanOrEqual(15);
+      const tables = result.schema!.schemas.flatMap((s) => s.tables ?? [])
+      expect(tables.length >= 15).toBeTruthy()
 
-      const tableNames = tables.map((t) => t.name);
-      expect(tableNames).toContain("actor");
-      expect(tableNames).toContain("film");
-      expect(tableNames).toContain("customer");
-      expect(tableNames).toContain("rental");
-    }, 120_000);
+      const tableNames = tables.map((t) => t.name)
+      expect(tableNames).toContain('actor')
+      expect(tableNames).toContain('film')
+      expect(tableNames).toContain('customer')
+      expect(tableNames).toContain('rental')
+    })
 
     it(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
-      const liveDb = devUrl ? await createDockerAdapter(devUrl) : await createPgliteAdapter();
+      const liveDb = devUrl ? await createPostgresDockerAdapter(devUrl) : await createPgliteAdapter()
       try {
-        await liveDb.exec(pagilaSQL); // execute original SQL directly
+        await liveDb.exec(pagilaSQL) // execute original SQL directly
 
-        const result = await runner.diff(liveDb, [pagilaSQL]);
-        expect(result.error).toBeUndefined();
-        const stmts = result.statements ?? [];
-        if (stmts.length > 0) console.log("Live DB diff statements:", stmts);
-        expect(stmts).toHaveLength(0);
+        const result = await runner.diff(liveDb, [pagilaSQL])
+        expect(result.error).toBe(undefined)
+        const stmts = result.statements ?? []
+        if (stmts.length > 0) console.log('Live DB diff statements:', stmts)
+        expect(stmts).toHaveLength(0)
       } finally {
-        await liveDb.close();
+        await liveDb.close()
       }
-    }, 120_000);
+    })
 
     it(`${testTitle}: empty-to-schema migration round-trips correctly`, async () => {
-      const migrationResult = await runner.diff([], [pagilaSQL]);
-      expect(migrationResult.error).toBeUndefined();
-      expect(migrationResult.statements).toBeDefined();
-      expect(migrationResult.statements!.length).toBeGreaterThan(0);
+      const migrationResult = await runner.diff([], [pagilaSQL])
+      expect(migrationResult.error).toBe(undefined)
+      expect(migrationResult.statements).not.toBe(undefined)
+      expect(migrationResult.statements!.length > 0).toBeTruthy()
 
-      const migrationSQL = migrationResult.statements!.join(";\n") + ";";
+      const migrationSQL = `${migrationResult.statements!.join(';\n')};`
 
-      const result = await runner.diff([migrationSQL], [pagilaSQL]);
-      expect(result.error).toBeUndefined();
-      const stmts = result.statements ?? [];
-      if (stmts.length > 0)
-        console.log("Migration round-trip statements:", stmts);
-      expect(stmts).toHaveLength(0);
-      
+      const result = await runner.diff([migrationSQL], [pagilaSQL])
+      expect(result.error).toBe(undefined)
+      const stmts = result.statements ?? []
+      if (stmts.length > 0) console.log('Migration round-trip statements:', stmts)
+      expect(stmts).toHaveLength(0)
+
       if (!version) {
         // for pglite, also test applying the migration, dumping via pg_dump, then diffing against original SQL
-        const pg = await PGlite.create();
+        const pg = await PGlite.create()
         try {
-          await pg.exec(migrationSQL);
-          const dump = await pgDump({ pg });
-          const dumpSQL = await dump.text();
-          expect(dumpSQL.length).toBeGreaterThan(0);
+          await pg.exec(migrationSQL)
+          const dump = await pgDump({ pg })
+          const dumpSQL = await dump.text()
+          expect(dumpSQL.length > 0).toBeTruthy()
 
-          const reDiffResult = await runner.diff([dumpSQL], [pagilaSQL]);
-          expect(reDiffResult.error).toBeUndefined();
-          const reDiffStmts = reDiffResult.statements ?? [];
-          if (reDiffStmts.length > 0)
-            console.log("Re-diff statements:", reDiffStmts);
-          expect(reDiffStmts).toHaveLength(0);
+          const reDiffResult = await runner.diff([dumpSQL], [pagilaSQL])
+          expect(reDiffResult.error).toBe(undefined)
+          const reDiffStmts = reDiffResult.statements ?? []
+          if (reDiffStmts.length > 0) console.log('Re-diff statements:', reDiffStmts)
+          expect(reDiffStmts).toHaveLength(0)
         } finally {
-          await pg.close();
+          await pg.close()
         }
       }
-    }, 120_000);
+    })
 
     it(`${testTitle}: detects schema alteration correctly`, async () => {
       const altered =
@@ -111,39 +110,32 @@ const pagilaSQL =
         body text
       );
       create index idx_reviews_film on public.reviews(film_id);
-    `;
+    `
 
-      const result = await runner.diff([pagilaSQL], [altered]);
-      expect(result.error).toBeUndefined();
+      const result = await runner.diff([pagilaSQL], [altered])
+      expect(result.error).toBe(undefined)
 
-      expect(result.changes).toMatchObject([
+      expect(result.changes).toEqual([
         {
-          type: "add_column",
-          table: "actor",
-          name: "nickname",
-          detail: "character varying",
+          type: 'add_column',
+          table: 'actor',
+          name: 'nickname',
+          detail: 'character varying',
         },
-        { type: "add_table", table: "reviews" },
-        { type: "add_index", table: "reviews", name: "idx_reviews_film" },
-      ]);
+        { type: 'add_table', table: 'reviews', detail: 'id, film_id, rating, body' },
+        { type: 'add_index', table: 'reviews', name: 'idx_reviews_film' },
+      ])
 
-      expect(result.statements).toBeDefined();
-      expect(result.statements!.length).toBe(3);
+      expect(result.statements).not.toBe(undefined)
+      expect(result.statements!).toHaveLength(3)
 
-      // console.log("Alteration diff statements:", result.statements);
-      // console.log("Alteration diff changes:", result.changes);
+      expect(result.statements![0]).toContain('ADD COLUMN "nickname"')
+      expect(result.statements![1]).toContain('CREATE TABLE "public"."reviews"')
+      expect(result.statements![2]).toContain('CREATE INDEX "idx_reviews_film"')
 
-      expect(result.statements![0]).toContain('ADD COLUMN "nickname"');
-      expect(result.statements![1]).toContain(
-        'CREATE TABLE "public"."reviews"',
-      );
-      expect(result.statements![2]).toContain(
-        'CREATE INDEX "idx_reviews_film"',
-      );
-
-      const recheck = await runner.diff([altered], [altered]);
-      expect(recheck.error).toBeUndefined();
-      expect(recheck.statements ?? []).toHaveLength(0);
-    }, 120_000);
-  });
-});
+      const recheck = await runner.diff([altered], [altered])
+      expect(recheck.error).toBe(undefined)
+      expect(recheck.statements ?? []).toHaveLength(0)
+    })
+  })
+})

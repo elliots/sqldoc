@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import { generateConfigTypes } from '../generate-config-types.ts'
 
 describe('generateConfigTypes', () => {
@@ -99,7 +100,7 @@ export type { DocsConfig }
     // codegen should appear before validate in the file
     const codegenIdx = content.indexOf('codegen?:')
     const validateIdx = content.indexOf('validate?:')
-    expect(codegenIdx).toBeLessThan(validateIdx)
+    expect(codegenIdx < validateIdx).toBeTruthy()
   })
 
   it('skips non-ns packages like cli and templates', () => {

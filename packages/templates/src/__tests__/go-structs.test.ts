@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import goStructs from '../go-structs/index.ts'
 
 const generate = goStructs.generate
@@ -64,7 +65,7 @@ const testRealm: AtlasRealm = {
   ],
 }
 
-function makeCtx(overrides?: Partial<TemplateContext>): any {
+function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext<any> {
   return {
     realm: testRealm,
     allFileTags: [],
@@ -83,9 +84,9 @@ describe('go-structs template', () => {
     expect(result.files[0].path).toBe('models.go')
 
     const content = result.files[0].content
-    expect(content).toContain('type Users struct {')
-    expect(content).toContain('type Posts struct {')
-    expect(content).toContain('type Comments struct {')
+    expect(content).toContain('type User struct {')
+    expect(content).toContain('type Post struct {')
+    expect(content).toContain('type Comment struct {')
   })
 
   it('maps bigserial to int64', () => {
@@ -137,8 +138,8 @@ describe('go-structs template', () => {
     })
     const result = generate(ctx)
     const content = result.files[0].content
-    expect(content).not.toContain('type Comments struct')
-    expect(content).toContain('type Users struct')
+    expect(content).not.toContain('type Comment struct')
+    expect(content).toContain('type User struct')
   })
 
   it('respects @codegen.rename tag', () => {
@@ -159,7 +160,7 @@ describe('go-structs template', () => {
     const result = generate(ctx)
     const content = result.files[0].content
     expect(content).toContain('type Account struct')
-    expect(content).not.toContain('type Users struct')
+    expect(content).not.toContain('type User struct')
   })
 
   it('respects @codegen.type override on column', () => {

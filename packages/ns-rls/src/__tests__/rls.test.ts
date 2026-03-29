@@ -1,22 +1,7 @@
-import type { TagContext } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
-
-function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
-  return {
-    target: 'table',
-    objectName: 'users',
-    tag: { name: '$self', args: {} },
-    namespaceTags: [],
-    siblingTags: [],
-    fileTags: [],
-    astNode: null,
-    fileStatements: [],
-    config: { dialect: 'postgres' },
-    filePath: 'test.sql',
-    ...overrides,
-  }
-}
+import { describe, it } from 'node:test'
+import { makeTagCtx } from '@sqldoc/core/test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 describe('ns-rls plugin', () => {
   it('exports apiVersion === 1', () => {
@@ -28,13 +13,13 @@ describe('ns-rls plugin', () => {
   })
 
   it('has policy and $self tag entries', () => {
-    expect(plugin.tags).toHaveProperty('policy')
-    expect(plugin.tags).toHaveProperty('$self')
+    expect('policy' in plugin.tags).toBeTruthy()
+    expect('$self' in plugin.tags).toBeTruthy()
   })
 
   describe('onTag', () => {
     it('@rls.$self produces ALTER TABLE ENABLE ROW LEVEL SECURITY', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         objectName: 'users',
         tag: { name: '$self', args: {} },
       })
@@ -43,7 +28,7 @@ describe('ns-rls plugin', () => {
     })
 
     it('@rls with null tag name produces ALTER TABLE ENABLE ROW LEVEL SECURITY', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         objectName: 'users',
         tag: { name: null, args: {} },
       })
@@ -52,7 +37,7 @@ describe('ns-rls plugin', () => {
     })
 
     it('@rls.policy with for/to/using produces CREATE POLICY', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         objectName: 'users',
         tag: {
           name: 'policy',
@@ -70,7 +55,7 @@ describe('ns-rls plugin', () => {
     })
 
     it('@rls.policy with using and check produces both clauses', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         objectName: 'users',
         tag: {
           name: 'policy',
@@ -92,7 +77,7 @@ describe('ns-rls plugin', () => {
     })
 
     it('policy name is auto-generated from table + role + command', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         objectName: 'orders',
         tag: {
           name: 'policy',
@@ -104,7 +89,7 @@ describe('ns-rls plugin', () => {
     })
 
     it('@rls.policy with missing to arg defaults to PUBLIC', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         objectName: 'users',
         tag: {
           name: 'policy',

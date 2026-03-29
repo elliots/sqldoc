@@ -1,23 +1,7 @@
-import type { TagContext } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
-
-function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
-  return {
-    dialect: 'postgres',
-    target: 'table',
-    objectName: 'users',
-    tag: { name: '$self', args: ['A table for user accounts'] },
-    namespaceTags: [],
-    siblingTags: [],
-    fileTags: [],
-    astNode: null,
-    fileStatements: [],
-    config: { dialect: 'postgres' },
-    filePath: 'test.sql',
-    ...overrides,
-  }
-}
+import { describe, it } from 'node:test'
+import { makeTagCtx } from '@sqldoc/core/test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 describe('ns-comment plugin', () => {
   it('exports apiVersion === 1', () => {
@@ -29,7 +13,7 @@ describe('ns-comment plugin', () => {
   })
 
   it('has $self tag definition', () => {
-    expect(plugin.tags).toHaveProperty('$self')
+    expect('$self' in plugin.tags).toBeTruthy()
   })
 
   it('$self tag accepts positional string arg', () => {
@@ -37,9 +21,9 @@ describe('ns-comment plugin', () => {
     expect(def.args).toEqual([{ type: 'string' }])
   })
 
-  describe('onTag — Postgres', () => {
+  describe('onTag -- Postgres', () => {
     it('generates COMMENT ON TABLE for table target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'users',
@@ -50,7 +34,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('generates COMMENT ON COLUMN for column target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'column',
         objectName: 'users',
@@ -62,7 +46,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('generates COMMENT ON VIEW for view target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'view',
         objectName: 'active_users',
@@ -73,7 +57,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('generates COMMENT ON FUNCTION for function target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'function',
         objectName: 'get_user_by_id',
@@ -84,7 +68,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('generates COMMENT ON TYPE for type target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'type',
         objectName: 'user_role',
@@ -95,7 +79,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('generates COMMENT ON INDEX for index target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'index',
         objectName: 'idx_users_email',
@@ -106,7 +90,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('escapes single quotes in description', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'users',
@@ -117,7 +101,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('handles null tag name the same as $self', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'orders',
@@ -128,40 +112,40 @@ describe('ns-comment plugin', () => {
     })
 
     it('returns undefined when no description is provided', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'users',
         tag: { name: '$self', args: [] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('returns undefined for column target without columnName', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'column',
         objectName: 'users',
         tag: { name: '$self', args: ['Some description here'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('returns undefined for unknown tag names', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         tag: { name: 'unknown', args: ['Some text here'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
   })
 
-  describe('onTag — MySQL', () => {
+  describe('onTag -- MySQL', () => {
     it('generates ALTER TABLE COMMENT for table target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'table',
         objectName: 'users',
@@ -172,7 +156,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('generates ALTER TABLE MODIFY COLUMN COMMENT for column target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'column',
         objectName: 'users',
@@ -187,7 +171,7 @@ describe('ns-comment plugin', () => {
     })
 
     it('uses TEXT as fallback column type when columnType is not set', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'column',
         objectName: 'users',
@@ -201,51 +185,51 @@ describe('ns-comment plugin', () => {
     })
 
     it('returns undefined for view target (MySQL does not support)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'view',
         objectName: 'active_users',
         tag: { name: '$self', args: ['View of active users'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('returns undefined for function target (MySQL does not support)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'function',
         objectName: 'get_user',
         tag: { name: '$self', args: ['Gets a user'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('returns undefined for type target (MySQL does not support)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'type',
         objectName: 'status_enum',
         tag: { name: '$self', args: ['Status enum'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('returns undefined for index target (MySQL does not support)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'index',
         objectName: 'idx_users_email',
         tag: { name: '$self', args: ['Email index'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('escapes single quotes in MySQL description', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'table',
         objectName: 'users',
@@ -256,20 +240,20 @@ describe('ns-comment plugin', () => {
     })
   })
 
-  describe('onTag — SQLite', () => {
+  describe('onTag -- SQLite', () => {
     it('returns undefined for table target (SQLite has no comment support)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite',
         target: 'table',
         objectName: 'users',
         tag: { name: '$self', args: ['A table for user accounts'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('returns undefined for column target', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite',
         target: 'column',
         objectName: 'users',
@@ -277,7 +261,7 @@ describe('ns-comment plugin', () => {
         tag: { name: '$self', args: ['The email column'] },
       })
       const result = plugin.onTag!(ctx)
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
   })
 
@@ -308,7 +292,7 @@ describe('ns-comment plugin', () => {
         argValues: ['This is a sufficiently long comment'],
         objectName: 'users',
       })
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
   })
 })

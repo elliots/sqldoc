@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 // Import the actual plugins to test their built-in lint rules
 import auditPlugin from '../../../ns-audit/src/index.ts'
-import rlsPlugin from '../../../ns-rls/src/index'
-import validatePlugin from '../../../ns-validate/src/index'
-import type { CompilerOutput, NamespacePlugin, ResolvedConfig } from '../compiler/types'
-import { lint } from '../lint'
+import rlsPlugin from '../../../ns-rls/src/index.ts'
+import validatePlugin from '../../../ns-validate/src/index.ts'
+import type { CompilerOutput, NamespacePlugin, ResolvedConfig } from '../compiler/types.ts'
+import { lint } from '../lint.ts'
 
 /** Helper to create a minimal CompilerOutput */
 function makeOutput(overrides: Partial<CompilerOutput> = {}): CompilerOutput {

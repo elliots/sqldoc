@@ -1,15 +1,16 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createPgliteAdapter } from '../db/pglite'
-import type { DatabaseAdapter } from '../db/types'
+import { after, before, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { createPgliteAdapter } from '../db/pglite.ts'
+import type { DatabaseAdapter } from '../db/types.ts'
 
 describe('pglite adapter', () => {
   let adapter: DatabaseAdapter
 
-  beforeAll(async () => {
+  before(async () => {
     adapter = await createPgliteAdapter()
   })
 
-  afterAll(async () => {
+  after(async () => {
     await adapter.close()
   })
 
@@ -29,7 +30,7 @@ describe('pglite adapter', () => {
     const result = await adapter.exec(
       'CREATE TABLE test_tbl (id serial PRIMARY KEY, name text NOT NULL, active boolean DEFAULT true)',
     )
-    expect(result).toHaveProperty('rowsAffected')
+    expect('rowsAffected' in result).toBeTruthy()
     expect(typeof result.rowsAffected).toBe('number')
   })
 
@@ -38,7 +39,7 @@ describe('pglite adapter', () => {
       "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'test_tbl' ORDER BY ordinal_position",
     )
     expect(result.columns).toEqual(['column_name', 'data_type'])
-    expect(result.rows.length).toBe(3)
+    expect(result.rows).toHaveLength(3)
     expect(result.rows[0]).toEqual(['id', 'integer'])
     expect(result.rows[1]).toEqual(['name', 'text'])
     expect(result.rows[2]).toEqual(['active', 'boolean'])

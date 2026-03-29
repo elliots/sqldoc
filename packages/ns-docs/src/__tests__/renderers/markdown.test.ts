@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { renderMarkdown } from '../../renderers/markdown'
-import { makeMinimalSchema, makeTestSchema } from './fixture'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { renderMarkdown } from '../../renderers/markdown.ts'
+import { makeMinimalSchema, makeTestSchema } from './fixture.ts'
 
 describe('renderMarkdown', () => {
   // Reuse the shared fixture for most tests
@@ -105,13 +106,13 @@ describe('renderMarkdown', () => {
     // We need to find the users columns table and check the id row
     const lines = result.split('\n')
     const idLine = lines.find((l) => l.includes('| id |') && l.includes('bigserial'))
-    expect(idLine).toBeDefined()
-    expect(idLine).toContain('| Y |')
+    expect(idLine).not.toBe(undefined)
+    expect(idLine!).toContain('| Y |')
 
     // user_id in posts should have FK=Y
     const fkLine = lines.find((l) => l.includes('| user_id |'))
-    expect(fkLine).toBeDefined()
-    expect(fkLine).toMatch(/\|\s*Y\s*\|/)
+    expect(fkLine).not.toBe(undefined)
+    expect(fkLine!).toMatch(/\|\s*Y\s*\|/)
   })
 
   it('generated timestamp is present', () => {

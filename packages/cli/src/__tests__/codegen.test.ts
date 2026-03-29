@@ -1,7 +1,8 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it } from 'node:test'
+import { expect, mockMethod } from '@sqldoc/test-utils'
 
 describe('codegenCommand', () => {
   let tmpDir: string
@@ -14,7 +15,7 @@ describe('codegenCommand', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('does not write SQL to stdout', async () => {
+  it('does not write SQL to stdout', { timeout: 30_000 }, async () => {
     const nsFile = path.join(tmpDir, 'ns-test.ts')
     fs.writeFileSync(
       nsFile,
@@ -45,19 +46,19 @@ CREATE TABLE users (
       'utf-8',
     )
 
-    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const writeSpy = mockMethod(process.stdout, 'write', () => true)
+    const consoleErrorSpy = mockMethod(console, 'error', () => {})
 
     const { codegenCommand } = await import('../commands/codegen.ts')
     await codegenCommand(sqlFile, {})
 
     // codegen should NOT write SQL to stdout (no -o option exists)
-    const stdoutOutput = writeSpy.mock.calls.map((c) => String(c[0])).join('')
+    const stdoutOutput = writeSpy.calls.map((c) => String(c[0])).join('')
     expect(stdoutOutput).not.toContain('CREATE TABLE users')
 
-    consoleErrorSpy.mockRestore()
-    writeSpy.mockRestore()
-  }, 30_000)
+    consoleErrorSpy.restore()
+    writeSpy.restore()
+  })
 
   it('throws CliError when errors are encountered', async () => {
     const nsFile = path.join(tmpDir, 'ns-error.ts')
@@ -90,14 +91,14 @@ CREATE TABLE bad (
       'utf-8',
     )
 
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const consoleErrorSpy = mockMethod(console, 'error', () => {})
+    const writeSpy = mockMethod(process.stdout, 'write', () => true)
 
     const { codegenCommand } = await import('../commands/codegen.ts')
     const { CliError } = await import('../errors.ts')
     await expect(codegenCommand(sqlFile, {})).rejects.toThrow(CliError)
 
-    consoleErrorSpy.mockRestore()
-    writeSpy.mockRestore()
+    consoleErrorSpy.restore()
+    writeSpy.restore()
   })
 })

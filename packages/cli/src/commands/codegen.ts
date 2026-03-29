@@ -83,7 +83,9 @@ export async function codegenCommand(
 
       if (postCompileResult.error) {
         console.error(pc.yellow(`Post-compile schema inspect warning: ${postCompileResult.error}`))
-        console.error(pc.dim('Falling back to pre-compile schema. Generated tables may be missing from afterCompile hooks.'))
+        console.error(
+          pc.dim('Falling back to pre-compile schema. Generated tables may be missing from afterCompile hooks.'),
+        )
       }
       if (postCompileResult.schema) {
         postCompileRealm = postCompileResult.schema

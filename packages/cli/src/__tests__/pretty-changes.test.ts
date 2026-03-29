@@ -1,5 +1,6 @@
+import { describe, it } from 'node:test'
 import type { AtlasChange } from '@sqldoc/db'
-import { describe, expect, it } from 'vitest'
+import { expect } from '@sqldoc/test-utils'
 import { renderChanges } from '../utils/pretty-changes.ts'
 
 // Strip ANSI escape sequences for assertion

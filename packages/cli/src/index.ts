@@ -81,6 +81,16 @@ program
 
 program.command('doctor').description('Check project setup and report status').action(doctorCommand)
 
+// Machine-readable command listing for the shim binary
+if (process.argv.includes('--help-json')) {
+  const commands = program.commands.map((cmd) => {
+    const subs = cmd.commands?.map((c: Command) => ({ name: c.name(), description: c.description() }))
+    return { name: cmd.name(), description: cmd.description(), ...(subs?.length ? { subcommands: subs } : {}) }
+  })
+  console.log(JSON.stringify(commands))
+  process.exit(0)
+}
+
 // Global handler — force exit on both success and error
 // (pglite/WASI worker threads keep the process alive otherwise)
 program

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { parse, parseArgs } from '../parser'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { parse, parseArgs } from '../parser.ts'
 
 describe('parse', () => {
   it('extracts @import with single-quoted path', () => {
@@ -37,8 +38,8 @@ describe('parse', () => {
     const result = parse('-- @searchable')
     expect(result.tags).toHaveLength(1)
     expect(result.tags[0].namespace).toBe('searchable')
-    expect(result.tags[0].tag).toBeNull()
-    expect(result.tags[0].rawArgs).toBeNull()
+    expect(result.tags[0].tag).toBe(null)
+    expect(result.tags[0].rawArgs).toBe(null)
   })
 
   it('extracts namespace.tag with complex named args', () => {

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import typescript from '../typescript/index.ts'
 
 const generate = typescript.generate
@@ -64,7 +65,7 @@ const testRealm: AtlasRealm = {
   ],
 }
 
-function makeCtx(overrides?: Partial<TemplateContext>): any {
+function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext {
   return {
     realm: testRealm,
     allFileTags: [],
@@ -83,9 +84,9 @@ describe('typescript template', () => {
     expect(result.files[0].path).toBe('models.ts')
 
     const content = result.files[0].content
-    expect(content).toContain('export interface Users {')
-    expect(content).toContain('export interface Posts {')
-    expect(content).toContain('export interface Comments {')
+    expect(content).toContain('export interface User {')
+    expect(content).toContain('export interface Post {')
+    expect(content).toContain('export interface Comment {')
   })
 
   it('maps bigserial to number', () => {
@@ -155,8 +156,8 @@ describe('typescript template', () => {
     })
     const result = generate(ctx)
     const content = result.files[0].content
-    expect(content).not.toContain('export interface Comments')
-    expect(content).toContain('export interface Users')
+    expect(content).not.toContain('export interface Comment')
+    expect(content).toContain('export interface User')
   })
 
   it('respects @codegen.rename tag', () => {
@@ -177,7 +178,7 @@ describe('typescript template', () => {
     const result = generate(ctx)
     const content = result.files[0].content
     expect(content).toContain('export interface Account {')
-    expect(content).not.toContain('export interface Users {')
+    expect(content).not.toContain('export interface User {')
   })
 
   it('respects @codegen.type override on column', () => {

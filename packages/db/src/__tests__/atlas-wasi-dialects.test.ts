@@ -1,16 +1,17 @@
-import { afterAll, describe, expect, it } from 'vitest'
-import { createRunner } from '../index'
-import type { AtlasRunner } from '../runner'
+import { after, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { createRunner } from '../index.ts'
+import type { AtlasRunner } from '../runner.ts'
 
 describe('Atlas WASI dialect validation', () => {
   describe('SQLite', () => {
     let runner: AtlasRunner
 
-    afterAll(async () => {
+    after(async () => {
       if (runner) await runner.close()
     })
 
-    it('inspect produces valid schema for SQLite SQL', async () => {
+    it('inspect produces valid schema for SQLite SQL', { timeout: 30_000 }, async () => {
       runner = await createRunner({ dialect: 'sqlite' })
 
       const sql = `
@@ -30,26 +31,26 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
-      expect(result.schema).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.schema).not.toBe(undefined)
 
       // SQLite uses "main" as default schema name (not "public" like Postgres)
       const schemas = result.schema!.schemas
-      expect(schemas.length).toBeGreaterThan(0)
+      expect(schemas.length > 0).toBeTruthy()
 
       // Find tables across all schemas
       const tables = schemas.flatMap((s) => s.tables ?? [])
-      expect(tables.length).toBe(2)
+      expect(tables).toHaveLength(2)
 
       const userTable = tables.find((t) => t.name === 'users')
-      expect(userTable).toBeDefined()
-      expect(userTable!.columns!.length).toBeGreaterThanOrEqual(4)
+      expect(userTable).not.toBe(undefined)
+      expect(userTable!.columns!.length >= 4).toBeTruthy()
 
       const postTable = tables.find((t) => t.name === 'posts')
-      expect(postTable).toBeDefined()
-    }, 30_000)
+      expect(postTable).not.toBe(undefined)
+    })
 
-    it('diff produces migration SQL for SQLite schema changes', async () => {
+    it('diff produces migration SQL for SQLite schema changes', { timeout: 30_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const from = 'CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);'
@@ -57,15 +58,15 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
-      expect(result.statements!.length).toBeGreaterThan(0)
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
+      expect(result.statements!.length > 0).toBeTruthy()
       const stmts = result.statements!.join('\n').toLowerCase()
       expect(stmts).toContain('alter table')
       expect(stmts).toContain('price')
-    }, 30_000)
+    })
 
-    it('inspect captures views in SQLite schema', async () => {
+    it('inspect captures views in SQLite schema', { timeout: 30_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const sql = `
@@ -75,14 +76,14 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBe(undefined)
       const schemas = result.schema!.schemas
       const views = schemas.flatMap((s) => (s as any).views ?? [])
-      expect(views.length).toBe(1)
+      expect(views).toHaveLength(1)
       expect(views[0].name).toBe('order_summary')
-    }, 30_000)
+    })
 
-    it('diff produces CREATE VIEW for new SQLite view', async () => {
+    it('diff produces CREATE VIEW for new SQLite view', { timeout: 30_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const from = 'CREATE TABLE orders (id INTEGER PRIMARY KEY, customer TEXT, total REAL);'
@@ -93,14 +94,14 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
       const stmts = result.statements!.join('\n').toUpperCase()
       expect(stmts).toContain('CREATE VIEW')
       expect(stmts).toContain('ORDER_SUMMARY')
-    }, 30_000)
+    })
 
-    it('inspect captures triggers in SQLite schema', async () => {
+    it('inspect captures triggers in SQLite schema', { timeout: 30_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const sql = `
@@ -114,17 +115,17 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBe(undefined)
       const schemas = result.schema!.schemas
       const tables = schemas.flatMap((s) => s.tables ?? [])
       const itemsTable = tables.find((t) => t.name === 'items')
-      expect(itemsTable).toBeDefined()
+      expect(itemsTable).not.toBe(undefined)
       const triggers = (itemsTable as any).triggers ?? []
-      expect(triggers.length).toBe(1)
+      expect(triggers).toHaveLength(1)
       expect(triggers[0].name).toBe('items_after_insert')
-    }, 30_000)
+    })
 
-    it('diff produces CREATE TRIGGER for new SQLite trigger', async () => {
+    it('diff produces CREATE TRIGGER for new SQLite trigger', { timeout: 30_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const from = `
@@ -142,22 +143,22 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
       const stmts = result.statements!.join('\n').toUpperCase()
       expect(stmts).toContain('CREATE TRIGGER')
       expect(stmts).toContain('ITEMS_AFTER_DELETE')
-    }, 30_000)
+    })
   })
 
   describe('MySQL', () => {
     let runner: AtlasRunner
 
-    afterAll(async () => {
+    after(async () => {
       if (runner) await runner.close()
     })
 
-    it('inspect produces valid schema for MySQL SQL', async () => {
+    it('inspect produces valid schema for MySQL SQL', { timeout: 120_000 }, async () => {
       runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -178,21 +179,21 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
-      expect(result.schema).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.schema).not.toBe(undefined)
 
       const schemas = result.schema!.schemas
-      expect(schemas.length).toBeGreaterThan(0)
+      expect(schemas.length > 0).toBeTruthy()
 
       const tables = schemas.flatMap((s) => s.tables ?? [])
-      expect(tables.length).toBe(2)
+      expect(tables).toHaveLength(2)
 
       const userTable = tables.find((t) => t.name === 'users')
-      expect(userTable).toBeDefined()
-      expect(userTable!.columns!.length).toBeGreaterThanOrEqual(4)
-    }, 120_000)
+      expect(userTable).not.toBe(undefined)
+      expect(userTable!.columns!.length >= 4).toBeTruthy()
+    })
 
-    it('diff produces migration SQL for MySQL schema changes', async () => {
+    it('diff produces migration SQL for MySQL schema changes', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from = 'CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));'
@@ -200,15 +201,15 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
-      expect(result.statements!.length).toBeGreaterThan(0)
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
+      expect(result.statements!.length > 0).toBeTruthy()
       const stmts = result.statements!.join('\n').toLowerCase()
       expect(stmts).toContain('alter table')
       expect(stmts).toContain('price')
-    }, 120_000)
+    })
 
-    it('inspect captures views in MySQL schema', async () => {
+    it('inspect captures views in MySQL schema', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -218,14 +219,14 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBe(undefined)
       const schemas = result.schema!.schemas
       const views = schemas.flatMap((s) => (s as any).views ?? [])
-      expect(views.length).toBe(1)
+      expect(views).toHaveLength(1)
       expect(views[0].name).toBe('order_summary')
-    }, 120_000)
+    })
 
-    it('diff produces CREATE VIEW for new MySQL view', async () => {
+    it('diff produces CREATE VIEW for new MySQL view', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from =
@@ -237,14 +238,14 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
       const stmts = result.statements!.join('\n').toUpperCase()
       expect(stmts).toContain('CREATE')
       expect(stmts).toContain('ORDER_SUMMARY')
-    }, 120_000)
+    })
 
-    it('inspect captures triggers in MySQL schema', async () => {
+    it('inspect captures triggers in MySQL schema', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -255,17 +256,17 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBe(undefined)
       const schemas = result.schema!.schemas
       const tables = schemas.flatMap((s) => s.tables ?? [])
       const itemsTable = tables.find((t) => t.name === 'items')
-      expect(itemsTable).toBeDefined()
+      expect(itemsTable).not.toBe(undefined)
       const triggers = (itemsTable as any).triggers ?? []
-      expect(triggers.length).toBe(1)
+      expect(triggers).toHaveLength(1)
       expect(triggers[0].name).toBe('items_after_insert')
-    }, 120_000)
+    })
 
-    it('diff produces CREATE TRIGGER for new MySQL trigger', async () => {
+    it('diff produces CREATE TRIGGER for new MySQL trigger', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from = `
@@ -280,14 +281,14 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
       const stmts = result.statements!.join('\n').toUpperCase()
       expect(stmts).toContain('CREATE TRIGGER')
       expect(stmts).toContain('ITEMS_AFTER_DELETE')
-    }, 120_000)
+    })
 
-    it('inspect captures functions in MySQL schema', async () => {
+    it('inspect captures functions in MySQL schema', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -296,15 +297,15 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.inspect([sql])
 
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBe(undefined)
       const schemas = result.schema!.schemas
       const funcs = schemas.flatMap((s) => s.funcs ?? [])
-      expect(funcs.length).toBeGreaterThanOrEqual(1)
+      expect(funcs.length >= 1).toBeTruthy()
       const addTax = funcs.find((f: any) => f.name === 'add_tax')
-      expect(addTax).toBeDefined()
-    }, 120_000)
+      expect(addTax).not.toBe(undefined)
+    })
 
-    it('diff produces CREATE FUNCTION for new MySQL function', async () => {
+    it('diff produces CREATE FUNCTION for new MySQL function', { timeout: 120_000 }, async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from = ''
@@ -312,11 +313,11 @@ describe('Atlas WASI dialect validation', () => {
 
       const result = await runner.diff([from], [to])
 
-      expect(result.error).toBeUndefined()
-      expect(result.statements).toBeDefined()
+      expect(result.error).toBe(undefined)
+      expect(result.statements).not.toBe(undefined)
       const stmts = result.statements!.join('\n').toUpperCase()
       expect(stmts).toContain('CREATE FUNCTION')
       expect(stmts).toContain('DOUBLE_IT')
-    }, 120_000)
+    })
   })
 })

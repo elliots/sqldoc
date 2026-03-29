@@ -144,7 +144,8 @@
     "package.json"
   ],
   "scripts": {
-    "test": "vitest run",
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
     "test:docker": "bun test src/__tests__/docker-templates.test.ts"
   },
   "peerDependencies": {
@@ -162,7 +163,7 @@
     "@sqldoc/ns-validate": "workspace:*",
     "pg": "^8.13.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "typescript": "catalog:",
+    "@sqldoc/test-utils": "workspace:*"
   }
 }

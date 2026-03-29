@@ -1,9 +1,10 @@
+import { describe, it } from 'node:test'
 import type { CompilerOutput } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import { mergeSchemaWithTags } from '../merge'
-import type { AtlasSchema } from '../types'
+import { expect } from '@sqldoc/test-utils'
+import { mergeSchemaWithTags } from '../merge.ts'
+import type { AtlasSchema } from '../types.ts'
 
-// ── Fixtures ─────────────────────────────────────────────────────────
+// -- Fixtures --
 
 function makeAtlasSchema(overrides: Partial<AtlasSchema> = {}): AtlasSchema {
   return {
@@ -58,7 +59,7 @@ function makeOutput(overrides: Partial<CompilerOutput> = {}): CompilerOutput {
   }
 }
 
-// ── Tests ────────────────────────────────────────────────────────────
+// -- Tests --
 
 describe('mergeSchemaWithTags', () => {
   it('merges Atlas table with matching sqldoc tags by normalized name', () => {
@@ -259,7 +260,7 @@ describe('mergeSchemaWithTags', () => {
 
     const usersTable = result.tables.find((t) => t.name === 'users')!
     expect(usersTable.isGenerated).toBe(false)
-    expect(usersTable.generatedBy).toBeUndefined()
+    expect(usersTable.generatedBy).toBe(undefined)
 
     const auditTable = result.tables.find((t) => t.name === 'users_audit')!
     expect(auditTable.isGenerated).toBe(true)
@@ -324,9 +325,9 @@ describe('mergeSchemaWithTags', () => {
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
-    expect(result.generatedAt).toBeDefined()
+    expect(result.generatedAt).not.toBe(undefined)
     const date = new Date(result.generatedAt)
-    expect(date.getTime()).not.toBeNaN()
+    expect(!Number.isNaN(date.getTime())).toBeTruthy()
     expect(result.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
@@ -393,9 +394,9 @@ describe('mergeSchemaWithTags', () => {
     const schema = makeAtlasSchema()
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
-    expect(result.tables[0].previously).toBeUndefined()
+    expect(result.tables[0].previously).toBe(undefined)
     for (const col of result.tables[0].columns) {
-      expect(col.previously).toBeUndefined()
+      expect(col.previously).toBe(undefined)
     }
   })
 })

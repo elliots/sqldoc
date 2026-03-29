@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test '__tests__/**/*.test.ts' 'pagila/*.test.ts' 'postgraphile-kitchensink/*.test.ts' 'pet-store/*.test.ts'"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.4.2",
     "@electric-sql/pglite-tools": "^0.3.2",
     "@sqldoc/core": "workspace:*",
     "@sqldoc/db": "workspace:*",
+    "@sqldoc/test-utils": "workspace:*",
     "@sqldoc/ns-anon": "workspace:*",
     "@sqldoc/ns-audit": "workspace:*",
     "@sqldoc/ns-comment": "workspace:*",
@@ -18,6 +20,6 @@
     "@sqldoc/ns-postgraphile": "workspace:*",
     "@sqldoc/ns-rls": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
-    "vitest": "^4.1.0"
+    "typescript": "catalog:"
   }
 }

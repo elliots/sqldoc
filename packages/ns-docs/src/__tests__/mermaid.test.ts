@@ -1,6 +1,7 @@
+import { describe, it } from 'node:test'
 import type { AtlasRealm } from '@sqldoc/db'
-import { describe, expect, it } from 'vitest'
-import { generateMermaidERD } from '../mermaid'
+import { expect } from '@sqldoc/test-utils'
+import { generateMermaidERD } from '../mermaid.ts'
 
 // Minimal mock AtlasRealm matching the actual lowercase JSON from marshal.go
 const realm: AtlasRealm = {
@@ -95,9 +96,9 @@ describe('generateMermaidERD', () => {
     const postsEnd = lines.findIndex((l, i) => i > postsStart && l.trim() === '}')
     const postsLines = lines.slice(postsStart + 1, postsEnd)
     const idLine = postsLines.find((l) => l.trim().startsWith('bigint id'))
-    expect(idLine).toBeDefined()
-    expect(idLine).toContain('PK')
-    expect(idLine).not.toContain('FK')
+    expect(idLine).not.toBe(undefined)
+    expect(idLine!).toContain('PK')
+    expect(idLine!).not.toContain('FK')
   })
 
   it('FK relationship includes foreign key symbol as label', () => {

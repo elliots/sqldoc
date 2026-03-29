@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 describe('ns-lint plugin', () => {
   it('exports apiVersion === 1', () => {
@@ -11,7 +12,7 @@ describe('ns-lint plugin', () => {
   })
 
   it('has an ignore tag definition', () => {
-    expect(plugin.tags).toHaveProperty('ignore')
+    expect('ignore' in plugin.tags).toBeTruthy()
   })
 
   it('ignore tag targets tables, columns, views, and functions', () => {
@@ -26,6 +27,6 @@ describe('ns-lint plugin', () => {
   })
 
   it('does not produce SQL output (no onTag)', () => {
-    expect(plugin.onTag).toBeUndefined()
+    expect(plugin.onTag).toBe(undefined)
   })
 })

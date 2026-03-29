@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { renderHtml } from '../../renderers/html'
-import { makeMinimalSchema, makeTestSchema } from './fixture'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { renderHtml } from '../../renderers/html.ts'
+import { makeMinimalSchema, makeTestSchema } from './fixture.ts'
 
 describe('renderHtml', () => {
   const schema = makeTestSchema()

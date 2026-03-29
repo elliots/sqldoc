@@ -4,20 +4,20 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDockerAdapter } from './db/docker.ts'
 import { createMysqlAdapter } from './db/mysql.ts'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 import { createPgliteAdapter } from './db/pglite.ts'
 import { createPostgresAdapter } from './db/postgres.ts'
+import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 import { createSqliteAdapter } from './db/sqlite.ts'
 import { validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
 import { createAtlasRunner } from './runner.ts'
 
-export { createDockerAdapter } from './db/docker.ts'
 export { createMysqlAdapter } from './db/mysql.ts'
 export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 export { createPgliteAdapter } from './db/pglite.ts'
 export { createPostgresAdapter } from './db/postgres.ts'
+export { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 export { createSqliteAdapter } from './db/sqlite.ts'
 export type { DatabaseAdapter, ExecResult, QueryResult } from './db/types.ts'
 export { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
@@ -102,7 +102,7 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
   } else {
     // postgres (existing logic preserved exactly)
     if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
-      db = await createDockerAdapter(devUrl)
+      db = await createPostgresDockerAdapter(devUrl)
       if (extensions.length > 0) {
         await validatePostgresExtensions(extensions, (sql) => db.query(sql))
       }

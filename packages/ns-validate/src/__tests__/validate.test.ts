@@ -1,25 +1,7 @@
-import type { TagContext } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
-
-function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
-  return {
-    dialect: 'postgres' as const,
-    target: 'column',
-    objectName: 'users',
-    columnName: 'username',
-    columnType: 'text',
-    tag: { name: 'check', args: {} },
-    namespaceTags: [],
-    siblingTags: [],
-    fileTags: [],
-    astNode: null,
-    fileStatements: [],
-    config: { dialect: 'postgres' },
-    filePath: 'test.sql',
-    ...overrides,
-  }
-}
+import { describe, it } from 'node:test'
+import { makeTagCtx } from '@sqldoc/core/test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 describe('ns-validate plugin', () => {
   it('exports apiVersion === 1', () => {
@@ -31,16 +13,20 @@ describe('ns-validate plugin', () => {
   })
 
   it('has all tag entries', () => {
-    expect(plugin.tags).toHaveProperty('check')
-    expect(plugin.tags).toHaveProperty('notEmpty')
-    expect(plugin.tags).toHaveProperty('range')
-    expect(plugin.tags).toHaveProperty('length')
-    expect(plugin.tags).toHaveProperty('pattern')
+    expect('check' in plugin.tags).toBeTruthy()
+    expect('notEmpty' in plugin.tags).toBeTruthy()
+    expect('range' in plugin.tags).toBeTruthy()
+    expect('length' in plugin.tags).toBeTruthy()
+    expect('pattern' in plugin.tags).toBeTruthy()
   })
 
   describe('onTag', () => {
     it('@validate.check generates ALTER TABLE ADD CONSTRAINT with CHECK', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'check', args: ['length(username) >= 3'] },
       })
       const result = plugin.onTag!(ctx) as any
@@ -52,7 +38,9 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.notEmpty generates CHECK with length(trim(col)) > 0', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
         columnName: 'email',
         tag: { name: 'notEmpty', args: {} },
       })
@@ -65,7 +53,9 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.range generates CHECK with min/max bounds', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
         columnName: 'age',
         columnType: 'integer',
         tag: { name: 'range', args: { min: 0, max: 150 } },
@@ -79,7 +69,11 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.length with both min and max generates combined CHECK', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'length', args: { min: 3, max: 50 } },
       })
       const result = plugin.onTag!(ctx) as any
@@ -91,7 +85,11 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.length with only min generates >= CHECK', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'length', args: { min: 3 } },
       })
       const result = plugin.onTag!(ctx) as any
@@ -103,7 +101,11 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.length with only max generates <= CHECK', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'length', args: { max: 255 } },
       })
       const result = plugin.onTag!(ctx) as any
@@ -115,7 +117,9 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.pattern generates CHECK with regex operator', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
+        dialect: 'postgres',
+        target: 'column',
         columnName: 'email',
         tag: { name: 'pattern', args: ['^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'] },
       })
@@ -159,7 +163,7 @@ describe('ns-validate plugin', () => {
         columnType: 'text',
         objectName: 'users',
       })
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('@validate.notEmpty does not warn on varchar column', () => {
@@ -174,7 +178,7 @@ describe('ns-validate plugin', () => {
         columnType: 'varchar(255)',
         objectName: 'users',
       })
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('@validate.range errors when min >= max', () => {
@@ -219,7 +223,7 @@ describe('ns-validate plugin', () => {
         columnType: 'integer',
         objectName: 'users',
       })
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
 
     it('@validate.length errors when neither min nor max provided', () => {
@@ -273,8 +277,11 @@ describe('ns-validate plugin', () => {
 
   describe('MySQL dialect', () => {
     it('@validate.check uses backtick quoting', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql' as const,
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'check', args: ['length(username) >= 3'] },
       })
       const result = plugin.onTag!(ctx) as any
@@ -286,8 +293,9 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.notEmpty uses backtick quoting', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql' as const,
+        target: 'column',
         columnName: 'email',
         tag: { name: 'notEmpty', args: {} },
       })
@@ -300,8 +308,9 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.range uses backtick quoting', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql' as const,
+        target: 'column',
         columnName: 'age',
         columnType: 'integer',
         tag: { name: 'range', args: { min: 0, max: 150 } },
@@ -315,8 +324,11 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.length uses backtick quoting', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql' as const,
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'length', args: { min: 3, max: 50 } },
       })
       const result = plugin.onTag!(ctx) as any
@@ -328,8 +340,9 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.pattern uses REGEXP operator', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql' as const,
+        target: 'column',
         columnName: 'email',
         tag: { name: 'pattern', args: ['^[a-z]+$'] },
       })
@@ -342,70 +355,80 @@ describe('ns-validate plugin', () => {
     })
 
     it('@validate.notEmpty returns docs metadata', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql' as const,
+        target: 'column',
         columnName: 'email',
         tag: { name: 'notEmpty', args: {} },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.docs).toBeDefined()
+      expect(result.docs).not.toBe(undefined)
       expect(result.docs.columns[0].value).toBe('Not empty')
     })
   })
 
   describe('SQLite dialect', () => {
     it('@validate.check returns docs-only (no SQL)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite' as const,
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'check', args: ['length(username) >= 3'] },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.sql).toBeUndefined()
+      expect(result.sql).toBe(undefined)
     })
 
     it('@validate.notEmpty returns docs-only (no SQL)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite' as const,
+        target: 'column',
         columnName: 'email',
         tag: { name: 'notEmpty', args: {} },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.sql).toBeUndefined()
-      expect(result.docs).toBeDefined()
+      expect(result.sql).toBe(undefined)
+      expect(result.docs).not.toBe(undefined)
       expect(result.docs.columns[0].value).toBe('Not empty')
     })
 
     it('@validate.range returns docs-only (no SQL)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite' as const,
+        target: 'column',
         columnName: 'age',
         columnType: 'integer',
         tag: { name: 'range', args: { min: 0, max: 150 } },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.sql).toBeUndefined()
-      expect(result.docs).toBeDefined()
+      expect(result.sql).toBe(undefined)
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@validate.length returns docs-only (no SQL)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite' as const,
+        target: 'column',
+        columnName: 'username',
+        columnType: 'text',
         tag: { name: 'length', args: { min: 3, max: 50 } },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.sql).toBeUndefined()
-      expect(result.docs).toBeDefined()
+      expect(result.sql).toBe(undefined)
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@validate.pattern returns docs-only (no SQL)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite' as const,
+        target: 'column',
         columnName: 'email',
         tag: { name: 'pattern', args: ['^[a-z]+$'] },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.sql).toBeUndefined()
-      expect(result.docs).toBeDefined()
+      expect(result.sql).toBe(undefined)
+      expect(result.docs).not.toBe(undefined)
     })
   })
 })

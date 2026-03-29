@@ -1,15 +1,16 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createSqliteAdapter } from '../db/sqlite'
-import type { DatabaseAdapter } from '../db/types'
+import { after, before, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { createSqliteAdapter } from '../db/sqlite.ts'
+import type { DatabaseAdapter } from '../db/types.ts'
 
 describe('SQLite adapter', () => {
   let adapter: DatabaseAdapter
 
-  beforeAll(async () => {
+  before(async () => {
     adapter = await createSqliteAdapter(':memory:')
   })
 
-  afterAll(async () => {
+  after(async () => {
     await adapter.close()
   })
 
@@ -29,7 +30,7 @@ describe('SQLite adapter', () => {
     const result = await adapter.exec(
       'CREATE TABLE test_tbl (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, active INTEGER DEFAULT 1)',
     )
-    expect(result).toHaveProperty('rowsAffected')
+    expect('rowsAffected' in result).toBeTruthy()
     expect(typeof result.rowsAffected).toBe('number')
   })
 

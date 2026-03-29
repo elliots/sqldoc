@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { createPgliteAdapter } from '../db/pglite'
-import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from '../extensions'
-import { createRunner } from '../index'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { createPgliteAdapter } from '../db/pglite.ts'
+import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from '../extensions.ts'
+import { createRunner } from '../index.ts'
 
 describe('extractExtensions', () => {
   it('extracts unquoted extension name', () => {
@@ -63,13 +64,13 @@ describe('validatePgliteExtensions', () => {
   })
 
   it('throws for unknown extension with pretty output', async () => {
-    await expect(validatePgliteExtensions(['nonexistent_ext'])).rejects.toThrow('not available')
+    await expect(validatePgliteExtensions(['nonexistent_ext'])).rejects.toThrow(/not available/)
   })
 
   it('throws listing all extensions with status', async () => {
     try {
       await validatePgliteExtensions(['uuid_ossp', 'nonexistent_ext'])
-      expect.fail('should have thrown')
+      throw new Error('should have thrown')
     } catch (e: any) {
       expect(e.message).toContain('uuid_ossp')
       expect(e.message).toContain('nonexistent_ext')
@@ -83,7 +84,8 @@ describe('validatePostgresExtensions', () => {
     const mockQuery = async () => ({
       rows: [['pg_trgm'], ['uuid_ossp']],
     })
-    await expect(validatePostgresExtensions(['pg_trgm', 'uuid_ossp'], mockQuery)).resolves.toBeUndefined()
+    await validatePostgresExtensions(['pg_trgm', 'uuid_ossp'], mockQuery)
+    // If it didn't throw, it passed
   })
 
   it('throws when extension missing', async () => {
@@ -91,7 +93,7 @@ describe('validatePostgresExtensions', () => {
       rows: [['pg_trgm']],
     })
     await expect(validatePostgresExtensions(['pg_trgm', 'missing_ext'], mockQuery)).rejects.toThrow(
-      'not available on this database',
+      /not available on this database/,
     )
   })
 
@@ -99,7 +101,8 @@ describe('validatePostgresExtensions', () => {
     const mockQuery = async () => {
       throw new Error('should not be called')
     }
-    await expect(validatePostgresExtensions([], mockQuery as any)).resolves.toBeUndefined()
+    await validatePostgresExtensions([], mockQuery as any)
+    // If it didn't throw, it passed
   })
 })
 
@@ -138,7 +141,7 @@ describe('pglite extension loading (integration)', { timeout: 30_000 }, () => {
     const runner = await createRunner({ dialect: 'postgres', extensions: ['hstore'] })
     try {
       const result = await runner.inspect([sql], { schema: 'public' })
-      expect(result.error).toBeUndefined()
+      expect(result.error).toBe(undefined)
       const tables = result.schema?.schemas?.[0]?.tables ?? []
       expect(tables.some((t) => t.name === 'settings')).toBe(true)
     } finally {

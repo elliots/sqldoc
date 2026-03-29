@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import pc from 'picocolors'
+import packageJson from '../package.json' with { type: 'json' }
 import { addCommand } from './commands/add.ts'
 import { initCommand } from './commands/init.ts'
 import { upgradeCommand } from './commands/upgrade.ts'
@@ -10,26 +11,75 @@ import { findSqldocDir } from './find-sqldoc.ts'
 import { getPackageManagerCommand } from './runtime.ts'
 
 // Version is set at build time — the compiled binary can't read package.json
-const VERSION = '0.0.1'
+const VERSION = packageJson.version
 
-const HELP = `
-${pc.bold('sqldoc')} - SQL documentation and code generation
+type CommandInfo = {
+  name: string
+  description: string
+  subcommands?: CommandInfo[]
+}
 
-${pc.dim('Usage:')}
-  sqldoc <command> [options]
+/** Discover commands from the project-local @sqldoc/cli via --help-json. */
+function discoverCliCommands(sqldocDir: string): CommandInfo[] | null {
+  let localCli = path.join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'src', 'index.ts')
+  if (!fs.existsSync(localCli)) {
+    localCli = path.join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'dist', 'index.js')
+  }
+  if (!fs.existsSync(localCli)) return null
 
-${pc.dim('Built-in commands:')}
-  init                 Initialize .sqldoc/ in the current directory
-  add <packages...>    Install packages into .sqldoc/node_modules
-  upgrade              Update all packages in .sqldoc/
+  try {
+    const output = execSync(`"${process.execPath}" "${localCli}" --help-json`, {
+      env: {
+        ...process.env,
+        NODE_PATH: path.join(sqldocDir, 'node_modules'),
+        BUN_BE_BUN: '1',
+      },
+      timeout: 10000,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    return JSON.parse(output)
+  } catch {
+    return null
+  }
+}
 
-${pc.dim('Options:')}
-  --version, -V        Show version
-  --help, -h           Show this help
+function buildHelp(): string {
+  const sqldocDir = findSqldocDir()
 
-All other commands are delegated to the project-local @sqldoc/cli
-installed in .sqldoc/node_modules/@sqldoc/cli.
-`.trim()
+  const lines: string[] = [
+    `${pc.bold('sqldoc')} - SQL documentation and code generation`,
+    '',
+    `${pc.dim('Usage:')}`,
+    '  sqldoc <command> [options]',
+    '',
+    `${pc.dim('Commands:')}`,
+    '  init                 Initialize .sqldoc/ in the current directory',
+    '  add <packages...>    Install packages into .sqldoc/',
+    '  upgrade              Update all packages in .sqldoc/',
+  ]
+
+  const cliCommands = sqldocDir ? discoverCliCommands(sqldocDir) : null
+  if (cliCommands) {
+    for (const cmd of cliCommands) {
+      lines.push(`  ${cmd.name.padEnd(19)} ${cmd.description}`)
+      if (cmd.subcommands) {
+        for (const sub of cmd.subcommands) {
+          lines.push(`··${`${cmd.name}·${sub.name}`.padEnd(19)}·${sub.description}`)
+        }
+      }
+    }
+  }
+
+  lines.push(
+    '',
+    `${pc.dim('Options:')}`,
+    '  --version, -V        Show version',
+    '  --help, -h           Show this help',
+  )
+
+  return lines.join('\n')
+}
 
 /** Run install in .sqldoc/ to ensure node_modules is up to date */
 function ensureDeps(sqldocDir: string): void {
@@ -85,7 +135,7 @@ async function main(): Promise<void> {
   }
 
   if (command === '--help' || command === '-h') {
-    console.log(HELP)
+    console.log(buildHelp())
     return
   }
 
@@ -111,7 +161,7 @@ async function main(): Promise<void> {
 
   // No command given → show help
   if (!command) {
-    console.log(HELP)
+    console.log(buildHelp())
     return
   }
 

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { toCamelCase, toPascalCase, toScreamingSnake } from '../helpers/naming'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { toCamelCase, toPascalCase, toScreamingSnake } from '../helpers/naming.ts'
 
 describe('toPascalCase', () => {
   it('converts snake_case to PascalCase', () => {

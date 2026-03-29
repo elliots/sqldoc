@@ -1,23 +1,7 @@
-import type { TagContext } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
-
-function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
-  return {
-    dialect: 'postgres',
-    target: 'table',
-    objectName: 'users',
-    tag: { name: '$self', args: {} },
-    namespaceTags: [],
-    siblingTags: [],
-    fileTags: [],
-    astNode: null,
-    fileStatements: [],
-    config: { dialect: 'postgres' },
-    filePath: 'test.sql',
-    ...overrides,
-  }
-}
+import { describe, it } from 'node:test'
+import { makeTagCtx } from '@sqldoc/core/test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 describe('ns-deprecated plugin', () => {
   it('exports apiVersion === 1', () => {
@@ -29,14 +13,14 @@ describe('ns-deprecated plugin', () => {
   })
 
   it('has $self, replace, and remove tag entries', () => {
-    expect(plugin.tags).toHaveProperty('$self')
-    expect(plugin.tags).toHaveProperty('replace')
-    expect(plugin.tags).toHaveProperty('remove')
+    expect('$self' in plugin.tags).toBeTruthy()
+    expect('replace' in plugin.tags).toBeTruthy()
+    expect('remove' in plugin.tags).toBeTruthy()
   })
 
-  describe('onTag — Postgres', () => {
+  describe('onTag -- Postgres', () => {
     it('@deprecated on a table generates COMMENT ON TABLE', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'users',
@@ -47,7 +31,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated with null tag name generates COMMENT ON TABLE', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'users',
@@ -58,7 +42,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated on a column generates COMMENT ON COLUMN with qualified name', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'column',
         objectName: 'users',
@@ -70,7 +54,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated on a view generates COMMENT ON VIEW', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'view',
         objectName: 'active_users',
@@ -81,7 +65,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated on a function generates COMMENT ON FUNCTION', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'function',
         objectName: 'get_user',
@@ -92,7 +76,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated on a type generates COMMENT ON TYPE', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'type',
         objectName: 'status_enum',
@@ -103,7 +87,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated.replace generates COMMENT with replacement suggestion', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'old_users',
@@ -114,7 +98,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated.remove generates COMMENT with removal date', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'table',
         objectName: 'legacy_data',
@@ -127,7 +111,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated.replace on a column generates correct qualified COMMENT', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'postgres',
         target: 'column',
         objectName: 'users',
@@ -139,9 +123,9 @@ describe('ns-deprecated plugin', () => {
     })
   })
 
-  describe('onTag — MySQL', () => {
+  describe('onTag -- MySQL', () => {
     it('@deprecated on a table generates ALTER TABLE COMMENT', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'table',
         objectName: 'users',
@@ -149,11 +133,11 @@ describe('ns-deprecated plugin', () => {
       })
       const result = plugin.onTag!(ctx) as any
       expect(result.sql).toEqual([{ sql: "ALTER TABLE `users` COMMENT = 'DEPRECATED';" }])
-      expect(result.docs).toBeDefined()
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@deprecated on a column generates ALTER TABLE MODIFY COLUMN', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'column',
         objectName: 'users',
@@ -168,7 +152,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated.replace on a MySQL table includes replacement text', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'table',
         objectName: 'old_users',
@@ -179,7 +163,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated on a MySQL view returns docs-only output (no sql)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'view',
         objectName: 'active_users',
@@ -187,11 +171,11 @@ describe('ns-deprecated plugin', () => {
       })
       const result = plugin.onTag!(ctx) as any
       expect(result.sql).toEqual([])
-      expect(result.docs).toBeDefined()
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@deprecated on a MySQL function returns docs-only output (no sql)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'function',
         objectName: 'get_user',
@@ -199,11 +183,11 @@ describe('ns-deprecated plugin', () => {
       })
       const result = plugin.onTag!(ctx) as any
       expect(result.sql).toEqual([])
-      expect(result.docs).toBeDefined()
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@deprecated on a MySQL type returns docs-only output (no sql)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'type',
         objectName: 'status_enum',
@@ -211,13 +195,13 @@ describe('ns-deprecated plugin', () => {
       })
       const result = plugin.onTag!(ctx) as any
       expect(result.sql).toEqual([])
-      expect(result.docs).toBeDefined()
+      expect(result.docs).not.toBe(undefined)
     })
   })
 
-  describe('onTag — SQLite', () => {
+  describe('onTag -- SQLite', () => {
     it('@deprecated on SQLite table returns docs-only output (no sql)', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite',
         target: 'table',
         objectName: 'users',
@@ -225,11 +209,11 @@ describe('ns-deprecated plugin', () => {
       })
       const result = plugin.onTag!(ctx) as any
       expect(result.sql).toEqual([])
-      expect(result.docs).toBeDefined()
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@deprecated.replace on SQLite returns docs-only with replacement info', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite',
         target: 'table',
         objectName: 'old_users',
@@ -241,7 +225,7 @@ describe('ns-deprecated plugin', () => {
     })
 
     it('@deprecated.remove on SQLite returns docs-only with removal date', () => {
-      const ctx = makeCtx({
+      const ctx = makeTagCtx({
         dialect: 'sqlite',
         target: 'column',
         objectName: 'users',
@@ -256,9 +240,9 @@ describe('ns-deprecated plugin', () => {
 
   describe('validation', () => {
     it('@deprecated tags have no validate function (metadata only)', () => {
-      expect(plugin.tags.$self!.validate).toBeUndefined()
-      expect(plugin.tags.replace.validate).toBeUndefined()
-      expect(plugin.tags.remove.validate).toBeUndefined()
+      expect(plugin.tags.$self!.validate).toBe(undefined)
+      expect(plugin.tags.replace.validate).toBe(undefined)
+      expect(plugin.tags.remove.validate).toBe(undefined)
     })
   })
 })

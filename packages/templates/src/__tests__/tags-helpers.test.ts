@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { findRename, findTypeOverride, isSkipped } from '../helpers/tags'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { findRename, findTypeOverride, isSkipped } from '../helpers/tags.ts'
 
 describe('findRename', () => {
   it('returns undefined when no rename tag exists', () => {
     const tags = [{ namespace: 'codegen', tag: 'skip', args: [] }]
-    expect(findRename(tags, 'typescript')).toBeUndefined()
+    expect(findRename(tags, 'typescript')).toBe(undefined)
   })
 
   it('returns global rename when no template-specific exists', () => {
@@ -54,7 +55,7 @@ describe('isSkipped', () => {
 describe('findTypeOverride', () => {
   it('returns undefined when no type tag exists', () => {
     const tags = [{ namespace: 'codegen', tag: 'rename', args: ['Foo'] }]
-    expect(findTypeOverride(tags, 'typescript')).toBeUndefined()
+    expect(findTypeOverride(tags, 'typescript')).toBe(undefined)
   })
 
   it('returns global type override', () => {

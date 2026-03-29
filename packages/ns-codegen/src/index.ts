@@ -2,7 +2,7 @@ import * as path from 'node:path'
 import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
 import { findSqldocDir, tsImport, unwrapDefault } from '@sqldoc/core'
 import type { AtlasRealm } from '@sqldoc/db'
-import type { CodegenConfig, CodegenNamespaceConfig, TemplateContext } from './types.ts'
+import type { CodegenConfig, TemplateContext } from './types.ts'
 
 /** Extract template name from import path: '@sqldoc/templates/typescript' -> 'typescript', './my.ts' -> 'my' */
 function extractTemplateName(importPath: string): string {

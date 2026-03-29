@@ -1,14 +1,15 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { DatabaseAdapter } from '../db/types'
-import type { AtlasRunner } from '../runner'
+import { after, before, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import type { DatabaseAdapter } from '../db/types.ts'
+import type { AtlasRunner } from '../runner.ts'
 
 // Paths for atlas.wasm and built worker
-const WASM_PATH = process.env.ATLAS_WASM_PATH ?? path.resolve(__dirname, '../../wasm/atlas.wasm')
+const WASM_PATH = process.env.ATLAS_WASM_PATH ?? path.resolve(import.meta.dirname, '../../wasm/atlas.wasm')
 
-const WORKER_JS = path.resolve(__dirname, '../../dist/worker.js')
-const WORKER_TS = path.resolve(__dirname, '../worker.ts')
+const WORKER_JS = path.resolve(import.meta.dirname, '../../dist/worker.js')
+const WORKER_TS = path.resolve(import.meta.dirname, '../worker.ts')
 
 const wasmExists = fs.existsSync(WASM_PATH)
 const workerExists = fs.existsSync(WORKER_JS) || fs.existsSync(WORKER_TS)
@@ -25,9 +26,9 @@ describe('atlas runner (integration)', () => {
   let runner: AtlasRunner
   let db: DatabaseAdapter
 
-  beforeAll(async () => {
-    const { createAtlasRunner } = await import('../runner')
-    const { createPgliteAdapter } = await import('../db/pglite')
+  before(async () => {
+    const { createAtlasRunner } = await import('../runner.ts')
+    const { createPgliteAdapter } = await import('../db/pglite.ts')
 
     db = await createPgliteAdapter()
     runner = await createAtlasRunner({
@@ -35,37 +36,37 @@ describe('atlas runner (integration)', () => {
       db,
       dialect: 'postgres',
     })
-  }, 60_000)
+  })
 
-  afterAll(async () => {
+  after(async () => {
     if (runner) await runner.close()
   })
 
-  it('inspect with simple CREATE TABLE returns schema', async () => {
+  it('inspect with simple CREATE TABLE returns schema', { timeout: 30_000 }, async () => {
     const result = await runner.inspect(['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL);'], {
       schema: 'public',
     })
 
-    expect(result.error).toBeUndefined()
-    expect(result.schema).toBeDefined()
-    expect(result.schema!.schemas.length).toBeGreaterThan(0)
+    expect(result.error).toBe(undefined)
+    expect(result.schema).not.toBe(undefined)
+    expect(result.schema!.schemas.length > 0).toBeTruthy()
 
     const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
-    expect(publicSchema).toBeDefined()
-    expect(publicSchema!.tables).toBeDefined()
-    expect(publicSchema!.tables!.length).toBeGreaterThan(0)
+    expect(publicSchema).not.toBe(undefined)
+    expect(publicSchema!.tables).not.toBe(undefined)
+    expect(publicSchema!.tables!.length > 0).toBeTruthy()
 
     const usersTable = publicSchema!.tables!.find((t) => t.name === 'users')
-    expect(usersTable).toBeDefined()
-    expect(usersTable!.columns).toBeDefined()
+    expect(usersTable).not.toBe(undefined)
+    expect(usersTable!.columns).not.toBe(undefined)
 
     // Should have id and email columns
     const colNames = usersTable!.columns!.map((c) => c.name)
     expect(colNames).toContain('id')
     expect(colNames).toContain('email')
-  }, 30_000)
+  })
 
-  it('inspect with tagged SQL returns tags in attrs', async () => {
+  it('inspect with tagged SQL returns tags in attrs', { timeout: 30_000 }, async () => {
     const sql = [
       `-- @audit.track(on: [delete, update])
 CREATE TABLE orders (
@@ -77,45 +78,45 @@ CREATE TABLE orders (
 
     const result = await runner.inspect(sql, { schema: 'public' })
 
-    expect(result.error).toBeUndefined()
-    expect(result.schema).toBeDefined()
+    expect(result.error).toBe(undefined)
+    expect(result.schema).not.toBe(undefined)
 
     const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
     const ordersTable = publicSchema!.tables!.find((t) => t.name === 'orders')
-    expect(ordersTable).toBeDefined()
+    expect(ordersTable).not.toBe(undefined)
 
     // Table should have audit.track tag in its attrs
     const tableAttrs = ordersTable!.attrs ?? []
     const tableTags = tableAttrs.filter((a: any) => 'Name' in a && 'Args' in a && !('Expr' in a))
     const auditTag = tableTags.find((t: any) => t.Name === 'audit.track')
-    expect(auditTag).toBeDefined()
+    expect(auditTag).not.toBe(undefined)
     expect((auditTag as any).Args).toContain('delete')
 
     // Column customer_email should have pii.mask tag
     const emailCol = ordersTable!.columns!.find((c) => c.name === 'customer_email')
-    expect(emailCol).toBeDefined()
+    expect(emailCol).not.toBe(undefined)
 
     const colAttrs = emailCol!.attrs ?? []
     const colTags = colAttrs.filter((a: any) => 'Name' in a && 'Args' in a && !('Expr' in a))
     const piiTag = colTags.find((t: any) => t.Name === 'pii.mask')
-    expect(piiTag).toBeDefined()
-  }, 30_000)
+    expect(piiTag).not.toBe(undefined)
+  })
 
-  it('diff with empty from and CREATE TABLE to returns statements', async () => {
+  it('diff with empty from and CREATE TABLE to returns statements', { timeout: 30_000 }, async () => {
     const result = await runner.diff([], ['CREATE TABLE items (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);'], {
       schema: 'public',
     })
 
-    expect(result.error).toBeUndefined()
-    expect(result.statements).toBeDefined()
-    expect(result.statements!.length).toBeGreaterThan(0)
+    expect(result.error).toBe(undefined)
+    expect(result.statements).not.toBe(undefined)
+    expect(result.statements!.length > 0).toBeTruthy()
 
     // Should contain a CREATE TABLE statement
     const hasCreate = result.statements!.some((s) => s.toUpperCase().includes('CREATE TABLE'))
     expect(hasCreate).toBe(true)
-  }, 30_000)
+  })
 
-  it('diff with non-empty from and modified to returns ALTER statements', async () => {
+  it('diff with non-empty from and modified to returns ALTER statements', { timeout: 30_000 }, async () => {
     const from = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);']
     const to = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT);']
     const result = await runner.diff(from, to, { schema: 'public' })
@@ -124,14 +125,14 @@ CREATE TABLE orders (
       console.warn('KNOWN ISSUE: Atlas WASI single-DB problem --', result.error)
       return // Skip assertions, document the issue
     }
-    expect(result.statements).toBeDefined()
-    expect(result.statements!.length).toBeGreaterThan(0)
+    expect(result.statements).not.toBe(undefined)
+    expect(result.statements!.length > 0).toBeTruthy()
     // Should contain an ALTER TABLE adding the email column
     const hasAlter = result.statements!.some((s) => s.toUpperCase().includes('ALTER TABLE'))
     expect(hasAlter).toBe(true)
-  }, 30_000)
+  })
 
-  it('includes RLS policies in diff output', async () => {
+  it('includes RLS policies in diff output', { timeout: 30_000 }, async () => {
     const from: string[] = []
     const to = [
       `CREATE TABLE users (id BIGSERIAL PRIMARY KEY, org_id BIGINT NOT NULL);
@@ -141,37 +142,37 @@ CREATE TABLE orders (
     // Realm-level diff to capture all objects
     const result = await runner.diff(from, to)
 
-    expect(result.error).toBeUndefined()
-    expect(result.statements).toBeDefined()
+    expect(result.error).toBe(undefined)
+    expect(result.statements).not.toBe(undefined)
 
     const allSql = result.statements!.join('\n').toUpperCase()
     expect(allSql).toContain('CREATE TABLE')
     expect(allSql).toContain('ROW LEVEL SECURITY')
     expect(allSql).toContain('CREATE POLICY')
-  }, 30_000)
+  })
 
-  it('includes event triggers in realm-level diff output', async () => {
+  it('includes event triggers in realm-level diff output', { timeout: 30_000 }, async () => {
     const from: string[] = []
     const to = [
       `CREATE TABLE audit_log (id BIGSERIAL PRIMARY KEY, event TEXT);
        CREATE OR REPLACE FUNCTION log_ddl() RETURNS event_trigger LANGUAGE plpgsql AS $$ BEGIN INSERT INTO audit_log (event) VALUES (tg_tag); END $$;
        CREATE EVENT TRIGGER ddl_logger ON ddl_command_end EXECUTE FUNCTION log_ddl();`,
     ]
-    // No schema filter — realm-level diff captures event triggers
+    // No schema filter -- realm-level diff captures event triggers
     const result = await runner.diff(from, to)
 
-    expect(result.error).toBeUndefined()
-    expect(result.statements).toBeDefined()
+    expect(result.error).toBe(undefined)
+    expect(result.statements).not.toBe(undefined)
 
     const allSql = result.statements!.join('\n').toUpperCase()
     expect(allSql).toContain('CREATE TABLE')
     expect(allSql).toContain('CREATE EVENT TRIGGER')
-  }, 30_000)
+  })
 })
 
 describe('atlas runner (unit)', () => {
   it('createAtlasRunner throws if wasmPath does not exist', async () => {
-    const { createAtlasRunner } = await import('../runner')
+    const { createAtlasRunner } = await import('../runner.ts')
     const mockDb: DatabaseAdapter = {
       async query() {
         return { columns: [], rows: [] }
@@ -184,7 +185,7 @@ describe('atlas runner (unit)', () => {
 
     await expect(
       createAtlasRunner({ wasmPath: '/nonexistent/atlas.wasm', db: mockDb, dialect: 'postgres' }),
-    ).rejects.toThrow('not found')
+    ).rejects.toThrow(/not found/)
   })
 })
 

@@ -4,3 +4,8 @@ packages:
   - 'vscode-sqldoc'
   - 'sqlparser-ts'
   - 'tests'
+
+catalog:
+  typescript: '6.0.2'
+  '@types/node': '22'
+  picocolors: '1.1.1'

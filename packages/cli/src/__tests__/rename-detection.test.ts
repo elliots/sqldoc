@@ -1,5 +1,6 @@
+import { describe, it } from 'node:test'
 import type { CompilerOutput } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
+import { expect } from '@sqldoc/test-utils'
 import { buildRenamesFromPreviously } from '../commands/migrate.ts'
 
 function makeOutput(

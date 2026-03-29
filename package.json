@@ -6,17 +6,17 @@
   "scripts": {
     "build": "cd vscode-sqldoc && node build.mjs && cd .. && bash scripts/build-binary.sh",
     "install-vscode-extension": "cd vscode-sqldoc && pnpm run install-ext",
-    "test:node": "pnpm -r run test",
-    "test:bun": "bun test tests/__tests__ && bun test packages",
+    "test:node": "node --test 'packages/**/*.test.ts' 'tests/**/*.test.ts'",
+    "test:bun": "bun test ./packages ./tests --timeout ${TEST_TIMEOUT:-20000}",
     "test-docs": "./scripts/test-docs.sh",
     "format": "biome format --write .",
     "check": "biome check --fix . && pnpm -r run typecheck",
     "check:licenses": "pnpm licenses list --prod --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));const bad=Object.keys(d).filter(l=>/GPL|AGPL|EUPL|SSPL|BSL-1|CPAL|OSL-3/i.test(l));if(bad.length){console.error('Copyleft licenses found:',bad);process.exit(1)}else console.log('All licenses OK')\""
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
-    "@types/node": "^25.5.0",
-    "lefthook": "^2.1.4"
+    "@biomejs/biome": "2.4.8",
+    "@types/node": "catalog:",
+    "lefthook": "2.1.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

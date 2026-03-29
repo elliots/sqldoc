@@ -21,18 +21,18 @@
     "package.json"
   ],
   "scripts": {
-    "test": "vitest run",
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "picocolors": "^1.1.1"
+    "picocolors": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "@sqldoc/test-utils": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   }
 }

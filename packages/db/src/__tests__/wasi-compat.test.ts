@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { getWasiImports } from '../wasi-host'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { getWasiImports } from '../wasi-host.ts'
 
 describe('getWasiImports', () => {
   it('uses getImportObject when available (Node.js API)', () => {
@@ -9,8 +10,8 @@ describe('getWasiImports', () => {
       }),
     }
     const result = getWasiImports(mockWasi as any)
-    expect(result).toHaveProperty('wasi_snapshot_preview1')
-    expect(result.wasi_snapshot_preview1).toHaveProperty('fd_write')
+    expect('wasi_snapshot_preview1' in result).toBeTruthy()
+    expect('fd_write' in result.wasi_snapshot_preview1).toBeTruthy()
   })
 
   it('uses wasiImport when getImportObject is missing (Bun API)', () => {
@@ -18,9 +19,9 @@ describe('getWasiImports', () => {
       wasiImport: { fd_write: () => {}, fd_read: () => {} },
     }
     const result = getWasiImports(mockWasi as any)
-    expect(result).toHaveProperty('wasi_snapshot_preview1')
-    expect(result.wasi_snapshot_preview1).toHaveProperty('fd_write')
-    expect(result.wasi_snapshot_preview1).toHaveProperty('fd_read')
+    expect('wasi_snapshot_preview1' in result).toBeTruthy()
+    expect('fd_write' in result.wasi_snapshot_preview1).toBeTruthy()
+    expect('fd_read' in result.wasi_snapshot_preview1).toBeTruthy()
   })
 
   it('prefers getImportObject over wasiImport when both exist', () => {
@@ -31,11 +32,11 @@ describe('getWasiImports', () => {
       wasiImport: { from_wasiImport: true },
     }
     const result = getWasiImports(mockWasi as any)
-    expect(result.wasi_snapshot_preview1).toHaveProperty('from_getImportObject')
+    expect('from_getImportObject' in result.wasi_snapshot_preview1).toBeTruthy()
   })
 
   it('throws when neither API is available', () => {
     const mockWasi = {}
-    expect(() => getWasiImports(mockWasi as any)).toThrow('Cannot get WASI imports')
+    expect(() => getWasiImports(mockWasi as any)).toThrow(/Cannot get WASI imports/)
   })
 })

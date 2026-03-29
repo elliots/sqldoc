@@ -18,7 +18,8 @@
     "package.json"
   ],
   "scripts": {
-    "test": "vitest run"
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "@sqldoc/core": "workspace:*",
@@ -27,7 +28,7 @@
   "devDependencies": {
     "@sqldoc/core": "workspace:*",
     "@sqldoc/db": "workspace:*",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "typescript": "catalog:",
+    "@sqldoc/test-utils": "workspace:*"
   }
 }

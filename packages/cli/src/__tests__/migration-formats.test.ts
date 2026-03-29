@@ -1,7 +1,8 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import type { ParsedMigration } from '../utils/migration-formats.ts'
 import { concatUpScripts, readMigrations, sanitizeName, writeMigration } from '../utils/migration-formats.ts'
 
@@ -20,7 +21,7 @@ describe('readMigrations', () => {
     expect(readMigrations(path.join(tmpDir, 'nonexistent'), 'plain')).toEqual([])
   })
 
-  // ── plain format ──────────────────────────────────────────────────
+  // -- plain format --
 
   describe('plain format', () => {
     it('reads entire file as up SQL', () => {
@@ -31,7 +32,7 @@ describe('readMigrations', () => {
       const result = readMigrations(dir, 'plain')
       expect(result).toHaveLength(1)
       expect(result[0].up).toBe('CREATE TABLE users (id INT);')
-      expect(result[0].down).toBeUndefined()
+      expect(result[0].down).toBe(undefined)
       expect(result[0].sortKey).toBe('001')
     })
 
@@ -47,7 +48,7 @@ describe('readMigrations', () => {
     })
   })
 
-  // ── atlas format ──────────────────────────────────────────────────
+  // -- atlas format --
 
   describe('atlas format', () => {
     it('reads entire file as up SQL with timestamp sort key', () => {
@@ -59,11 +60,11 @@ describe('readMigrations', () => {
       expect(result).toHaveLength(1)
       expect(result[0].up).toBe('CREATE TABLE users (id SERIAL);')
       expect(result[0].sortKey).toBe('20260322120000')
-      expect(result[0].down).toBeUndefined()
+      expect(result[0].down).toBe(undefined)
     })
   })
 
-  // ── goose format ──────────────────────────────────────────────────
+  // -- goose format --
 
   describe('goose format', () => {
     it('extracts up and down sections', () => {
@@ -97,7 +98,7 @@ CREATE TABLE users (id INT);
 
       const result = readMigrations(dir, 'goose')
       expect(result[0].up).toBe('CREATE TABLE users (id INT);')
-      expect(result[0].down).toBeUndefined()
+      expect(result[0].down).toBe(undefined)
     })
 
     it('handles multi-statement up and down', () => {
@@ -118,12 +119,12 @@ DROP TABLE a;
       const result = readMigrations(dir, 'goose')
       expect(result[0].up).toContain('CREATE TABLE a')
       expect(result[0].up).toContain('CREATE TABLE b')
-      expect(result[0].down).toContain('DROP TABLE b')
-      expect(result[0].down).toContain('DROP TABLE a')
+      expect(result[0].down!).toContain('DROP TABLE b')
+      expect(result[0].down!).toContain('DROP TABLE a')
     })
   })
 
-  // ── golang-migrate format ─────────────────────────────────────────
+  // -- golang-migrate format --
 
   describe('golang-migrate format', () => {
     it('pairs .up.sql and .down.sql files', () => {
@@ -147,7 +148,7 @@ DROP TABLE a;
       const result = readMigrations(dir, 'golang-migrate')
       expect(result).toHaveLength(1)
       expect(result[0].up).toBe('CREATE TABLE users (id INT);')
-      expect(result[0].down).toBeUndefined()
+      expect(result[0].down).toBe(undefined)
     })
 
     it('handles multiple migration pairs', () => {
@@ -165,7 +166,7 @@ DROP TABLE a;
     })
   })
 
-  // ── flyway format ─────────────────────────────────────────────────
+  // -- flyway format --
 
   describe('flyway format', () => {
     it('reads V files as up and pairs with U files for down', () => {
@@ -187,7 +188,7 @@ DROP TABLE a;
       fs.writeFileSync(path.join(dir, 'V1__init.sql'), 'CREATE TABLE users (id INT);')
 
       const result = readMigrations(dir, 'flyway')
-      expect(result[0].down).toBeUndefined()
+      expect(result[0].down).toBe(undefined)
     })
 
     it('reads multiple versions in order', () => {
@@ -203,7 +204,7 @@ DROP TABLE a;
     })
   })
 
-  // ── dbmate format ─────────────────────────────────────────────────
+  // -- dbmate format --
 
   describe('dbmate format', () => {
     it('extracts up and down sections', () => {
@@ -237,12 +238,12 @@ CREATE TABLE users (id INT);
 
       const result = readMigrations(dir, 'dbmate')
       expect(result[0].up).toBe('CREATE TABLE users (id INT);')
-      expect(result[0].down).toBeUndefined()
+      expect(result[0].down).toBe(undefined)
     })
   })
 })
 
-// ── writeMigration ──────────────────────────────────────────────────
+// -- writeMigration --
 
 describe('writeMigration', () => {
   let tmpDir: string
@@ -445,7 +446,7 @@ describe('writeMigration', () => {
   })
 })
 
-// ── sanitizeName ────────────────────────────────────────────────────
+// -- sanitizeName --
 
 describe('sanitizeName', () => {
   it('lowercases and replaces non-alphanum with underscore', () => {
@@ -462,7 +463,7 @@ describe('sanitizeName', () => {
   })
 })
 
-// ── concatUpScripts ─────────────────────────────────────────────────
+// -- concatUpScripts --
 
 describe('concatUpScripts', () => {
   it('concatenates up scripts with double newlines', () => {

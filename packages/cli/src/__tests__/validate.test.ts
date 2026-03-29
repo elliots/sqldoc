@@ -1,7 +1,8 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it } from 'node:test'
+import { expect, mockMethod } from '@sqldoc/test-utils'
 
 describe('validateCommand', () => {
   let tmpDir: string
@@ -44,7 +45,7 @@ CREATE TABLE good (
       'utf-8',
     )
 
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const consoleSpy = mockMethod(console, 'log', () => {})
 
     const { validateCommand } = await import('../commands/validate.ts')
     process.exitCode = undefined as any
@@ -53,7 +54,7 @@ CREATE TABLE good (
     // No errors = no exitCode set (remains undefined or 0)
     expect(process.exitCode).not.toBe(1)
 
-    consoleSpy.mockRestore()
+    consoleSpy.restore()
   })
 
   it('throws CliError when errors found', async () => {
@@ -69,13 +70,13 @@ CREATE TABLE bad (
       'utf-8',
     )
 
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const consoleSpy = mockMethod(console, 'log', () => {})
 
     const { validateCommand } = await import('../commands/validate.ts')
     const { CliError } = await import('../errors.ts')
     await expect(validateCommand(sqlFile, {})).rejects.toThrow(CliError)
 
-    consoleSpy.mockRestore()
+    consoleSpy.restore()
   })
 
   it('formats diagnostics as file:line:col: severity: message', async () => {
@@ -91,7 +92,7 @@ CREATE TABLE diag (
     )
 
     const logOutput: string[] = []
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
+    const consoleSpy = mockMethod(console, 'log', (...args: any[]) => {
       logOutput.push(args.map(String).join(' '))
     })
 
@@ -101,10 +102,10 @@ CREATE TABLE diag (
 
     // Check that at least one output line matches the file:line:col format
     const diagLine = logOutput.find((l) => l.includes(sqlFile) && l.includes(':1:'))
-    expect(diagLine).toBeDefined()
+    expect(diagLine).toBeTruthy()
     expect(diagLine).toContain('error')
     expect(diagLine).toContain("Unknown namespace '@unknown'")
 
-    consoleSpy.mockRestore()
+    consoleSpy.restore()
   })
 })

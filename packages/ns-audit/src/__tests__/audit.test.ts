@@ -1,6 +1,7 @@
-import type { TagContext } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
+import { describe, it } from 'node:test'
+import { makeTagCtx } from '@sqldoc/core/test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 const mockAtlasTable = {
   name: 'orders',
@@ -9,23 +10,6 @@ const mockAtlasTable = {
     { name: 'total', type: { T: 'numeric' } },
     { name: 'status', type: { T: 'text' } },
   ],
-}
-
-function makeCtx(overrides: Partial<TagContext> = {}): TagContext {
-  return {
-    dialect: 'postgres',
-    target: 'table',
-    objectName: 'users',
-    tag: { name: '$self', args: {} },
-    namespaceTags: [],
-    siblingTags: [],
-    fileTags: [],
-    astNode: null,
-    fileStatements: [],
-    config: { dialect: 'postgres' },
-    filePath: 'test.sql',
-    ...overrides,
-  }
 }
 
 describe('ns-audit plugin', () => {
@@ -38,14 +22,14 @@ describe('ns-audit plugin', () => {
   })
 
   it('has $self and redact tag definitions', () => {
-    expect(plugin.tags).toHaveProperty('$self')
-    expect(plugin.tags).toHaveProperty('redact')
+    expect('$self' in plugin.tags).toBeTruthy()
+    expect('redact' in plugin.tags).toBeTruthy()
   })
 
   describe('onTag - Postgres', () => {
     it('@audit produces table + function + trigger (all ops by default)', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -65,7 +49,7 @@ describe('ns-audit plugin', () => {
 
     it('@audit(on: [update, delete]) uses specific operations', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           objectName: 'products',
           tag: { name: null, args: { on: ['update', 'delete'] } },
@@ -79,7 +63,7 @@ describe('ns-audit plugin', () => {
 
     it('@audit(on: [insert]) handles NULL OLD', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           objectName: 'events',
           tag: { name: null, args: { on: ['insert'] } },
@@ -92,7 +76,7 @@ describe('ns-audit plugin', () => {
 
     it('@audit(on: [delete]) handles NULL NEW', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           objectName: 'events',
           tag: { name: null, args: { on: ['delete'] } },
@@ -105,7 +89,7 @@ describe('ns-audit plugin', () => {
 
     it('defaults destination to {objectName}_audit_log', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           objectName: 'users',
           tag: { name: null, args: {} },
@@ -119,7 +103,7 @@ describe('ns-audit plugin', () => {
 
     it('uses explicit destination', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           objectName: 'users',
           tag: { name: null, args: { destination: 'custom_log' } },
@@ -132,20 +116,20 @@ describe('ns-audit plugin', () => {
 
     it('@audit.redact produces no SQL', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'postgres',
           target: 'column',
           tag: { name: 'redact', args: { strategy: 'hash' } },
         }),
       )
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
   })
 
   describe('onTag - MySQL', () => {
     it('produces audit log table with BIGINT AUTO_INCREMENT, JSON, TIMESTAMP', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -161,7 +145,7 @@ describe('ns-audit plugin', () => {
 
     it('produces separate triggers (not multi-event)', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -180,7 +164,7 @@ describe('ns-audit plugin', () => {
 
     it('trigger bodies contain JSON_OBJECT with explicit columns', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -200,7 +184,7 @@ describe('ns-audit plugin', () => {
 
     it('INSERT trigger has NULL for old_data', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -214,7 +198,7 @@ describe('ns-audit plugin', () => {
 
     it('DELETE trigger has NULL for new_data', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -228,7 +212,7 @@ describe('ns-audit plugin', () => {
 
     it('trigger names follow pattern: objectName_audit_after_op', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -243,7 +227,7 @@ describe('ns-audit plugin', () => {
 
     it('respects on: [insert, update] (only specified events)', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: { on: ['insert', 'update'] } },
@@ -259,7 +243,7 @@ describe('ns-audit plugin', () => {
 
     it('without atlasTable generates only audit table and annotation', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -278,7 +262,7 @@ describe('ns-audit plugin', () => {
   describe('onTag - SQLite', () => {
     it('produces audit log table with INTEGER, TEXT, TEXT', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -295,7 +279,7 @@ describe('ns-audit plugin', () => {
 
     it('produces separate triggers with json_object (lowercase)', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -311,7 +295,7 @@ describe('ns-audit plugin', () => {
 
     it("uses datetime('now') for timestamp in triggers", () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -324,7 +308,7 @@ describe('ns-audit plugin', () => {
 
     it('uses double-quoted identifiers', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -339,7 +323,7 @@ describe('ns-audit plugin', () => {
 
     it('without atlasTable generates only audit table and annotation', () => {
       const result = plugin.onTag!(
-        makeCtx({
+        makeTagCtx({
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
@@ -381,7 +365,7 @@ describe('ns-audit plugin', () => {
         argValues: { strategy: 'hash' },
         objectName: 'users',
       })
-      expect(result).toBeUndefined()
+      expect(result).toBe(undefined)
     })
   })
 })

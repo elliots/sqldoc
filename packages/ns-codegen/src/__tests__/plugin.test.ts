@@ -1,36 +1,24 @@
-import type { ProjectContext } from '@sqldoc/core'
-import { describe, expect, it } from 'vitest'
-import plugin from '../index'
-
-function makeCtx(overrides: Partial<ProjectContext> = {}): ProjectContext {
-  return {
-    outputs: [],
-    mergedSql: '',
-    allFileTags: [],
-    docsMeta: [],
-    config: { dialect: 'postgres' },
-    projectRoot: '/tmp/test',
-    atlasRealm: { schemas: [{ name: 'public', tables: [] }] },
-    ...overrides,
-  } as unknown as ProjectContext
-}
+import { describe, it } from 'node:test'
+import { makeProjectCtx } from '@sqldoc/core/test'
+import { expect } from '@sqldoc/test-utils'
+import plugin from '../index.ts'
 
 describe('ns-codegen plugin', () => {
   describe('tag definitions', () => {
     it('defines rename tag targeting table, column, view', () => {
-      expect(plugin.tags.rename).toBeDefined()
+      expect(plugin.tags.rename).not.toBe(undefined)
       expect(plugin.tags.rename.targets).toEqual(['table', 'column', 'view'])
       expect(plugin.tags.rename.args).toEqual([{ type: 'string' }, { type: 'string' }])
     })
 
     it('defines skip tag targeting table, column, view', () => {
-      expect(plugin.tags.skip).toBeDefined()
+      expect(plugin.tags.skip).not.toBe(undefined)
       expect(plugin.tags.skip.targets).toEqual(['table', 'column', 'view'])
       expect(plugin.tags.skip.args).toEqual([{ type: 'string' }])
     })
 
     it('defines type tag targeting column only', () => {
-      expect(plugin.tags.type).toBeDefined()
+      expect(plugin.tags.type).not.toBe(undefined)
       expect(plugin.tags.type.targets).toEqual(['column'])
       expect(plugin.tags.type.args).toEqual([{ type: 'string' }, { type: 'string' }])
     })
@@ -38,23 +26,23 @@ describe('ns-codegen plugin', () => {
 
   describe('afterCompile', () => {
     it('returns empty files when config.templates is empty array', async () => {
-      const ctx = makeCtx({ config: { templates: [] } })
+      const ctx = makeProjectCtx({ config: { templates: [] } })
       const result = await plugin.afterCompile!(ctx)
       expect(result.files).toEqual([])
     })
 
     it('returns empty files when config.templates is undefined', async () => {
-      const ctx = makeCtx({ config: { dialect: 'postgres' } })
+      const ctx = makeProjectCtx({ config: { dialect: 'postgres' } })
       const result = await plugin.afterCompile!(ctx)
       expect(result.files).toEqual([])
     })
 
     it('throws when atlasRealm is not provided', async () => {
-      const ctx = makeCtx({
+      const ctx = makeProjectCtx({
         config: { templates: [{ template: 'some-template', output: 'out' }] },
         atlasRealm: undefined,
       })
-      await expect(plugin.afterCompile!(ctx)).rejects.toThrow('ns-codegen requires Atlas schema')
+      await expect(Promise.resolve(plugin.afterCompile!(ctx))).rejects.toThrow(/ns-codegen requires Atlas schema/)
     })
 
     it('calls template.generate with correct TemplateContext fields', async () => {
@@ -87,7 +75,7 @@ describe('ns-codegen plugin', () => {
       const docsMeta = [{ annotations: [{ object: 'users', text: 'test' }] }]
       const templateConfig = { option1: 'value1' }
 
-      const ctx = makeCtx({
+      const ctx = makeProjectCtx({
         config: {
           templates: [
             {
@@ -105,7 +93,7 @@ describe('ns-codegen plugin', () => {
       const _result = await plugin.afterCompile!(ctx)
 
       const capturedCtx = (globalThis as any).__codegen_test_ctx__
-      expect(capturedCtx).toBeDefined()
+      expect(capturedCtx).not.toBe(undefined)
       expect(capturedCtx.realm).toEqual(realm)
       expect(capturedCtx.allFileTags).toBe(allFileTags)
       expect(capturedCtx.docsMeta).toBe(docsMeta)
@@ -136,7 +124,7 @@ describe('ns-codegen plugin', () => {
       `,
       )
 
-      const ctx = makeCtx({
+      const ctx = makeProjectCtx({
         config: {
           templates: [
             {
@@ -164,7 +152,7 @@ describe('ns-codegen plugin', () => {
       const templatePath = pathMod.join(tmpDir, 'bad-template.mjs')
       fs.writeFileSync(templatePath, `export const name = 'bad'`)
 
-      const ctx = makeCtx({
+      const ctx = makeProjectCtx({
         config: {
           templates: [
             {
@@ -175,7 +163,7 @@ describe('ns-codegen plugin', () => {
         },
       } as any)
 
-      await expect(plugin.afterCompile!(ctx)).rejects.toThrow('does not export a generate function')
+      await expect(Promise.resolve(plugin.afterCompile!(ctx))).rejects.toThrow(/does not export a generate function/)
 
       fs.rmSync(tmpDir, { recursive: true })
     })
@@ -201,7 +189,7 @@ describe('ns-codegen plugin', () => {
       `,
       )
 
-      const ctx = makeCtx({
+      const ctx = makeProjectCtx({
         config: {
           templates: [
             {

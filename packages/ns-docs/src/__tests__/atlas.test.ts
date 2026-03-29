@@ -1,6 +1,7 @@
+import { describe, it } from 'node:test'
 import type { AtlasRealm } from '@sqldoc/db'
-import { describe, expect, it } from 'vitest'
-import { realmToDocsSchema } from '../atlas'
+import { expect } from '@sqldoc/test-utils'
+import { realmToDocsSchema } from '../atlas.ts'
 
 const sampleRealm: AtlasRealm = {
   schemas: [
@@ -78,7 +79,7 @@ describe('realmToDocsSchema', () => {
   it('maps primary key', () => {
     const result = realmToDocsSchema(sampleRealm)
     const pk = result.schemas[0].tables![0].primary_key
-    expect(pk).toBeDefined()
+    expect(pk).not.toBe(undefined)
     expect(pk!.parts[0].column).toBe('id')
   })
 

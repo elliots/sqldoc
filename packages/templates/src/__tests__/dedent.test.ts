@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { dedent } from '../tags/dedent'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { dedent } from '../tags/dedent.ts'
 
 describe('dedent', () => {
   it('strips common leading whitespace', () => {

@@ -24,7 +24,7 @@ export function singularize(word: string): string {
   // Don't singularize words ending in ss/us/is (e.g. address, status, basis)
   if (word.endsWith('ss') || word.endsWith('us') || word.endsWith('is')) return word
   // -ies -> -y (categories -> category)
-  if (word.endsWith('ies') && word.length > 4) return word.slice(0, -3) + 'y'
+  if (word.endsWith('ies') && word.length > 4) return `${word.slice(0, -3)}y`
   // -ses, -xes, -zes, -ches, -shes -> remove -es
   if (/(?:s|x|z|ch|sh)es$/.test(word)) return word.slice(0, -2)
   // Default: remove trailing -s

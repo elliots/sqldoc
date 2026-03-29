@@ -1,7 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import { detectPM } from '../detect-pm.ts'
 
 describe('detectPM', () => {

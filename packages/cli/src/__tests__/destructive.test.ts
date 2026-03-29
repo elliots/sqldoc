@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import { detectDestructiveChanges } from '../utils/destructive.ts'
 
 describe('detectDestructiveChanges', () => {

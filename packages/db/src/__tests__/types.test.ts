@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { type AtlasAttr, type AtlasCheck, type AtlasComment, type AtlasTag, findTags, isTag } from '../types'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { type AtlasAttr, type AtlasCheck, type AtlasComment, type AtlasTag, findTags, isTag } from '../types.ts'
 
 describe('isTag', () => {
   it('returns true for a valid Tag attr', () => {

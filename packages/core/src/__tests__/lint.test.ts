@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import type { CompilerOutput, LintRule, NamespacePlugin, ResolvedConfig } from '../compiler/types'
-import { lint } from '../lint'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import type { CompilerOutput, LintRule, NamespacePlugin, ResolvedConfig } from '../compiler/types.ts'
+import { lint } from '../lint.ts'
 
 /** Helper to create a minimal CompilerOutput */
 function makeOutput(overrides: Partial<CompilerOutput> = {}): CompilerOutput {

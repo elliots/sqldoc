@@ -1,13 +1,14 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it } from 'node:test'
+import { expect, mockMethod } from '@sqldoc/test-utils'
 
 describe('initCommand', () => {
   const tempDirs: string[] = []
-  let exitSpy: ReturnType<typeof vi.spyOn>
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+  let exitSpy: ReturnType<typeof mockMethod>
+  let consoleLogSpy: ReturnType<typeof mockMethod>
+  let consoleErrorSpy: ReturnType<typeof mockMethod>
 
   function makeTempDir(): string {
     const dir = mkdtempSync(join(tmpdir(), 'sqldoc-init-test-'))
@@ -25,11 +26,11 @@ describe('initCommand', () => {
   }
 
   beforeEach(() => {
-    exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+    exitSpy = mockMethod(process, 'exit', ((code?: number) => {
       throw new Error(`process.exit(${code})`)
     }) as any)
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleLogSpy = mockMethod(console, 'log', () => {})
+    consoleErrorSpy = mockMethod(console, 'error', () => {})
   })
 
   afterEach(() => {
@@ -37,9 +38,9 @@ describe('initCommand', () => {
       rmSync(dir, { recursive: true, force: true })
     }
     tempDirs.length = 0
-    exitSpy.mockRestore()
-    consoleLogSpy.mockRestore()
-    consoleErrorSpy.mockRestore()
+    exitSpy.restore()
+    consoleLogSpy.restore()
+    consoleErrorSpy.restore()
   })
 
   it('creates .sqldoc/ directory', async () => {
@@ -85,8 +86,9 @@ describe('initCommand', () => {
     const { initCommand } = await import('../commands/init.ts')
     await expect(initCommand(root)).rejects.toThrow('process.exit(1)')
 
-    expect(exitSpy).toHaveBeenCalledWith(1)
-    const errorOutput = consoleErrorSpy.mock.calls.map((c: any[]) => String(c[0])).join(' ')
+    expect(exitSpy.callCount() > 0).toBeTruthy()
+    expect(exitSpy.calls.some((c: any[]) => c[0] === 1)).toBeTruthy()
+    const errorOutput = consoleErrorSpy.calls.map((c: any[]) => String(c[0])).join(' ')
     expect(errorOutput).toContain('already exists')
   })
 

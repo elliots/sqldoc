@@ -1,7 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import { findSqldocDir } from '../find-sqldoc.ts'
 
 describe('findSqldocDir', () => {
@@ -49,7 +50,7 @@ describe('findSqldocDir', () => {
     // Start from a deep dir with no .sqldoc anywhere above
     // Use the temp dir itself (no .sqldoc) -- will walk up to / and find nothing
     const result = findSqldocDir(nested)
-    expect(result).toBeNull()
+    expect(result).toBe(null)
   })
 
   it('uses process.cwd() as default startDir', () => {

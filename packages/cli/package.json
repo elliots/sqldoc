@@ -21,7 +21,7 @@
     "package.json"
   ],
   "scripts": {
-    "test": "vitest run",
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -29,10 +29,10 @@
     "@sqldoc/db": "workspace:*",
     "commander": "^14.0.3",
     "fast-glob": "^3.3.3",
-    "picocolors": "^1.1.1"
+    "picocolors": "catalog:"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "@sqldoc/test-utils": "workspace:*",
+    "typescript": "catalog:"
   }
 }

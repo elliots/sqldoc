@@ -8,6 +8,11 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./test": {
+      "types": "./src/test.ts",
+      "import": "./src/test.ts",
+      "default": "./src/test.ts"
     }
   },
   "main": "./src/index.ts",
@@ -18,7 +23,7 @@
     "package.json"
   ],
   "scripts": {
-    "test": "vitest run",
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
     "lint": "biome check src/",
     "typecheck": "tsc --noEmit"
   },
@@ -28,7 +33,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "typescript": "catalog:",
+    "@sqldoc/test-utils": "workspace:*"
   }
 }

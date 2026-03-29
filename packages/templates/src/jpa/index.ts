@@ -42,7 +42,7 @@ function getValidationAnnotations(colTags: TagEntry[]): { annotations: string[];
         imports.add('jakarta.validation.constraints.Max')
       }
     } else if (tag.tag === 'pattern') {
-      const pattern = Array.isArray(tag.args) ? tag.args[0] : undefined
+      const pattern = Array.isArray(tag.args) ? (tag.args[0] as string) : undefined
       if (pattern) {
         // Escape backslashes for Java string literals
         const escaped = pattern.replace(/\\/g, '\\\\')

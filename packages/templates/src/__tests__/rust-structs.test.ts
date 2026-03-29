@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import rustStructs from '../rust-structs/index'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import rustStructs from '../rust-structs/index.ts'
 
 const generate = rustStructs.generate
 
@@ -49,7 +50,7 @@ const testRealm: AtlasRealm = {
   ],
 }
 
-function makeCtx(overrides: Partial<TemplateContext> = {}): any {
+function makeCtx(overrides: Partial<TemplateContext> = {}): TemplateContext<any> {
   return {
     realm: testRealm,
     allFileTags: [],
@@ -68,9 +69,9 @@ describe('rust-structs template', () => {
     expect(result.files[0].path).toBe('models.rs')
   })
 
-  it('contains pub struct Users', () => {
+  it('contains pub struct User', () => {
     const result = generate(makeCtx())
-    expect(result.files[0].content).toContain('pub struct Users {')
+    expect(result.files[0].content).toContain('pub struct User {')
   })
 
   it('maps bigserial to i64', () => {
@@ -103,10 +104,10 @@ describe('rust-structs template', () => {
     expect(result.files[0].content).toContain('use serde::{Serialize, Deserialize};')
   })
 
-  it('generates Posts struct with correct types', () => {
+  it('generates Post struct with correct types', () => {
     const result = generate(makeCtx())
     const content = result.files[0].content
-    expect(content).toContain('pub struct Posts {')
+    expect(content).toContain('pub struct Post {')
     expect(content).toContain('pub user_id: i64')
     expect(content).toContain('pub rating: Option<f64>')
   })
@@ -129,8 +130,8 @@ describe('rust-structs template', () => {
       }),
     )
     const content = result.files[0].content
-    expect(content).not.toContain('pub struct Users')
-    expect(content).toContain('pub struct Posts')
+    expect(content).not.toContain('pub struct User')
+    expect(content).toContain('pub struct Post')
   })
 
   it('applies @codegen.rename to struct name', () => {
@@ -151,7 +152,7 @@ describe('rust-structs template', () => {
       }),
     )
     expect(result.files[0].content).toContain('pub struct Account {')
-    expect(result.files[0].content).not.toContain('pub struct Users')
+    expect(result.files[0].content).not.toContain('pub struct User')
   })
 
   it('applies @codegen.type override on a column', () => {

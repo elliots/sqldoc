@@ -29,6 +29,7 @@ const plugin: NamespacePlugin = {
       targets: ['column'],
       validate: (ctx) => {
         if (!isTextType(ctx.columnType)) {
+          console.log('XXXXX', ctx.columnType, ctx)
           return { message: 'notEmpty is typically used on text columns', severity: 'warning' }
         }
       },

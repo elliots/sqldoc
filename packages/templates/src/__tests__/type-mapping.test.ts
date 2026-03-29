@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { pgToCsharp } from '../types/pg-to-csharp'
-import { pgToGo } from '../types/pg-to-go'
-import { pgToJava } from '../types/pg-to-java'
-import { pgToKotlin } from '../types/pg-to-kotlin'
-import { pgToPython } from '../types/pg-to-python'
-import { pgToRust } from '../types/pg-to-rust'
-import { pgToTs } from '../types/pg-to-ts'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { pgToCsharp } from '../types/pg-to-csharp.ts'
+import { pgToGo } from '../types/pg-to-go.ts'
+import { pgToJava } from '../types/pg-to-java.ts'
+import { pgToKotlin } from '../types/pg-to-kotlin.ts'
+import { pgToPython } from '../types/pg-to-python.ts'
+import { pgToRust } from '../types/pg-to-rust.ts'
+import { pgToTs } from '../types/pg-to-ts.ts'
 
 describe('pgToTs', () => {
   it('maps text to string', () => {
@@ -223,7 +224,10 @@ describe('pgToGo', () => {
   })
 
   it('maps uuid category to uuid.UUID with import', () => {
-    expect(pgToGo('custom_uuid', false, 'uuid')).toEqual({ type: 'uuid.UUID', imports: ['github.com/google/uuid'] })
+    expect(pgToGo('custom_uuid', false, 'uuid')).toEqual({
+      type: 'uuid.UUID',
+      imports: ['github.com/google/uuid'],
+    })
   })
 
   it('category with nullable uses pointer', () => {
@@ -297,7 +301,10 @@ describe('pgToJava', () => {
   })
 
   it('maps decimal category to BigDecimal with import', () => {
-    expect(pgToJava('custom_num', false, 'decimal')).toEqual({ type: 'BigDecimal', imports: ['java.math.BigDecimal'] })
+    expect(pgToJava('custom_num', false, 'decimal')).toEqual({
+      type: 'BigDecimal',
+      imports: ['java.math.BigDecimal'],
+    })
   })
 
   it('category integer nullable uses Long wrapper', () => {

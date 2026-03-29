@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import {
   bridgeReadRequest,
   bridgeRespond,
@@ -8,7 +9,7 @@ import {
   SIGNAL_IDLE,
   SIGNAL_REQUEST,
   SIGNAL_RESPONSE,
-} from '../bridge'
+} from '../bridge.ts'
 
 describe('bridge', () => {
   describe('createBridgeBuffers', () => {
@@ -79,7 +80,7 @@ describe('bridge', () => {
 
       // Create a payload just under 2048 bytes
       const largeData = JSON.stringify({ rows: Array(50).fill(['x'.repeat(30)]) })
-      expect(largeData.length).toBeLessThan(2048)
+      expect(largeData.length < 2048).toBeTruthy()
 
       const encoded = new TextEncoder().encode(largeData)
       new Uint8Array(buffers.data).set(encoded)
@@ -97,7 +98,7 @@ describe('bridge', () => {
 
       // Try to write a response larger than the buffer
       const bigResponse = JSON.stringify({ columns: ['a'], rows: Array(100).fill([1]) })
-      expect(new TextEncoder().encode(bigResponse).byteLength).toBeGreaterThan(64)
+      expect(new TextEncoder().encode(bigResponse).byteLength > 64).toBeTruthy()
 
       // Should write error response instead of crashing
       bridgeRespond(buffers, bigResponse)

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { isBunRuntime, isCompiledBinary } from '../runtime'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { isBunRuntime, isCompiledBinary } from '../runtime.ts'
 
 describe('runtime detection', () => {
   it('isBunRuntime detects the current runtime correctly', () => {

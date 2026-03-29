@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { parse } from '../parser'
-import type { TagDef, TagNamespace } from '../types'
-import { detectTargetFallback, validate } from '../validator'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import { parse } from '../parser.ts'
+import type { TagDef, TagNamespace } from '../types.ts'
+import { detectTargetFallback, validate } from '../validator.ts'
 
-// ── Test namespace fixtures ──────────────────────────────────────────
+// -- Test namespace fixtures --
 
 const maskDef: TagDef = {
   description: 'Mask column data',
@@ -43,14 +44,14 @@ function makeNamespaces(...entries: TagNamespace[]): Map<string, TagNamespace> {
   return map
 }
 
-// ── Helper: parse and validate in one call ───────────────────────────
+// -- Helper: parse and validate in one call --
 
 function parseAndValidate(docText: string, namespaces: Map<string, TagNamespace>) {
   const { tags } = parse(docText)
   return validate(tags, namespaces, docText)
 }
 
-// ── validate() tests ─────────────────────────────────────────────────
+// -- validate() tests --
 
 describe('validate', () => {
   it('reports unknown namespace for unregistered namespace', () => {
@@ -86,9 +87,9 @@ describe('validate', () => {
     // mask targets=['column'] but placed above CREATE FUNCTION
     const doc = `-- @anon.mask(type: email)\nCREATE OR REPLACE FUNCTION foo() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;`
     const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const targetDiag = diags.find((d) => d.message.includes('cannot be used on a function'))
-    expect(targetDiag).toBeDefined()
+    expect(targetDiag).not.toBe(undefined)
     expect(targetDiag!.severity).toBe('error')
   })
 
@@ -102,9 +103,9 @@ describe('validate', () => {
     // mask requires 'type' arg
     const doc = `-- @anon.mask\n  email TEXT NOT NULL`
     const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('Missing required argument'))
-    expect(argDiag).toBeDefined()
+    expect(argDiag).not.toBe(undefined)
   })
 
   it('reports error when tag does not accept arguments but args provided', () => {
@@ -115,9 +116,9 @@ describe('validate', () => {
     }
     const doc = `-- @noargs.simple(foo: bar)\nCREATE TABLE t (id INT);`
     const diags = parseAndValidate(doc, makeNamespaces(noArgsNs))
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('does not accept arguments'))
-    expect(argDiag).toBeDefined()
+    expect(argDiag).not.toBe(undefined)
   })
 
   it('reports error when named args given but positional expected', () => {
@@ -127,9 +128,9 @@ describe('validate', () => {
     }
     const doc = `-- @pos.order(dir: asc)\nCREATE TABLE t (id INT);`
     const diags = parseAndValidate(doc, makeNamespaces(posNs))
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('expects positional arguments, not named'))
-    expect(argDiag).toBeDefined()
+    expect(argDiag).not.toBe(undefined)
   })
 
   it('reports too many positional arguments', () => {
@@ -139,9 +140,9 @@ describe('validate', () => {
     }
     const doc = `-- @pos.order(asc, desc, extra)\nCREATE TABLE t (id INT);`
     const diags = parseAndValidate(doc, makeNamespaces(posNs))
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('Too many arguments'))
-    expect(argDiag).toBeDefined()
+    expect(argDiag).not.toBe(undefined)
   })
 
   it('reports wrong arg type when tag expects number but gets string', () => {
@@ -151,9 +152,9 @@ describe('validate', () => {
     }
     const doc = `-- @num.limit(count: abc)\nCREATE TABLE t (id INT);`
     const diags = parseAndValidate(doc, makeNamespaces(numNs))
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const typeDiag = diags.find((d) => d.message.includes('expected number'))
-    expect(typeDiag).toBeDefined()
+    expect(typeDiag).not.toBe(undefined)
   })
 
   it('sets correct line numbers on diagnostics', () => {
@@ -167,13 +168,13 @@ describe('validate', () => {
     const doc = `-- @anon.mask(type: email)\n-- @anon.bogus\n  email TEXT NOT NULL`
     const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
     // mask is valid on column, but bogus is unknown
-    expect(diags.length).toBeGreaterThanOrEqual(1)
+    expect(diags.length >= 1).toBeTruthy()
     const unknownDiag = diags.find((d) => d.message.includes("Unknown tag 'bogus'"))
-    expect(unknownDiag).toBeDefined()
+    expect(unknownDiag).not.toBe(undefined)
   })
 })
 
-// ── detectTargetFallback() tests ─────────────────────────────────────
+// -- detectTargetFallback() tests --
 
 describe('detectTargetFallback', () => {
   it('detects CREATE TABLE', () => {

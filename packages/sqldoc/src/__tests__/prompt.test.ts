@@ -1,6 +1,7 @@
 import * as readline from 'node:readline'
 import { Readable, Writable } from 'node:stream'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it } from 'node:test'
+import { expect, mockMethod } from '@sqldoc/test-utils'
 import { promptCheckbox, promptConfirm, promptSelect } from '../prompt.ts'
 
 /**
@@ -30,14 +31,14 @@ function mockRL() {
 }
 
 describe('promptSelect', () => {
-  let consoleSpy: ReturnType<typeof vi.spyOn>
+  let consoleSpy: ReturnType<typeof mockMethod>
 
   beforeEach(() => {
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    consoleSpy = mockMethod(console, 'log', () => {})
   })
 
   afterEach(() => {
-    consoleSpy.mockRestore()
+    consoleSpy.restore()
   })
 
   it('returns default when user presses Enter', async () => {
@@ -85,14 +86,14 @@ describe('promptSelect', () => {
 })
 
 describe('promptCheckbox', () => {
-  let consoleSpy: ReturnType<typeof vi.spyOn>
+  let consoleSpy: ReturnType<typeof mockMethod>
 
   beforeEach(() => {
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    consoleSpy = mockMethod(console, 'log', () => {})
   })
 
   afterEach(() => {
-    consoleSpy.mockRestore()
+    consoleSpy.restore()
   })
 
   it('returns defaults when user presses Enter', async () => {

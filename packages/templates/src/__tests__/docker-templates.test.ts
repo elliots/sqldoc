@@ -13,9 +13,9 @@
 import { execSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import pg from 'pg'
-import { afterAll, beforeAll, describe, test } from 'vitest'
 
 const thisDir = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = resolve(thisDir, '../..')
@@ -41,8 +41,8 @@ function dockerExec(cmd: string, timeout = 30_000) {
   return execSync(cmd, { stdio: 'pipe', timeout }).toString()
 }
 
-describe('docker template tests', () => {
-  beforeAll(async () => {
+describe('docker template tests', { timeout: 180_000 }, () => {
+  before(async () => {
     // Clean up any leftovers from previous runs, then create fresh
     try {
       dockerExec(`docker rm -f ${PG_CONTAINER}`)
@@ -96,9 +96,9 @@ describe('docker template tests', () => {
       },
     )
     console.log(`Codegen complete. Testing ${templates.length} templates.`)
-  }, 180_000)
+  })
 
-  afterAll(() => {
+  after(() => {
     try {
       dockerExec(`docker rm -f ${PG_CONTAINER}`)
     } catch {}
@@ -109,7 +109,7 @@ describe('docker template tests', () => {
 
   describe('docker templates', () => {
     for (const name of templates) {
-      test(name, () => {
+      it(name, { timeout: 180_000 }, () => {
         const testDir = join(SRC_DIR, name, 'test')
         const tag = `sqldoc-test-${name}`
         try {
@@ -130,7 +130,7 @@ describe('docker template tests', () => {
             execSync(`docker rmi ${tag}`, { stdio: 'ignore' })
           } catch {}
         }
-      }, 180_000)
+      })
     }
   })
 })

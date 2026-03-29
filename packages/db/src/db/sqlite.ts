@@ -1,8 +1,9 @@
 /**
  * SQLite DatabaseAdapter with runtime detection.
- * Uses bun:sqlite when running in Bun, better-sqlite3 when running in Node.
+ * Uses bun:sqlite when running in Bun, node:sqlite when running in Node.
  * Both are synchronous APIs wrapped in async methods to match the DatabaseAdapter interface.
  */
+import type { SQLInputValue } from 'node:sqlite'
 import type { DatabaseAdapter, ExecResult, QueryResult } from './types.ts'
 
 /**
@@ -18,34 +19,31 @@ function normalizeValue(val: unknown): unknown {
 }
 
 /**
- * Create a SQLite adapter using better-sqlite3 (Node.js runtime).
- * Uses require() for the native addon to avoid ESM import issues.
+ * Create a SQLite adapter using node:sqlite (Node.js 22.5+).
+ * Uses the built-in DatabaseSync — no native addon required.
  */
-function createBetterSqlite3Adapter(filename: string): DatabaseAdapter {
-  const Database = require('better-sqlite3')
-  const db = new Database(filename)
-
-  // Enable WAL mode for file-based databases (better concurrent read performance)
-  if (filename !== ':memory:') {
-    db.pragma('journal_mode = WAL')
-  }
+async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapter> {
+  const { DatabaseSync } = await import('node:sqlite')
+  const db = new DatabaseSync(filename)
 
   return {
-    async query(sql: string, args?: unknown[]): Promise<QueryResult> {
+    async query(sql: string, args?: SQLInputValue[]): Promise<QueryResult> {
       const stmt = db.prepare(sql)
-      const columns = stmt.columns().map((c: { name: string }) => c.name)
-      const rows = stmt.raw().all(...(args ?? []))
+      const rows = args ? stmt.all(...args) : stmt.all()
+      if (rows.length === 0) {
+        return { columns: [], rows: [] }
+      }
+      const columns = Object.keys(rows[0])
       return {
         columns,
-        rows: (rows as unknown[][]).map((row) => row.map(normalizeValue)),
+        rows: rows.map((row: Record<string, unknown>) => columns.map((c) => normalizeValue(row[c]))),
       }
     },
-    async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
+    async exec(sql: string, args?: SQLInputValue[]): Promise<ExecResult> {
       if (args && args.length > 0) {
         const result = db.prepare(sql).run(...args)
-        return { rowsAffected: result.changes }
+        return { rowsAffected: Number(result.changes) }
       }
-      // Multi-statement DDL -- exec returns no metadata
       db.exec(sql)
       return { rowsAffected: 0 }
     },
@@ -57,7 +55,7 @@ function createBetterSqlite3Adapter(filename: string): DatabaseAdapter {
 
 /**
  * Create a SQLite adapter using bun:sqlite (Bun runtime).
- * Uses dynamic import since bun:sqlite is only available in Bun.
+ * Uses dynamic import since bun:sqlite is only available in Bun.1`
  */
 async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter> {
   // @ts-expect-error -- bun:sqlite only exists in the Bun runtime; guarded by isBun check
@@ -93,7 +91,7 @@ async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter
  * Create a SQLite DatabaseAdapter with runtime detection.
  * Detects whether running in Bun or Node and uses the appropriate driver:
  * - Bun: uses built-in bun:sqlite (zero dependencies)
- * - Node: uses better-sqlite3 (native addon)
+ * - Node: uses node:sqlite (built-in, Node 22.5+)
  */
 export async function createSqliteAdapter(filename: string): Promise<DatabaseAdapter> {
   const isBun = typeof (globalThis as any).Bun !== 'undefined'
@@ -102,5 +100,5 @@ export async function createSqliteAdapter(filename: string): Promise<DatabaseAda
     return createBunSqliteAdapter(filename)
   }
 
-  return createBetterSqlite3Adapter(filename)
+  return createNodeSqliteAdapter(filename)
 }

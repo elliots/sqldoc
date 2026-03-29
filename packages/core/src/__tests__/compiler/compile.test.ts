@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import type { SqlAstAdapter } from '../../ast/adapter'
-import type { SqlStatement } from '../../ast/types'
-import { compile } from '../../compiler/compile'
-import type { NamespacePlugin, ResolvedConfig } from '../../compiler/types'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
+import type { SqlAstAdapter } from '../../ast/adapter.ts'
+import type { SqlStatement } from '../../ast/types.ts'
+import { compile } from '../../compiler/compile.ts'
+import type { NamespacePlugin, ResolvedConfig } from '../../compiler/types.ts'
 
 /** Stub adapter that returns no comments */
 const stubAdapter: SqlAstAdapter = {
@@ -15,7 +16,7 @@ const stubAdapter: SqlAstAdapter = {
   },
 }
 
-// ── Test helpers ─────────────────────────────────────────────────────
+// -- Test helpers --
 
 function makePlugin(overrides: Partial<NamespacePlugin> & { name: string }): NamespacePlugin {
   return {
@@ -42,7 +43,7 @@ function makeStatements(stmts: Partial<SqlStatement>[]): SqlStatement[] {
   }))
 }
 
-// ── Tests ────────────────────────────────────────────────────────────
+// -- Tests --
 
 describe('compile()', () => {
   it('returns SqlOutput[] in CompilerOutput.sqlOutputs from generateSQL', () => {
@@ -128,14 +129,10 @@ describe('compile()', () => {
       config: { dialect: 'postgres' },
     })
 
-    expect(capturedCtx).not.toBeNull()
-    expect(capturedCtx.siblingTags).toEqual(
-      expect.arrayContaining([expect.objectContaining({ namespace: 'beta', tag: 'check' })]),
-    )
+    expect(capturedCtx).not.toBe(null)
+    expect(capturedCtx.siblingTags.some((t: any) => t.namespace === 'beta' && t.tag === 'check')).toBeTruthy()
     // siblingTags should include tags from ALL namespaces (including own)
-    expect(capturedCtx.siblingTags).toEqual(
-      expect.arrayContaining([expect.objectContaining({ namespace: 'alpha', tag: 'run' })]),
-    )
+    expect(capturedCtx.siblingTags.some((t: any) => t.namespace === 'alpha' && t.tag === 'run')).toBeTruthy()
   })
 
   it('populates CompilerContext.fileTags with all tags across file grouped by object', () => {
@@ -174,14 +171,10 @@ describe('compile()', () => {
       config: { dialect: 'postgres' },
     })
 
-    expect(capturedCtx).not.toBeNull()
+    expect(capturedCtx).not.toBe(null)
     expect(capturedCtx.fileTags).toHaveLength(2)
-    expect(capturedCtx.fileTags).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ objectName: 't1' }),
-        expect.objectContaining({ objectName: 't2' }),
-      ]),
-    )
+    expect(capturedCtx.fileTags.some((ft: any) => ft.objectName === 't1')).toBeTruthy()
+    expect(capturedCtx.fileTags.some((ft: any) => ft.objectName === 't2')).toBeTruthy()
   })
 
   it('populates CompilerContext.config with namespace-specific config from ProjectConfig', () => {
@@ -214,7 +207,7 @@ describe('compile()', () => {
       config,
     })
 
-    expect(capturedCtx).not.toBeNull()
+    expect(capturedCtx).not.toBe(null)
     expect(capturedCtx.config).toEqual({ outputFormat: 'json', verbose: true })
   })
 
@@ -241,11 +234,10 @@ describe('compile()', () => {
       config: { dialect: 'postgres' },
     })
 
-    expect(capturedCtx).not.toBeNull()
+    expect(capturedCtx).not.toBe(null)
     expect(capturedCtx.namespaceTags).toHaveLength(2)
-    expect(capturedCtx.namespaceTags).toEqual(
-      expect.arrayContaining([expect.objectContaining({ tag: 'first' }), expect.objectContaining({ tag: 'second' })]),
-    )
+    expect(capturedCtx.namespaceTags.some((t: any) => t.tag === 'first')).toBeTruthy()
+    expect(capturedCtx.namespaceTags.some((t: any) => t.tag === 'second')).toBeTruthy()
   })
 
   it('correctly matches column tags when blank lines separate columns inside a table', () => {
@@ -293,12 +285,15 @@ describe('compile()', () => {
       config: { dialect: 'postgres' },
     })
 
-    // First tag is above CREATE TABLE — should be table-level
-    expect(contexts[0]).toEqual(expect.objectContaining({ target: 'table', objectName: 'items' }))
+    // First tag is above CREATE TABLE -- should be table-level
+    expect(contexts[0].target).toBe('table')
+    expect(contexts[0].objectName).toBe('items')
     // Second tag (after blank line) should match 'name' column
-    expect(contexts[1]).toEqual(expect.objectContaining({ target: 'column', columnName: 'name' }))
+    expect(contexts[1].target).toBe('column')
+    expect(contexts[1].columnName).toBe('name')
     // Third tag (after blank line) should match 'price' column
-    expect(contexts[2]).toEqual(expect.objectContaining({ target: 'column', columnName: 'price' }))
+    expect(contexts[2].target).toBe('column')
+    expect(contexts[2].columnName).toBe('price')
   })
 
   it('catches generator errors and reports in CompilerOutput.errors without crashing', () => {
@@ -324,12 +319,10 @@ describe('compile()', () => {
       config: { dialect: 'postgres' },
     })
 
-    expect(result.errors.length).toBeGreaterThanOrEqual(1)
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ namespace: 'err', message: expect.stringContaining('generator exploded') }),
-      ]),
-    )
+    expect(result.errors.length >= 1).toBeTruthy()
+    expect(
+      result.errors.some((e: any) => e.namespace === 'err' && e.message.includes('generator exploded')),
+    ).toBeTruthy()
     // Should not have any outputs from the errored generators
     expect(result.sqlOutputs).toHaveLength(0)
     expect(result.codeOutputs).toHaveLength(0)

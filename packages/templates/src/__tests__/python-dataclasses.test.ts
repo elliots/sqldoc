@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import { expect } from '@sqldoc/test-utils'
 import pythonDataclasses from '../python-dataclasses/index.ts'
 
 const generate = pythonDataclasses.generate
@@ -64,7 +65,7 @@ const testRealm: AtlasRealm = {
   ],
 }
 
-function makeCtx(overrides?: Partial<TemplateContext>): any {
+function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext<any> {
   return {
     realm: testRealm,
     allFileTags: [],
@@ -84,9 +85,9 @@ describe('python-dataclasses template', () => {
 
     const content = result.files[0].content
     expect(content).toContain('@dataclass')
-    expect(content).toContain('class Users:')
-    expect(content).toContain('class Posts:')
-    expect(content).toContain('class Comments:')
+    expect(content).toContain('class User:')
+    expect(content).toContain('class Post:')
+    expect(content).toContain('class Comment:')
   })
 
   it('maps bigserial to int', () => {
@@ -138,8 +139,8 @@ describe('python-dataclasses template', () => {
     })
     const result = generate(ctx)
     const content = result.files[0].content
-    expect(content).not.toContain('class Comments:')
-    expect(content).toContain('class Users:')
+    expect(content).not.toContain('class Comment:')
+    expect(content).toContain('class User:')
   })
 
   it('respects @codegen.rename tag', () => {
@@ -160,7 +161,7 @@ describe('python-dataclasses template', () => {
     const result = generate(ctx)
     const content = result.files[0].content
     expect(content).toContain('class Account:')
-    expect(content).not.toContain('class Users:')
+    expect(content).not.toContain('class User:')
   })
 
   it('respects @codegen.type override on column', () => {
