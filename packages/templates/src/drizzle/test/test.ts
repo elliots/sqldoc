@@ -31,18 +31,18 @@ async function run() {
     console.log('--- drizzle integration test ---')
 
     // 1. Query known seeded user
-    const users = await db.select().from(schema.users).where(eq(schema.users.id, 1))
+    const users = await db.select().from(schema.user).where(eq(schema.user.id, 1))
     assert(users.length === 1, 'seeded user found')
     assert(users[0].email === 'test@example.com', 'user email matches')
     assert(users[0].name === 'Test User', 'user name matches')
 
     // 2. Query known seeded post
-    const posts = await db.select().from(schema.posts).where(eq(schema.posts.id, 1))
+    const posts = await db.select().from(schema.post).where(eq(schema.post.id, 1))
     assert(posts.length === 1, 'seeded post found')
     assert(posts[0].title === 'Hello World', 'post title matches')
 
     // 3. Insert a new post
-    await db.insert(schema.posts).values({
+    await db.insert(schema.post).values({
       userId: 1,
       title: 'Post from drizzle',
       body: 'test body',
@@ -50,7 +50,7 @@ async function run() {
     })
 
     // 4. Read it back
-    const newPosts = await db.select().from(schema.posts).where(eq(schema.posts.title, 'Post from drizzle'))
+    const newPosts = await db.select().from(schema.post).where(eq(schema.post.title, 'Post from drizzle'))
     assert(newPosts.length === 1, 'inserted post found')
     assert(newPosts[0].title === 'Post from drizzle', 'inserted post title matches')
     assert(Number(newPosts[0].userId) === 1, 'inserted post user_id matches')

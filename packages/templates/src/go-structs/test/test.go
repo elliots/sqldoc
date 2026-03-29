@@ -39,7 +39,7 @@ func main() {
 	fmt.Println("--- go-structs integration test ---")
 
 	// 1. Query user into generated struct
-	var user models.Users
+	var user models.User
 	err = conn.QueryRow(ctx, "SELECT id, email, name, age, is_active FROM users WHERE id = 1").
 		Scan(&user.Id, &user.Email, &user.Name, &user.Age, &user.IsActive)
 	if err != nil {
@@ -52,7 +52,7 @@ func main() {
 	assert(user.IsActive == true, "user.IsActive matches")
 
 	// 2. Query post into generated struct
-	var post models.Posts
+	var post models.Post
 	err = conn.QueryRow(ctx, "SELECT id, user_id, title, body, view_count FROM posts WHERE id = 1").
 		Scan(&post.Id, &post.UserId, &post.Title, &post.Body, &post.ViewCount)
 	if err != nil {

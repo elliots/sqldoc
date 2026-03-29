@@ -37,7 +37,7 @@ func main() {
 	fmt.Println("--- gorm integration test ---")
 
 	// 1. Query user via GORM using generated model
-	var user models.Users
+	var user models.User
 	if err := db.First(&user, 1).Error; err != nil {
 		fmt.Fprintf(os.Stderr, "query user error: %v\n", err)
 		os.Exit(1)
@@ -48,7 +48,7 @@ func main() {
 	assert(user.IsActive == true, "user.IsActive matches")
 
 	// 2. Query post via GORM using generated model
-	var post models.Posts
+	var post models.Post
 	if err := db.First(&post, 1).Error; err != nil {
 		fmt.Fprintf(os.Stderr, "query post error: %v\n", err)
 		os.Exit(1)

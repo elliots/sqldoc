@@ -4,7 +4,7 @@
  */
 import { Client } from 'pg'
 // Import the generated type -- file is copied from codegen output at test time
-import type { Users, Posts } from './models.ts'
+import type { User, Post } from './models.ts'
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
@@ -39,7 +39,7 @@ async function run() {
     assert(user.is_active === true, 'user is_active matches')
 
     // Verify the type is assignable (compile-time check; runtime confirms shape)
-    const _typedUser: Partial<Users> = {
+    const _typedUser: Partial<User> = {
       id: Number(user.id),
       email: user.email,
       name: user.name,
@@ -53,8 +53,8 @@ async function run() {
     assert(postRows.length === 1, 'seeded post found')
     assert(postRows[0].title === 'Hello World', 'post title matches')
 
-    // Verify Posts type assignability
-    const _typedPost: Partial<Posts> = {
+    // Verify Post type assignability
+    const _typedPost: Partial<Post> = {
       id: Number(postRows[0].id),
       title: postRows[0].title,
       body: postRows[0].body,

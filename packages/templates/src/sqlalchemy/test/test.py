@@ -35,14 +35,14 @@ def main():
 
     with Session(engine) as session:
         # 1. Query known seeded user via ORM model
-        user = session.query(models.Users).filter_by(id=1).one()
+        user = session.query(models.User).filter_by(id=1).one()
         assert_eq(user.email, "test@example.com", "user email matches")
         assert_eq(user.name, "Test User", "user name matches")
         assert_eq(user.age, 30, "user age matches")
         assert_eq(user.is_active, True, "user is_active matches")
 
         # 2. Query known seeded post via ORM model
-        post = session.query(models.Posts).filter_by(id=1).one()
+        post = session.query(models.Post).filter_by(id=1).one()
         assert_eq(post.title, "Hello World", "post title matches")
 
         # 3. Query view via Table object

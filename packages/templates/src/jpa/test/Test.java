@@ -51,12 +51,12 @@ public class Test {
         System.out.println("--- jpa integration test ---");
 
         // 1. Verify generated entity classes have expected fields
-        assertHasField(Users.class, "id", "Users has 'id' field");
-        assertHasField(Users.class, "email", "Users has 'email' field");
-        assertHasField(Users.class, "name", "Users has 'name' field");
-        assertHasField(Users.class, "isActive", "Users has 'isActive' field");
-        assertHasField(Posts.class, "title", "Posts has 'title' field");
-        assertHasField(Posts.class, "viewCount", "Posts has 'viewCount' field");
+        assertHasField(User.class, "id", "User has 'id' field");
+        assertHasField(User.class, "email", "User has 'email' field");
+        assertHasField(User.class, "name", "User has 'name' field");
+        assertHasField(User.class, "isActive", "User has 'isActive' field");
+        assertHasField(Post.class, "title", "Post has 'title' field");
+        assertHasField(Post.class, "viewCount", "Post has 'viewCount' field");
 
         // 2. Instantiate entity and populate via reflection (JPA entities have private fields)
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
@@ -64,7 +64,7 @@ public class Test {
                     "SELECT id, email, name, age, is_active FROM users WHERE id = 1")) {
                 ResultSet rs = ps.executeQuery();
                 rs.next();
-                var user = new Users();
+                var user = new User();
                 setField(user, "id", rs.getLong("id"));
                 setField(user, "email", rs.getString("email"));
                 setField(user, "name", rs.getString("name"));
@@ -80,7 +80,7 @@ public class Test {
                     "SELECT id, title, view_count FROM posts WHERE id = 1")) {
                 ResultSet rs = ps.executeQuery();
                 rs.next();
-                var post = new Posts();
+                var post = new Post();
                 setField(post, "id", rs.getLong("id"));
                 setField(post, "title", rs.getString("title"));
                 setField(post, "viewCount", rs.getInt("view_count"));

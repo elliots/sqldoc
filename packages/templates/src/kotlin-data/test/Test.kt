@@ -43,7 +43,7 @@ fun main() {
         conn.prepareStatement("SELECT id, email, name, age, is_active, created_at FROM users WHERE id = 1").use { ps ->
             val rs = ps.executeQuery()
             rs.next()
-            val user = Users(
+            val user = User(
                 id = rs.getLong("id"),
                 email = rs.getString("email"),
                 name = rs.getString("name"),
@@ -61,7 +61,7 @@ fun main() {
         conn.prepareStatement("SELECT id, user_id, title, body, view_count FROM posts WHERE id = 1").use { ps ->
             val rs = ps.executeQuery()
             rs.next()
-            val post = Posts(
+            val post = Post(
                 id = rs.getLong("id"),
                 userId = rs.getLong("user_id"),
                 title = rs.getString("title"),

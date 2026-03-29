@@ -6,7 +6,7 @@ import os
 import sys
 import psycopg2
 
-from models import Users, Posts
+from models import User, Post
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
@@ -36,7 +36,7 @@ def main():
     # 1. Query user and construct Pydantic model
     cur.execute("SELECT id, email, name, age, is_active, created_at FROM users WHERE id = 1")
     row = cur.fetchone()
-    user = Users(id=row[0], email=row[1], name=row[2], age=row[3], is_active=row[4], created_at=row[5])
+    user = User(id=row[0], email=row[1], name=row[2], age=row[3], is_active=row[4], created_at=row[5])
     assert_eq(user.email, "test@example.com", "user.email matches")
     assert_eq(user.name, "Test User", "user.name matches")
     assert_eq(user.age, 30, "user.age matches")
@@ -45,7 +45,7 @@ def main():
     # 2. Query post and construct Pydantic model
     cur.execute("SELECT id, user_id, title, body, view_count, rating FROM posts WHERE id = 1")
     row = cur.fetchone()
-    post = Posts(id=row[0], user_id=row[1], title=row[2], body=row[3], view_count=row[4], rating=row[5])
+    post = Post(id=row[0], user_id=row[1], title=row[2], body=row[3], view_count=row[4], rating=row[5])
     assert_eq(post.title, "Hello World", "post.title matches")
     assert_eq(post.user_id, 1, "post.user_id matches")
     assert_eq(post.view_count, 42, "post.view_count matches")

@@ -5,7 +5,7 @@
 import type { AtlasColumn, AtlasTable, TypeCategory } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 import { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './atlas.ts'
-import { toPascalCase } from './naming.ts'
+import { singularizeLast, toPascalCase } from './naming.ts'
 import { findRename, findTypeOverride, isSkipped } from './tags.ts'
 
 // ── Public types ─────────────────────────────────────────────────
@@ -156,7 +156,7 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
   const tables: EnrichedTable[] = rawTables.map((table) => {
     const tableTags = findTagsForObject(ctx.allFileTags, table.name)
     const skipped = isSkipped(tableTags, ctx.templateName)
-    const pascalName = findRename(tableTags, ctx.templateName) ?? toPascalCase(table.name)
+    const pascalName = findRename(tableTags, ctx.templateName) ?? toPascalCase(singularizeLast(table.name))
     const pkColumns = new Set(
       (table.primary_key?.parts ?? []).map((p) => p.column).filter((c): c is string => c != null),
     )
@@ -202,7 +202,7 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
   const views: EnrichedView[] = rawViews.map((view) => {
     const viewTags = findTagsForObject(ctx.allFileTags, view.name)
     const skipped = isSkipped(viewTags, ctx.templateName)
-    const pascalName = findRename(viewTags, ctx.templateName) ?? toPascalCase(view.name)
+    const pascalName = findRename(viewTags, ctx.templateName) ?? toPascalCase(singularizeLast(view.name))
 
     let columns: EnrichedColumn[]
     if (view.columns?.length) {

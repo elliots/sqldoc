@@ -128,6 +128,11 @@
       "types": "./src/cobol-copybook/index.ts",
       "import": "./src/cobol-copybook/index.ts",
       "default": "./src/cobol-copybook/index.ts"
+    },
+    "./typeorm": {
+      "types": "./src/typeorm/index.ts",
+      "import": "./src/typeorm/index.ts",
+      "default": "./src/typeorm/index.ts"
     }
   },
   "main": "./src/index.ts",

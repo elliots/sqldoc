@@ -3,7 +3,7 @@
 //
 // Note: `mod models;` is prepended by the Dockerfile.
 
-use models::{Users, Posts};
+use models::{User, Post};
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let row = client
         .query_one("SELECT id, email, name, age, is_active FROM users WHERE id = 1", &[])
         .await?;
-    let user = Users {
+    let user = User {
         id: row.get("id"),
         email: row.get("email"),
         name: row.get("name"),
@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let row = client
         .query_one("SELECT id, user_id, title, body, view_count FROM posts WHERE id = 1", &[])
         .await?;
-    let post = Posts {
+    let post = Post {
         id: row.get("id"),
         user_id: row.get("user_id"),
         title: row.get("title"),

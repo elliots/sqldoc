@@ -45,7 +45,7 @@ public class Test {
             try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE id = 1")) {
                 ResultSet rs = ps.executeQuery();
                 rs.next();
-                var user = new Users(
+                var user = new User(
                     rs.getLong("id"),
                     rs.getString("email"),
                     rs.getString("name"),
@@ -69,7 +69,7 @@ public class Test {
             try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM posts WHERE id = 1")) {
                 ResultSet rs = ps.executeQuery();
                 rs.next();
-                var post = new Posts(
+                var post = new Post(
                     rs.getLong("id"),
                     rs.getLong("user_id"),
                     rs.getString("title"),
