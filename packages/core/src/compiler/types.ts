@@ -10,7 +10,7 @@ export type MigrationFormat = 'atlas' | 'golang-migrate' | 'goose' | 'flyway' | 
 export type MigrationNaming = 'timestamp' | 'sequential' | { provider: 'claude-code' }
 
 /** A single project configuration */
-export interface ProjectConfig {
+export interface ProjectConfig<Namespaces = Record<string, unknown>> {
   /** Project name (required for multi-project, optional for single) */
   name?: string
   /** Schema source: file or directory of SQL files with sqldoc tags */
@@ -29,7 +29,7 @@ export interface ProjectConfig {
     naming?: MigrationNaming
   }
   /** Namespace plugin configuration */
-  namespaces?: Record<string, unknown>
+  namespaces?: Namespaces
   /** Lint configuration */
   lint?: LintConfig
 
@@ -43,7 +43,7 @@ export interface ProjectConfig {
 }
 
 /** Config can be a single project or array of projects */
-export type SqldocConfig = ProjectConfig | ProjectConfig[]
+export type SqldocConfig<Namespaces = Record<string, unknown>> = ProjectConfig<Namespaces> | ProjectConfig<Namespaces>[]
 
 /**
  * Resolved single-project config — always a single ProjectConfig.

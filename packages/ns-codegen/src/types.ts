@@ -6,6 +6,10 @@ export interface CodegenConfig {
   templates?: TemplateEntry[]
 }
 
+export interface CodegenNamespaceConfig {
+  codegen: CodegenConfig
+}
+
 /** A single template entry in the codegen config */
 export interface TemplateEntry {
   /** The template — either an import path string or a Template object */
