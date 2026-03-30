@@ -61,6 +61,9 @@ export function parse(text: string): ParseResult {
     }
     if (isImportLine) continue
 
+    // Skip @external/@include directive lines — handled by parseDirectives()
+    if (/--\s*@(?:external|include)\s+/.test(line)) continue
+
     // Find the comment portion of the line (if any)
     // Supports both full comment lines (-- ...) and inline comments (SQL -- ...)
     const commentIdx = line.indexOf('--')

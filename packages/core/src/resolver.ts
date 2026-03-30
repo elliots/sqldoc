@@ -134,10 +134,34 @@ async function resolvePath(rawPath: string, fromDir: string, referrer: string): 
     return files.sort()
   }
 
-  // Non-glob: resolve to absolute path
+  // Package path (not relative) — resolve from project's node_modules/
+  if (!rawPath.startsWith('.') && !rawPath.startsWith('/')) {
+    const projectDir = findPackageJsonDir(fromDir)
+    if (!projectDir) {
+      throw new Error(`Cannot resolve '${rawPath}': no package.json found (referenced from ${referrer})`)
+    }
+    const abs = path.resolve(projectDir, 'node_modules', rawPath)
+    if (!fs.existsSync(abs)) {
+      throw new Error(`File not found: ${rawPath} in node_modules/ (referenced from ${referrer})`)
+    }
+    return [abs]
+  }
+
+  // Relative path: resolve from containing file's directory
   const abs = path.resolve(fromDir, rawPath)
   if (!fs.existsSync(abs)) {
     throw new Error(`File not found: ${rawPath} (referenced from ${referrer})`)
   }
   return [abs]
+}
+
+/** Walk up from startDir to find the nearest directory containing package.json */
+function findPackageJsonDir(startDir: string): string | null {
+  let current = path.resolve(startDir)
+  while (true) {
+    if (fs.existsSync(path.join(current, 'package.json'))) return current
+    const parent = path.dirname(current)
+    if (parent === current) return null
+    current = parent
+  }
 }

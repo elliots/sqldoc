@@ -1,10 +1,18 @@
 {
   "scopeName": "comment.sqldoc",
   "injectionSelector": "L:comment.line.double-dash.sql",
-  "patterns": [{ "include": "#import" }, { "include": "#tag" }],
+  "patterns": [{ "include": "#import" }, { "include": "#directive" }, { "include": "#tag" }],
   "repository": {
     "import": {
       "match": "((@)import)\\s+('[^']*'|\"[^\"]*\")",
+      "captures": {
+        "1": { "name": "keyword.control.import.sqldoc" },
+        "2": { "name": "punctuation.definition.tag.sqldoc" },
+        "3": { "name": "string.quoted.import-path.sqldoc" }
+      }
+    },
+    "directive": {
+      "match": "((@)(?:external|include))\\s+('[^']*'|\"[^\"]*\")",
       "captures": {
         "1": { "name": "keyword.control.import.sqldoc" },
         "2": { "name": "punctuation.definition.tag.sqldoc" },

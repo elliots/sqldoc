@@ -1,9 +1,12 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
   type ArgType,
   detectTarget,
+  findSqldocDir,
   loadImports,
   parse,
+  parseDirectives,
   SqlparserTsAdapter,
   type SqlStatement,
   type SqlTarget,
@@ -87,7 +90,26 @@ async function validateDocument(doc: vscode.TextDocument) {
   const vscodeDiags: vscode.Diagnostic[] = []
 
   const importPaths = parsed.imports.map((i) => i.path)
-  const { namespaces, errors: importErrors } = await loadImports(importPaths, doc.uri.fsPath)
+  let namespaces = new Map<string, TagNamespace>()
+  let importErrors: Array<{ importPath: string; message: string }> = []
+  try {
+    const result = await loadImports(importPaths, doc.uri.fsPath)
+    namespaces = result.namespaces
+    importErrors = result.errors
+  } catch (err: any) {
+    // loadImports throws when no .sqldoc/node_modules/ found — treat all imports as errors
+    for (const imp of parsed.imports) {
+      if (!imp.path.startsWith('.')) {
+        vscodeDiags.push(
+          new vscode.Diagnostic(
+            new vscode.Range(imp.line, imp.startCol, imp.line, imp.endCol),
+            `Cannot resolve '${imp.path}': ${err?.message ?? 'no .sqldoc/ found'}`,
+            vscode.DiagnosticSeverity.Error,
+          ),
+        )
+      }
+    }
+  }
 
   // Update cache
   nsCache.set(doc.uri.toString(), namespaces)
@@ -99,6 +121,24 @@ async function validateDocument(doc: vscode.TextDocument) {
         new vscode.Diagnostic(
           new vscode.Range(imp.line, imp.startCol, imp.line, imp.endCol),
           `Failed to import '${err.importPath}': ${err.message}`,
+          vscode.DiagnosticSeverity.Error,
+        ),
+      )
+    }
+  }
+
+  // Validate @external/@include directive file paths
+  const docDir = path.dirname(doc.uri.fsPath)
+  const directives = parseDirectives(text)
+  for (const d of directives) {
+    // Skip glob patterns — can't validate existence of globs in real-time
+    if (d.path.includes('*') || d.path.includes('{') || d.path.includes('?')) continue
+    const resolved = resolveDirectivePath(d.path, docDir)
+    if (!resolved) {
+      vscodeDiags.push(
+        new vscode.Diagnostic(
+          new vscode.Range(d.line, d.startCol, d.line, d.endCol),
+          `File not found: ${d.path}`,
           vscode.DiagnosticSeverity.Error,
         ),
       )
@@ -138,7 +178,10 @@ async function validateDocument(doc: vscode.TextDocument) {
   }
 
   const tagDiags = validate(parsed.tags, namespaces, text, statements)
+  // Filter out "unknown namespace" for @external/@include — these are directives, not tags
+  const directiveNames = new Set(['external', 'include'])
   for (const d of tagDiags) {
+    if (d.message.includes('Unknown namespace') && directiveNames.has(d.message.match(/'(\w+)'/)?.[1] ?? '')) continue
     vscodeDiags.push(
       new vscode.Diagnostic(
         new vscode.Range(d.line, d.startCol, d.line, d.endCol),
@@ -631,9 +674,10 @@ class SqlTagHoverProvider implements vscode.HoverProvider {
   }
 }
 
-// ── Document link provider (ctrl+click on @import paths) ──────────────
+// ── Document link provider (ctrl+click on @import, @external, @include paths) ──
 
 const IMPORT_PATH_RE = /--\s*@import\s+(['"])([^'"]+)\1/
+const DIRECTIVE_PATH_RE = /--\s*@(external|include)\s+(['"])([^'"]+)\2/
 
 class ImportDocumentLinkProvider implements vscode.DocumentLinkProvider {
   provideDocumentLinks(doc: vscode.TextDocument): vscode.DocumentLink[] {
@@ -641,35 +685,87 @@ class ImportDocumentLinkProvider implements vscode.DocumentLinkProvider {
 
     for (let i = 0; i < doc.lineCount; i++) {
       const line = doc.lineAt(i).text
+
+      // @import links (TypeScript namespace plugins)
       const m = IMPORT_PATH_RE.exec(line)
-      if (!m) continue
+      if (m) {
+        const importPath = m[2]
+        const pathStart = m.index + m[0].indexOf(m[2])
+        const pathEnd = pathStart + importPath.length
+        const range = new vscode.Range(i, pathStart, i, pathEnd)
 
-      const importPath = m[2]
-      const pathStart = m.index + m[0].indexOf(m[2])
-      const pathEnd = pathStart + importPath.length
-      const range = new vscode.Range(i, pathStart, i, pathEnd)
+        const docDir = path.dirname(doc.uri.fsPath)
+        let resolved: string | undefined
+        if (importPath.startsWith('.')) {
+          resolved = path.resolve(docDir, importPath)
+        } else {
+          // Package imports resolve from .sqldoc/node_modules/ only
+          const sqldocDir = findSqldocDir(docDir)
+          if (sqldocDir) {
+            try {
+              resolved = require.resolve(importPath, { paths: [path.join(sqldocDir, 'node_modules')] })
+            } catch {
+              // unresolvable — no link
+            }
+          }
+        }
 
-      const docDir = path.dirname(doc.uri.fsPath)
-      let resolved: string | undefined
-      if (importPath.startsWith('.')) {
-        resolved = path.resolve(docDir, importPath)
-      } else {
-        try {
-          resolved = require.resolve(importPath, { paths: [docDir] })
-        } catch {
-          // unresolvable — no link
+        if (resolved) {
+          const link = new vscode.DocumentLink(range, vscode.Uri.file(resolved))
+          link.tooltip = resolved
+          links.push(link)
         }
       }
 
-      if (resolved) {
-        const link = new vscode.DocumentLink(range, vscode.Uri.file(resolved))
-        link.tooltip = resolved
-        links.push(link)
+      // @external/@include links (SQL file references)
+      const dm = DIRECTIVE_PATH_RE.exec(line)
+      if (dm) {
+        const refPath = dm[3]
+        // Skip glob patterns — can't ctrl+click a glob
+        if (refPath.includes('*') || refPath.includes('{') || refPath.includes('?')) continue
+
+        const pathStart = dm.index + dm[0].indexOf(dm[3])
+        const pathEnd = pathStart + refPath.length
+        const range = new vscode.Range(i, pathStart, i, pathEnd)
+
+        const docDir = path.dirname(doc.uri.fsPath)
+        const resolved = resolveDirectivePath(refPath, docDir)
+        if (resolved) {
+          const link = new vscode.DocumentLink(range, vscode.Uri.file(resolved))
+          link.tooltip = resolved
+          links.push(link)
+        }
       }
     }
 
     return links
   }
+}
+
+/**
+ * Resolve a directive path to an absolute file path.
+ * - Relative paths (./) resolve from the containing file's directory
+ * - Package paths resolve from the nearest project's node_modules/
+ * Returns null if the file doesn't exist.
+ */
+function resolveDirectivePath(refPath: string, fromDir: string): string | null {
+  let abs: string
+  if (refPath.startsWith('.') || refPath.startsWith('/')) {
+    abs = path.resolve(fromDir, refPath)
+  } else {
+    // Package path — find nearest package.json and resolve from its node_modules/
+    let dir = fromDir
+    while (true) {
+      if (fs.existsSync(path.join(dir, 'package.json'))) {
+        abs = path.resolve(dir, 'node_modules', refPath)
+        break
+      }
+      const parent = path.dirname(dir)
+      if (parent === dir) return null
+      dir = parent
+    }
+  }
+  return fs.existsSync(abs!) ? abs! : null
 }
 
 function formatTagSignature(nsName: string, tagName: string, def: TagDef): string {
