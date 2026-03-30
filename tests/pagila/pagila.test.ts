@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { before, describe, it } from 'node:test'
+import { after, before, describe, it } from 'node:test'
 import { PGlite } from '@electric-sql/pglite'
 import { pgDump } from '@electric-sql/pglite-tools/pg_dump'
 import { createPgliteAdapter, createPostgresDockerAdapter, createRunner } from '@sqldoc/db'
@@ -24,6 +24,10 @@ const pagilaSQL =
         dialect: 'postgres',
         devUrl,
       })
+    })
+
+    after(async () => {
+      await runner?.close()
     })
 
     it(`${testTitle}: self-diff produces zero changes`, async () => {
