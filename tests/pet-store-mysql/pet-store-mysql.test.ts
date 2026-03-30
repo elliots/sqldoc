@@ -39,6 +39,17 @@ function setupProject(tmpDir: string): void {
 
   const pluginSource = fs.readFileSync(path.join(import.meta.dirname, 'custom-plugin.ts'), 'utf-8')
   fs.writeFileSync(path.join(tmpDir, 'custom-plugin.ts'), pluginSource)
+
+  // Copy external/ and include/ directories for @external/@include directives
+  const fixtureDir = import.meta.dirname
+  for (const sub of ['external', 'include']) {
+    const srcDir = path.join(fixtureDir, sub)
+    const destDir = path.join(tmpDir, sub)
+    fs.mkdirSync(destDir, { recursive: true })
+    for (const file of fs.readdirSync(srcDir)) {
+      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file))
+    }
+  }
 }
 
 // -- Test suite --
@@ -69,7 +80,7 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
     expect(result.exitCode).toBe(0)
   })
 
-  it('generates TypeScript types', () => {
+  it('generates TypeScript types for project, external, and included tables', () => {
     setupProject(tmpDir)
     runCli('codegen', tmpDir)
 
@@ -77,10 +88,17 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
     expect(fs.existsSync(tsPath)).toBe(true)
 
     const tsContent = fs.readFileSync(tsPath, 'utf-8')
+    // Project tables
     expect(tsContent).toContain('export interface Adoption')
     expect(tsContent).toContain('export interface Category')
     expect(tsContent).toContain('export interface Pet')
     expect(tsContent).not.toContain('export interface Staff {')
+
+    // External table (locations) — codegen generates from it by default (D-12)
+    expect(tsContent).toContain('export interface Location')
+
+    // Included table (reviews)
+    expect(tsContent).toContain('export interface Review')
   })
 })
 

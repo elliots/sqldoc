@@ -34,6 +34,7 @@
       "dependencies": {
         "@sqldoc/sqlparser-ts": "workspace:*",
         "bundle-require": "^5.1.0",
+        "fast-glob": "^3.3.3",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.4.8",
@@ -248,6 +249,7 @@
       "devDependencies": {
         "@electric-sql/pglite": "^0.4.2",
         "@electric-sql/pglite-tools": "^0.3.2",
+        "@sqldoc/cli": "workspace:*",
         "@sqldoc/core": "workspace:*",
         "@sqldoc/db": "workspace:*",
         "@sqldoc/ns-anon": "workspace:*",

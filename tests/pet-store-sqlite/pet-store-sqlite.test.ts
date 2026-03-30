@@ -34,6 +34,17 @@ function setupProject(tmpDir: string): void {
 
   const pluginSource = fs.readFileSync(path.join(import.meta.dirname, 'custom-plugin.ts'), 'utf-8')
   fs.writeFileSync(path.join(tmpDir, 'custom-plugin.ts'), pluginSource)
+
+  // Copy external/ and include/ directories for @external/@include directives
+  const fixtureDir = import.meta.dirname
+  for (const sub of ['external', 'include']) {
+    const srcDir = path.join(fixtureDir, sub)
+    const destDir = path.join(tmpDir, sub)
+    fs.mkdirSync(destDir, { recursive: true })
+    for (const file of fs.readdirSync(srcDir)) {
+      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file))
+    }
+  }
 }
 
 // -- Test suite --
@@ -69,5 +80,12 @@ describe('namespace coverage', { timeout: 120_000 }, () => {
     const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
     const importLines = schema.split('\n').filter((line) => line.match(/^-- @import /))
     expect(importLines).toHaveLength(6)
+  })
+
+  it('schema declares @external and @include directives', () => {
+    setupProject(tmpDir)
+    const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
+    expect(schema).toContain("-- @external './external/locations.sql'")
+    expect(schema).toContain("-- @include './include/reviews.sql'")
   })
 })

@@ -1,6 +1,12 @@
 // Types
 
 export type { SqlAstAdapter, SqlColumn, SqlCommentOn, SqlStatement } from './ast/index.ts'
+// Directives
+export type { FileDirective, FileProvenance } from './directives.ts'
+export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'
+// Resolver
+export type { ResolvedFiles } from './resolver.ts'
+export { resolveDirectives } from './resolver.ts'
 // AST Adapters
 export { SqlparserTsAdapter } from './ast/index.ts'
 // Blocks

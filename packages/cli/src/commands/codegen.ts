@@ -3,10 +3,11 @@ import * as path from 'node:path'
 import type { DocsMeta, ProjectContext, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import { createRunner, extractExtensions } from '@sqldoc/db'
+import type { AtlasRealm } from '@sqldoc/db'
 import pc from 'picocolors'
 import { CliError, formatPipelineError } from '../errors.ts'
 import { generateConfigTypes } from '../utils/generate-config-types.ts'
-import { runCompilePipeline } from '../utils/pipeline.ts'
+import { filterExternalFromRealm, runCompilePipeline } from '../utils/pipeline.ts'
 
 /**
  * compile command: reads SQL files, runs the full pipeline
@@ -92,6 +93,12 @@ export async function codegenCommand(
       }
     }
 
+    // Apply skipExternal filtering if configured (D-20)
+    let codegenRealm = postCompileRealm
+    if (config.codegen?.skipExternal && result.externalObjectNames.size > 0 && codegenRealm) {
+      codegenRealm = filterExternalFromRealm(codegenRealm as AtlasRealm, result.externalObjectNames)
+    }
+
     for (const [nsName, plugin] of projectPlugins) {
       const hook = plugin.afterCompile ?? plugin.generateProject
       const ctx: ProjectContext = {
@@ -102,7 +109,8 @@ export async function codegenCommand(
         docsMeta: allDocsMeta,
         config: (config.namespaces?.[nsName] ?? {}) as Record<string, unknown>,
         projectRoot: configRoot,
-        atlasRealm: postCompileRealm,
+        atlasRealm: codegenRealm,
+        externalObjectNames: result.externalObjectNames,
       }
 
       try {

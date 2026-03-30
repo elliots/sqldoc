@@ -2,6 +2,9 @@
  * Parses SQL files for @import statements and @tags in comments.
  */
 
+import type { FileDirective } from './directives.ts'
+import { parseDirectives } from './directives.ts'
+
 export interface ImportStatement {
   path: string
   line: number
@@ -28,6 +31,8 @@ export interface ParsedTag {
 export interface ParseResult {
   imports: ImportStatement[]
   tags: ParsedTag[]
+  externals: FileDirective[]
+  includes: FileDirective[]
 }
 
 const IMPORT_RE = /--\s*@import\s+(['"])([^'"]+)\1/g
@@ -68,8 +73,8 @@ export function parse(text: string): ParseResult {
       const tag = m[2] || null
       const rawArgs = m[3] !== undefined ? m[3] : null
 
-      // Skip @import — handled separately
-      if (namespace === 'import') continue
+      // Skip @import, @external, @include — handled separately
+      if (namespace === 'import' || namespace === 'external' || namespace === 'include') continue
 
       const nsStart = m.index + 1 // after @
       const nsEnd = nsStart + namespace.length
@@ -105,7 +110,12 @@ export function parse(text: string): ParseResult {
     }
   }
 
-  return { imports, tags }
+  // Parse @external and @include directives
+  const directives = parseDirectives(text)
+  const externals = directives.filter((d) => d.type === 'external')
+  const includes = directives.filter((d) => d.type === 'include')
+
+  return { imports, tags, externals, includes }
 }
 
 // ── Arg value parser ─────────────────────────────────────────────────

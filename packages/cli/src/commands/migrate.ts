@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
@@ -79,6 +80,21 @@ export async function migrateCommand(options: {
     throw formatPipelineError(err, config)
   }
 
+  // ── Step 2a: Extract external SQL for both-sides-of-diff (D-09) ────
+  const externalSqlParts: string[] = []
+  if (pipelineResult.provenanceMap.size > 0) {
+    for (const [filePath, provenance] of pipelineResult.provenanceMap) {
+      if (provenance === 'external') {
+        externalSqlParts.push(fs.readFileSync(filePath, 'utf-8'))
+      }
+    }
+  }
+
+  // Prepend external SQL to current state so external objects cancel out in diff
+  const currentWithExternals = externalSqlParts.length > 0
+    ? [externalSqlParts.join('\n'), currentSql].filter(Boolean).join('\n')
+    : currentSql
+
   // ── Step 3: Build known renames from @docs.previously tags ─────────
   const knownRenames = buildRenamesFromPreviously(pipelineResult.outputs)
 
@@ -92,7 +108,7 @@ export async function migrateCommand(options: {
   // ── Step 4: Diff current -> desired (up migration) ─────────────────
   const schemaOpt = dialect === 'postgres' ? 'public' : undefined
 
-  const allSql = [currentSql, desiredSql].filter(Boolean)
+  const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)
   const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
 
@@ -102,7 +118,9 @@ export async function migrateCommand(options: {
 
   try {
     // First diff: pass known renames, get back SQL + candidates
-    const upResult = await runner.diff(currentSql ? [currentSql] : [], [desiredSql], {
+    // External SQL is on both sides (currentWithExternals + desiredSql) so external objects cancel out (D-09)
+    // Include files are only in desiredSql, so they produce migration changes (D-10)
+    const upResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
       schema: schemaOpt,
       renames: knownRenames.length > 0 ? knownRenames : undefined,
     })
@@ -121,7 +139,7 @@ export async function migrateCommand(options: {
       if (accepted.length > 0) {
         // Re-diff with the accepted renames added to the known set
         const allRenames = [...knownRenames, ...accepted]
-        const rediffResult = await runner.diff(currentSql ? [currentSql] : [], [desiredSql], {
+        const rediffResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
           schema: schemaOpt,
           renames: allRenames,
         })
@@ -136,7 +154,8 @@ export async function migrateCommand(options: {
     }
 
     // ── Step 5: Diff desired -> current (down migration) ──────────────
-    const downResult = await runner.diff([desiredSql], currentSql ? [currentSql] : [], { schema: schemaOpt })
+    // Down diff also uses currentWithExternals so external objects cancel out
+    const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], { schema: schemaOpt })
 
     if (downResult.error) {
       throw new CliError(`Schema diff (reverse) error: ${downResult.error}`)

@@ -86,6 +86,7 @@ const plugin: NamespacePlugin = {
         config: entry.config ?? {},
         output: entry.output,
         templateName,
+        externalObjectNames: ctx.externalObjectNames,
       }
 
       const result = template.generate(templateCtx)

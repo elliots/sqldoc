@@ -1,8 +1,17 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { CompilerOutput, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
-import { compile, loadImports, parse, SqlparserTsAdapter, validate } from '@sqldoc/core'
+import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
+import {
+  compile,
+  loadImports,
+  parse,
+  parseDirectives,
+  resolveDirectives,
+  SqlparserTsAdapter,
+  validate,
+} from '@sqldoc/core'
 import { createRunner, extractExtensions } from '@sqldoc/db'
+import type { AtlasRealm, AtlasSchema } from '@sqldoc/db'
 import pc from 'picocolors'
 import { promptAndInstallMissing } from './auto-install.ts'
 import { discoverSqlFiles } from './discover.ts'
@@ -20,6 +29,10 @@ export interface PipelineResult {
   totalErrors: number
   /** Atlas realm from initial inspect (pre-compile schema) */
   atlasRealm?: unknown
+  /** Set of external object names (from externalRealm). Empty when no @external directives. */
+  externalObjectNames: Set<string>
+  /** File provenance map (absolute path -> provenance) */
+  provenanceMap: Map<string, FileProvenance>
 }
 
 /**
@@ -41,16 +54,54 @@ export async function runCompilePipeline(
   const sqlFiles = await discoverSqlFiles(inputPath, config.include)
   if (sqlFiles.length === 0) {
     console.error(pc.yellow('No SQL files found'))
-    return { mergedSql: '', outputs: [], plugins: new Map(), totalErrors: 0 }
+    return {
+      mergedSql: '',
+      outputs: [],
+      plugins: new Map(),
+      totalErrors: 0,
+      externalObjectNames: new Set(),
+      provenanceMap: new Map(),
+    }
   }
 
   // Initialize AST adapter once
   const adapter = new SqlparserTsAdapter(config.dialect)
   await adapter.init()
 
+  // ── Resolve @external and @include directives ──────────────────────
+  const resolved = await resolveDirectives(sqlFiles, (f) => fs.readFileSync(f, 'utf-8'))
+  const hasExternals = resolved.externalFiles.length > 0
+
+  // Build merged content: inline @include content into each project file at the end.
+  // This ensures included tables can FK-reference parent tables (they appear after).
+  // External files are kept separate — they go to Atlas first as the pre-existing baseline.
+  const mergedProjectContents = new Map<string, string>()
+  for (const sqlFile of sqlFiles) {
+    let content = fs.readFileSync(sqlFile, 'utf-8')
+    // Find this file's includes by parsing its directives
+    const directives = parseDirectives(content)
+    for (const d of directives) {
+      if (d.type !== 'include') continue
+      const dir = path.dirname(sqlFile)
+      const abs = path.resolve(dir, d.path)
+      if (resolved.provenanceMap.get(abs) === 'include') {
+        const includeContent = fs.readFileSync(abs, 'utf-8')
+        content += `\n\n${includeContent}`
+      }
+    }
+    mergedProjectContents.set(sqlFile, content)
+  }
+
+  // For Atlas: external files first, then merged project files (includes inlined)
+  const allFiles = [...resolved.externalFiles, ...sqlFiles]
+
   // ── Atlas -- required for compilation ──────────────────────────────
   const dialect = config.dialect
-  const allRawContents = sqlFiles.map((f) => fs.readFileSync(f, 'utf-8'))
+  const allRawContents = allFiles.map((f) =>
+    resolved.provenanceMap.get(f) === 'external'
+      ? fs.readFileSync(f, 'utf-8')
+      : (mergedProjectContents.get(f) ?? fs.readFileSync(f, 'utf-8')),
+  )
 
   // Detect goose migration format and warn once
   if (allRawContents.some((sql) => /^--\s*\+goose\s+(Up|Down)/m.test(sql))) {
@@ -67,9 +118,32 @@ export async function runCompilePipeline(
   const allPlugins = new Map<string, NamespacePlugin>()
   let totalErrors = 0
   let atlasRealm: unknown
+  let externalObjectNames = new Set<string>()
 
   try {
-    const relFiles = sqlFiles.map((f) => path.relative(process.cwd(), f))
+    // ── Dual Atlas inspection when @external directives present (D-16, D-17) ──
+    let externalRealm: AtlasRealm | undefined
+
+    if (hasExternals) {
+      // Inspection 1: external files only -> externalRealm
+      const externalContents = resolved.externalFiles.map((f) => stripMigrationDown(fs.readFileSync(f, 'utf-8')))
+      const externalResult = await atlasRunner.inspect(externalContents, {
+        schema: dialect === 'postgres' ? 'public' : undefined,
+      })
+      if (!externalResult.schema) {
+        throw new Error(externalResult.error ?? 'Atlas failed to parse external schema')
+      }
+      externalRealm = externalResult.schema as AtlasRealm
+
+      // Extract external object names
+      for (const schema of externalRealm.schemas) {
+        for (const table of schema.tables ?? []) externalObjectNames.add(table.name)
+        for (const view of schema.views ?? []) externalObjectNames.add(view.name)
+      }
+    }
+
+    // Inspection 2 (or sole inspection when no externals): all files -> fullRealm
+    const relFiles = allFiles.map((f) => path.relative(process.cwd(), f))
     const inspectResult = await atlasRunner.inspect(allSqlContents, {
       schema: dialect === 'postgres' ? 'public' : undefined,
       fileNames: relFiles,
@@ -82,10 +156,16 @@ export async function runCompilePipeline(
     }
     atlasRealm = inspectResult.schema
 
-    for (const filePath of sqlFiles) {
+    // Validate external object immutability (D-18)
+    if (hasExternals && externalRealm) {
+      validateExternalImmutability(externalRealm, atlasRealm as AtlasRealm, externalObjectNames)
+    }
+
+    for (const filePath of allFiles) {
       const rel = path.relative(process.cwd(), filePath)
       console.log(pc.cyan(`── ${rel}`))
-      const source = fs.readFileSync(filePath, 'utf-8')
+      // Use merged content (includes inlined) for project files, raw content for externals
+      const source = mergedProjectContents.get(filePath) ?? fs.readFileSync(filePath, 'utf-8')
 
       // Parse tags and imports
       const { imports, tags } = parse(source)
@@ -143,6 +223,9 @@ export async function runCompilePipeline(
       // Compile with Atlas schema
       const output = compile({ source, filePath, plugins, statements, adapter, config, atlasRealm })
 
+      // Set provenance on each CompilerOutput
+      output.provenance = resolved.provenanceMap.get(filePath) ?? 'project'
+
       mergedOutputs.push(output.mergedSql)
       allOutputs.push(output)
       for (const [name, plugin] of plugins) {
@@ -176,6 +259,8 @@ export async function runCompilePipeline(
     plugins: allPlugins,
     totalErrors,
     atlasRealm,
+    externalObjectNames,
+    provenanceMap: resolved.provenanceMap,
   }
 }
 
@@ -189,4 +274,84 @@ function stripMigrationDown(sql: string): string {
   const stripped = downIdx === -1 ? sql : sql.substring(0, downIdx).trimEnd()
   // Remove the -- +goose Up marker itself
   return stripped.replace(/^--\s*\+goose\s+Up\s*$/gm, '').trimStart()
+}
+
+// -- External object helpers --
+
+/**
+ * Normalize an Atlas object (table or view) to a canonical string for comparison.
+ * Uses JSON.stringify on sorted column arrays for deep equality.
+ */
+function normalizeColumns(
+  columns: Array<{ name: string; type?: { T?: string; raw?: string; null?: boolean } }> | undefined,
+): string {
+  if (!columns || columns.length === 0) return '[]'
+  const sorted = [...columns].sort((a, b) => a.name.localeCompare(b.name))
+  return JSON.stringify(sorted.map((c) => ({ name: c.name, type: c.type?.T ?? c.type?.raw, null: c.type?.null })))
+}
+
+/**
+ * Validate that external objects have not been modified by project or include files (D-18).
+ * Compares each external object between the externalRealm and fullRealm.
+ * If any difference is detected, throws a hard error.
+ */
+function validateExternalImmutability(
+  externalRealm: AtlasRealm,
+  fullRealm: AtlasRealm,
+  externalObjectNames: Set<string>,
+): void {
+  // Build lookup maps for full realm objects
+  const fullTables = new Map<string, AtlasSchema['tables']>()
+  const fullViews = new Map<string, AtlasSchema['views']>()
+  for (const schema of fullRealm.schemas) {
+    for (const table of schema.tables ?? []) fullTables.set(table.name, [table])
+    for (const view of schema.views ?? []) fullViews.set(view.name, [view])
+  }
+
+  for (const schema of externalRealm.schemas) {
+    for (const extTable of schema.tables ?? []) {
+      if (!externalObjectNames.has(extTable.name)) continue
+      const fullTableArr = fullTables.get(extTable.name)
+      if (!fullTableArr || fullTableArr.length === 0) continue
+      const fullTable = fullTableArr[0]
+
+      const extCols = normalizeColumns(extTable.columns)
+      const fullCols = normalizeColumns(fullTable.columns)
+      if (extCols !== fullCols) {
+        throw new Error(
+          `External object '${extTable.name}' was modified by a project or include file. External objects are immutable.`,
+        )
+      }
+    }
+
+    for (const extView of schema.views ?? []) {
+      if (!externalObjectNames.has(extView.name)) continue
+      const fullViewArr = fullViews.get(extView.name)
+      if (!fullViewArr || fullViewArr.length === 0) continue
+      const fullView = fullViewArr[0]
+
+      const extCols = normalizeColumns(extView.columns)
+      const fullCols = normalizeColumns(fullView.columns)
+      if (extCols !== fullCols) {
+        throw new Error(
+          `External object '${extView.name}' was modified by a project or include file. External objects are immutable.`,
+        )
+      }
+    }
+  }
+}
+
+/**
+ * Filter external objects from a realm, returning a new realm without them (D-20).
+ * Used when config.codegen.skipExternal is true.
+ */
+export function filterExternalFromRealm(realm: AtlasRealm, externalNames: Set<string>): AtlasRealm {
+  return {
+    ...realm,
+    schemas: realm.schemas.map((schema) => ({
+      ...schema,
+      tables: (schema.tables ?? []).filter((t) => !externalNames.has(t.name)),
+      views: (schema.views ?? []).filter((v) => !externalNames.has(v.name)),
+    })),
+  }
 }

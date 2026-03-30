@@ -7,6 +7,8 @@
 -- @import '@sqldoc/ns-lint'
 -- @import '@sqldoc/ns-validate'
 -- @import './custom-plugin.ts'
+-- @external './external/locations.sql'
+-- @include './include/reviews.sql'
 
 -- ── 1. categories ────────────────────────────────────────────────────
 

@@ -19,6 +19,8 @@ interface ResolvedSource {
   value: string
   /** Atlas realm from the pipeline (reuse instead of re-inspecting) */
   atlasRealm?: unknown
+  /** External SQL to prepend to the other side of a diff (per D-09) */
+  externalSql?: string
 }
 
 async function resolveSource(source: string, config: ResolvedConfig, configRoot: string): Promise<ResolvedSource> {
@@ -37,10 +39,23 @@ async function resolveSource(source: string, config: ResolvedConfig, configRoot:
     throw new Error(`${result.totalErrors} compilation error(s)`)
   }
 
+  // Collect external SQL for diff cancellation (D-09)
+  let externalSql: string | undefined
+  if (result.provenanceMap.size > 0) {
+    const parts: string[] = []
+    for (const [filePath, provenance] of result.provenanceMap) {
+      if (provenance === 'external') {
+        parts.push(fs.readFileSync(filePath, 'utf-8'))
+      }
+    }
+    if (parts.length > 0) externalSql = parts.join('\n')
+  }
+
   return {
     type: fs.statSync(resolved).isDirectory() ? 'directory' : 'file',
     value: result.mergedSql,
     atlasRealm: result.atlasRealm,
+    externalSql,
   }
 }
 
@@ -148,12 +163,25 @@ export async function schemaDiffCommand(options: {
       ? await resolveSource(fromSource, config, configRoot)
       : { type: 'file' as const, value: '' } // empty = no existing schema
 
-    const fromSql: string[] = fromResolved.type === 'database' ? [] : [fromResolved.value]
-    const toSql: string[] = toResolved.type === 'database' ? [] : [toResolved.value]
-
     if (fromResolved.type === 'database' || toResolved.type === 'database') {
       await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false)
       return
+    }
+
+    let fromSql: string[] = [fromResolved.value]
+    let toSql: string[] = [toResolved.value]
+
+    // External cancellation: if "to" has externals, add them to "from" too (D-09)
+    if (toResolved.externalSql && fromSql[0]) {
+      fromSql = [[toResolved.externalSql, fromSql[0]].join('\n')]
+    } else if (toResolved.externalSql) {
+      fromSql = [toResolved.externalSql]
+    }
+    // Vice versa if "from" has externals
+    if (fromResolved.externalSql && toSql[0]) {
+      toSql = [[fromResolved.externalSql, toSql[0]].join('\n')]
+    } else if (fromResolved.externalSql) {
+      toSql = [fromResolved.externalSql]
     }
 
     const allSql = [...fromSql, ...toSql].filter(Boolean)

@@ -43,6 +43,17 @@ function setupProject(tmpDir: string): void {
   // Copy custom-plugin.ts so the relative @import resolves
   const pluginSource = fs.readFileSync(path.join(import.meta.dirname, 'custom-plugin.ts'), 'utf-8')
   fs.writeFileSync(path.join(tmpDir, 'custom-plugin.ts'), pluginSource)
+
+  // Copy external/ and include/ directories for @external/@include directives
+  const fixtureDir = import.meta.dirname
+  for (const sub of ['external', 'include']) {
+    const srcDir = path.join(fixtureDir, sub)
+    const destDir = path.join(tmpDir, sub)
+    fs.mkdirSync(destDir, { recursive: true })
+    for (const file of fs.readdirSync(srcDir)) {
+      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file))
+    }
+  }
 }
 
 // -- Test suite --
@@ -77,7 +88,7 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
     expect(result.exitCode).toBe(0)
   })
 
-  it('generates TypeScript types for original tables', () => {
+  it('generates TypeScript types for project, external, and included tables', () => {
     setupProject(tmpDir)
     runCli('codegen', tmpDir)
 
@@ -86,7 +97,7 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
 
     const tsContent = fs.readFileSync(tsPath, 'utf-8')
 
-    // Template uses singular PascalCase interface names
+    // Project tables
     expect(tsContent).toContain('export interface Adoption')
     expect(tsContent).toContain('export interface Category')
     expect(tsContent).toContain('export interface Owner')
@@ -96,6 +107,12 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
 
     // Staff is excluded by @codegen.skip
     expect(tsContent).not.toContain('export interface Staff {')
+
+    // External table (locations) — codegen generates from it by default (D-12)
+    expect(tsContent).toContain('export interface Location')
+
+    // Included table (reviews) — part of project, always in codegen
+    expect(tsContent).toContain('export interface Review')
 
     // Typical type fields present
     expect(tsContent).toContain('name: string')
@@ -145,11 +162,49 @@ describe('namespace coverage', { timeout: 120_000 }, () => {
     expect(importLines).toHaveLength(11)
   })
 
-  it('schema contains 7 CREATE TABLE statements', () => {
+  it('schema contains 7 CREATE TABLE statements (project only)', () => {
     setupProject(tmpDir)
     const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
     const createCount = (schema.match(/CREATE TABLE /g) || []).length
     expect(createCount).toBe(7)
+  })
+
+  it('schema declares @external and @include directives', () => {
+    setupProject(tmpDir)
+    const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
+    expect(schema).toContain("-- @external './external/locations.sql'")
+    expect(schema).toContain("-- @include './include/reviews.sql'")
+  })
+})
+
+// -- @external/@include directives --
+
+describe('directive behavior', { timeout: 120_000 }, () => {
+  it('rejects external files that FK-reference project tables', () => {
+    setupProject(tmpDir)
+
+    // Create an external file that tries to FK into a project table — should fail
+    // because externals are inspected in isolation (they can't know about project schema)
+    fs.writeFileSync(
+      path.join(tmpDir, 'external', 'bad-external.sql'),
+      `CREATE TABLE bad_external (
+  id SERIAL PRIMARY KEY,
+  pet_id INTEGER REFERENCES pets(id)
+);`,
+    )
+
+    // Add the bad external to schema.sql
+    const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
+    fs.writeFileSync(
+      path.join(tmpDir, 'schema.sql'),
+      schema.replace(
+        "-- @external './external/locations.sql'",
+        "-- @external './external/locations.sql'\n-- @external './external/bad-external.sql'",
+      ),
+    )
+
+    const result = runCli('codegen', tmpDir, { expectFail: true })
+    expect(result.exitCode).toBe(1)
   })
 })
 

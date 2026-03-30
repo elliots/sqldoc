@@ -1,4 +1,5 @@
 import type { SqlStatement } from '../ast/types.ts'
+import type { FileProvenance } from '../directives.ts'
 import type { SqlTarget, TagNamespace } from '../types.ts'
 
 // ── Project config ──────────────────────────────────────────────────
@@ -32,6 +33,11 @@ export interface ProjectConfig<Namespaces = Record<string, unknown>> {
   namespaces?: Namespaces
   /** Lint configuration */
   lint?: LintConfig
+  /** Codegen options */
+  codegen?: {
+    /** When true, codegen receives a filtered realm with external objects removed. Default: false. */
+    skipExternal?: boolean
+  }
 
   // ── Legacy fields (backward compat) ──
   /** @deprecated Use `schema` instead. Glob patterns for SQL source files */
@@ -142,6 +148,8 @@ export interface ProjectContext {
   projectRoot: string
   /** Atlas-parsed schema realm (Tier 2, when available) */
   atlasRealm?: unknown
+  /** Set of object names (table/view) from @external files. Used by codegen for annotation and skipExternal filtering. */
+  externalObjectNames?: Set<string>
 }
 
 /** @deprecated Use ProjectContext instead */
@@ -219,6 +227,8 @@ export interface CodeOutput {
 export interface CompilerOutput {
   /** Source SQL file path */
   sourceFile: string
+  /** File provenance: project, external, or include */
+  provenance?: FileProvenance
   /** Complete SQL: original source with generated statements appended */
   mergedSql: string
   /** Individual SQL statements produced by namespaces (for inspection) */

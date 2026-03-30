@@ -41,6 +41,8 @@ export interface TemplateContext<C = Record<string, unknown>> {
   output: string
   /** Template name (derived from import path) */
   templateName: string
+  /** Set of object names from @external files. Templates can use this to annotate external types. */
+  externalObjectNames?: Set<string>
 }
 
 /** Result returned from a template's generate function */

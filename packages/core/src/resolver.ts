@@ -1,0 +1,143 @@
+/**
+ * SQL file resolver with glob expansion, transitive resolution,
+ * cycle detection, dedup, and missing file error handling.
+ *
+ * Resolves @external and @include directives from SQL files into
+ * absolute file paths with provenance tracking.
+ */
+
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import fg from 'fast-glob'
+import type { FileProvenance } from './directives.ts'
+import { parseDirectives } from './directives.ts'
+
+// -- Types --
+
+/** Result of resolving all @external and @include directives */
+export interface ResolvedFiles {
+  /** Absolute paths of external SQL files (deduped) */
+  externalFiles: string[]
+  /** Absolute paths of included SQL files (deduped) */
+  includeFiles: string[]
+  /** Map from absolute file path to its provenance */
+  provenanceMap: Map<string, FileProvenance>
+}
+
+// -- Resolver --
+
+/**
+ * Resolve all @external and @include directives from project SQL files.
+ *
+ * - Resolves paths relative to the containing file's directory
+ * - Expands glob patterns using fast-glob
+ * - Recursively processes referenced files for transitive directives
+ * - Detects cycles via a visited set (no infinite loops)
+ * - Deduplicates: each file appears at most once
+ * - External takes precedence: if a file is both @external and @include, it's external
+ * - Missing referenced files produce a hard error
+ *
+ * @param projectFiles Absolute paths of discovered project SQL files
+ * @param readFile Function to read a file's content given its absolute path
+ */
+export async function resolveDirectives(
+  projectFiles: string[],
+  readFile: (path: string) => string,
+): Promise<ResolvedFiles> {
+  const provenanceMap = new Map<string, FileProvenance>()
+  const visited = new Set<string>()
+
+  // Mark all project files
+  for (const f of projectFiles) {
+    provenanceMap.set(f, 'project')
+  }
+
+  // Process each project file's directives
+  for (const filePath of projectFiles) {
+    const content = readFile(filePath)
+    await processFile(filePath, content, readFile, provenanceMap, visited)
+  }
+
+  // Build result arrays from provenance map
+  const externalFiles: string[] = []
+  const includeFiles: string[] = []
+
+  for (const [filePath, provenance] of provenanceMap) {
+    if (provenance === 'external') externalFiles.push(filePath)
+    else if (provenance === 'include') includeFiles.push(filePath)
+  }
+
+  return {
+    externalFiles: externalFiles.sort(),
+    includeFiles: includeFiles.sort(),
+    provenanceMap,
+  }
+}
+
+/**
+ * Process directives in a single file, resolving paths and recursing.
+ */
+async function processFile(
+  filePath: string,
+  content: string,
+  readFile: (path: string) => string,
+  provenanceMap: Map<string, FileProvenance>,
+  visited: Set<string>,
+): Promise<void> {
+  if (visited.has(filePath)) return // cycle detection
+  visited.add(filePath)
+
+  const directives = parseDirectives(content)
+  const fileDir = path.dirname(filePath)
+
+  for (const directive of directives) {
+    const resolvedPaths = await resolvePath(directive.path, fileDir, filePath)
+
+    for (const resolved of resolvedPaths) {
+      const provenance = directive.type as FileProvenance
+
+      // Set provenance: external takes precedence over include
+      const existing = provenanceMap.get(resolved)
+      if (!existing) {
+        provenanceMap.set(resolved, provenance)
+      } else if (provenance === 'external' && existing === 'include') {
+        // Upgrade include to external
+        provenanceMap.set(resolved, 'external')
+      }
+      // If already external or project, keep as-is
+
+      // Recurse into the referenced file (if not yet visited)
+      if (!visited.has(resolved)) {
+        const refContent = readFile(resolved)
+        await processFile(resolved, refContent, readFile, provenanceMap, visited)
+      }
+    }
+  }
+}
+
+/**
+ * Resolve a directive path (possibly a glob) to absolute file paths.
+ * Throws if a non-glob path doesn't exist.
+ */
+async function resolvePath(rawPath: string, fromDir: string, referrer: string): Promise<string[]> {
+  const isGlob = rawPath.includes('*') || rawPath.includes('{') || rawPath.includes('?')
+
+  if (isGlob) {
+    const files = await fg(rawPath, {
+      cwd: fromDir,
+      absolute: true,
+      onlyFiles: true,
+    })
+    if (files.length === 0) {
+      throw new Error(`No files matched glob: ${rawPath} (referenced from ${referrer})`)
+    }
+    return files.sort()
+  }
+
+  // Non-glob: resolve to absolute path
+  const abs = path.resolve(fromDir, rawPath)
+  if (!fs.existsSync(abs)) {
+    throw new Error(`File not found: ${rawPath} (referenced from ${referrer})`)
+  }
+  return [abs]
+}
