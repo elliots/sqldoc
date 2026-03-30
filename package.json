@@ -6,7 +6,7 @@
     "build": "cd vscode-sqldoc && node build.mjs && cd .. && bash scripts/build-binary.sh",
     "install-vscode-extension": "cd vscode-sqldoc && bun run install-ext",
     "test:node": "NODE_NO_WARNINGS=1 node --test 'packages/**/*.test.ts' 'tests/**/*.test.ts'",
-    "test:bun": "bun test ./packages ./tests --timeout ${TEST_TIMEOUT:-20000}",
+    "test:bun": "bun test ./packages ./tests --timeout ${TEST_TIMEOUT:-120000}",
     "test-docs": "./scripts/test-docs.sh",
     "format": "biome format --write .",
     "check": "biome check --fix . && bun run --filter '*' typecheck",

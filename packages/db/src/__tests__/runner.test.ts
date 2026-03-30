@@ -1,7 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { after, before, describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import type { DatabaseAdapter } from '../db/types.ts'
 import type { AtlasRunner } from '../runner.ts'
 

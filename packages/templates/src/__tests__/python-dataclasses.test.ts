@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import pythonDataclasses from '../python-dataclasses/index.ts'
 
 const generate = pythonDataclasses.generate

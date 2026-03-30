@@ -1,6 +1,5 @@
-import { describe, it } from 'node:test'
 import type { AtlasRealm } from '@sqldoc/db'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { realmToDocsSchema } from '../atlas.ts'
 
 const sampleRealm: AtlasRealm = {

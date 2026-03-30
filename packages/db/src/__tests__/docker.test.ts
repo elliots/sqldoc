@@ -1,8 +1,7 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { after, describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { after, describe, expect, it } from '@sqldoc/test-utils'
 import { createPostgresDockerAdapter } from '../db/postgres-docker.ts'
 import type { DatabaseAdapter } from '../db/types.ts'
 

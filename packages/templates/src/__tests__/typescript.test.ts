@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import typescript from '../typescript/index.ts'
 
 const generate = typescript.generate

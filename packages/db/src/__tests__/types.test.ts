@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { type AtlasAttr, type AtlasCheck, type AtlasComment, type AtlasTag, findTags, isTag } from '../types.ts'
 
 describe('isTag', () => {

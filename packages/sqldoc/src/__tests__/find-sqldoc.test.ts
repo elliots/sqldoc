@@ -1,8 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { afterEach, describe, expect, it } from '@sqldoc/test-utils'
 import { findSqldocDir } from '../find-sqldoc.ts'
 
 describe('findSqldocDir', () => {

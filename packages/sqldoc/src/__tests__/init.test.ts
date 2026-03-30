@@ -1,8 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, it } from 'node:test'
-import { expect, mockMethod } from '@sqldoc/test-utils'
+import { afterEach, beforeEach, describe, expect, it, mockMethod } from '@sqldoc/test-utils'
 
 describe('initCommand', () => {
   const tempDirs: string[] = []

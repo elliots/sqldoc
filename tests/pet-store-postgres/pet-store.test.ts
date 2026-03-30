@@ -9,8 +9,7 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, it } from 'node:test'
-import { expect, initProject, runCli } from '@sqldoc/test-utils'
+import { afterEach, beforeEach, describe, expect, initProject, it, runCli } from '@sqldoc/test-utils'
 
 /** Set up the pet-store project in a temp directory */
 function setupProject(tmpDir: string): void {

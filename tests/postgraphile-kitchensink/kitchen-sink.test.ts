@@ -1,8 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { after, before, describe, it } from 'node:test'
 import { createPgliteAdapter, createPostgresDockerAdapter, createRunner, extractExtensions } from '@sqldoc/db'
-import { expect } from '@sqldoc/test-utils'
+import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 
 const kitchenSinkSQL = fs.readFileSync(path.join(import.meta.dirname, 'kitchen-sink-schema.sql'), 'utf-8')
 

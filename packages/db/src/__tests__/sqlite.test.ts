@@ -1,5 +1,4 @@
-import { after, before, describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import { createSqliteAdapter } from '../db/sqlite.ts'
 import type { DatabaseAdapter } from '../db/types.ts'
 

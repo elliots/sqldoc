@@ -1,9 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { before, describe, it } from 'node:test'
 import type { NamespacePlugin } from '@sqldoc/core'
 import { compile, loadImports, parse, SqlparserTsAdapter } from '@sqldoc/core'
-import { expect } from '@sqldoc/test-utils'
+import { before, describe, expect, it } from '@sqldoc/test-utils'
 
 const fixturesDir = path.join(import.meta.dirname, 'fixtures')
 

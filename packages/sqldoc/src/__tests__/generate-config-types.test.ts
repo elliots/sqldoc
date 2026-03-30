@@ -1,8 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { afterEach, describe, expect, it } from '@sqldoc/test-utils'
 import { generateConfigTypes } from '../generate-config-types.ts'
 
 describe('generateConfigTypes', () => {

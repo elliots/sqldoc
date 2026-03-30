@@ -1,5 +1,4 @@
-import { after, describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { after, describe, expect, it } from '@sqldoc/test-utils'
 import { createMysqlDockerAdapter } from '../db/mysql-docker.ts'
 import type { DatabaseAdapter } from '../db/types.ts'
 

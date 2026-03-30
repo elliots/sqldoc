@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { pgToCsharp } from '../types/pg-to-csharp.ts'
 import { pgToGo } from '../types/pg-to-go.ts'
 import { pgToJava } from '../types/pg-to-java.ts'

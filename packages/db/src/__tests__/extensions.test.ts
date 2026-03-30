@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { createPgliteAdapter } from '../db/pglite.ts'
 import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from '../extensions.ts'
 import { createRunner } from '../index.ts'

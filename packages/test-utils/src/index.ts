@@ -1,4 +1,5 @@
 export { CLI_ENTRY, initProject, MONOREPO_ROOT, runCli, runShim, SHIM_ENTRY } from './cli.ts'
 export { expect } from './expect.ts'
 export { mockMethod } from './mock.ts'
+export { after, afterEach, before, beforeEach, describe, it } from './test.ts'
 export { useTmpDir } from './tmp-dir.ts'

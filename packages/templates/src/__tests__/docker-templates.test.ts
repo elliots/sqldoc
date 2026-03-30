@@ -7,14 +7,16 @@
  *   1. docker build  (typecheck / compile)
  *   2. docker run    (integration test or no-op CMD)
  *
- * Run with: pnpm test:docker
+ * Run with: bun test --timeout 180000 packages/templates/src/__tests__/docker-templates.test.ts
+ *
+ * Requires Docker. Skipped in the default test suite — run explicitly.
  */
 
 import { execSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { after, before, describe, it } from '@sqldoc/test-utils'
 import pg from 'pg'
 
 const thisDir = dirname(fileURLToPath(import.meta.url))
@@ -55,26 +57,27 @@ describe('docker template tests', { timeout: 180_000 }, () => {
       `docker run -d --name ${PG_CONTAINER} --network ${NETWORK} -p ${PG_PORT}:5432 -e POSTGRES_PASSWORD=postgres postgres:17-alpine`,
     )
 
-    // Wait for postgres to be ready
+    // Wait for postgres to accept connections via the host port mapping
+    let client!: pg.Client
     for (let i = 0; i < 30; i++) {
       try {
-        dockerExec(`docker exec ${PG_CONTAINER} pg_isready -U postgres`)
+        client = new pg.Client({
+          host: '127.0.0.1',
+          port: PG_PORT,
+          database: 'postgres',
+          user: 'postgres',
+          password: 'postgres',
+          connectionTimeoutMillis: 5_000,
+        })
+        await client.connect()
         break
       } catch {
+        try {
+          await client.end()
+        } catch {}
         await new Promise((r) => setTimeout(r, 1000))
       }
     }
-
-    // Seed the database
-    const client = new pg.Client({
-      host: '127.0.0.1',
-      port: PG_PORT,
-      database: 'postgres',
-      user: 'postgres',
-      password: 'postgres',
-      connectionTimeoutMillis: 10_000,
-    })
-    await client.connect()
     const schemaSql = readFileSync(join(TEST_DIR, 'fixture.sql'), 'utf-8')
       .split('\n')
       .filter((line) => !line.trim().startsWith('-- @import'))

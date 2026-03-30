@@ -1,7 +1,6 @@
 import * as readline from 'node:readline'
 import { Readable, Writable } from 'node:stream'
-import { afterEach, beforeEach, describe, it } from 'node:test'
-import { expect, mockMethod } from '@sqldoc/test-utils'
+import { afterEach, beforeEach, describe, expect, it, mockMethod } from '@sqldoc/test-utils'
 import { promptCheckbox, promptConfirm, promptSelect } from '../prompt.ts'
 
 /**

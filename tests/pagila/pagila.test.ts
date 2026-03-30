@@ -1,10 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { after, before, describe, it } from 'node:test'
 import { PGlite } from '@electric-sql/pglite'
 import { pgDump } from '@electric-sql/pglite-tools/pg_dump'
 import { createPgliteAdapter, createPostgresDockerAdapter, createRunner } from '@sqldoc/db'
-import { expect } from '@sqldoc/test-utils'
+import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 
 const rawPagilaSQL = fs.readFileSync(path.join(import.meta.dirname, 'pagila-schema.sql'), 'utf-8')
 // pg_dump output uses OWNER TO postgres — ensure the role exists

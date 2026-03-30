@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import type { CompilerOutput, LintRule, NamespacePlugin, ResolvedConfig } from '../compiler/types.ts'
 import { lint } from '../lint.ts'
 

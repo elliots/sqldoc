@@ -1,6 +1,5 @@
-import { describe, it } from 'node:test'
 import type { AtlasRealm } from '@sqldoc/db'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { generateMermaidERD } from '../mermaid.ts'
 
 // Minimal mock AtlasRealm matching the actual lowercase JSON from marshal.go

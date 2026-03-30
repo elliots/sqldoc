@@ -1,6 +1,5 @@
-import { describe, it } from 'node:test'
 import type { CompilerOutput } from '@sqldoc/core'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { mergeSchemaWithTags } from '../merge.ts'
 import type { AtlasSchema } from '../types.ts'
 

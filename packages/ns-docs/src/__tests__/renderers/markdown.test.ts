@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { renderMarkdown } from '../../renderers/markdown.ts'
 import { makeMinimalSchema, makeTestSchema } from './fixture.ts'
 

@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 // Import the actual plugins to test their built-in lint rules
 import auditPlugin from '../../../ns-audit/src/index.ts'
 import rlsPlugin from '../../../ns-rls/src/index.ts'

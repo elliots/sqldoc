@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test'
-import { expect } from '@sqldoc/test-utils'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import type { SqlAstAdapter } from '../../ast/adapter.ts'
 import type { SqlStatement } from '../../ast/types.ts'
 import { compile } from '../../compiler/compile.ts'
