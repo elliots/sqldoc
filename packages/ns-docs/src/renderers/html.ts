@@ -220,7 +220,6 @@ export function renderHtml(schema: MergedSchema): string {
 ${tableLinks}${viewsSidebar}
   </nav>
   <main class="content">
-    <p class="timestamp">Generated: ${escapeHtml(schema.generatedAt)}</p>
     <section id="er-diagram">
       <h2>Entity Relationship Diagram</h2>
       <pre class="mermaid">${escapeHtml(schema.mermaidERD)}${schema.extraRelationships

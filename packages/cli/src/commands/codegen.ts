@@ -83,10 +83,7 @@ export async function codegenCommand(
       await freshRunner.close()
 
       if (postCompileResult.error) {
-        console.error(pc.yellow(`Post-compile schema inspect warning: ${postCompileResult.error}`))
-        console.error(
-          pc.dim('Falling back to pre-compile schema. Generated tables may be missing from afterCompile hooks.'),
-        )
+        throw new CliError(`Post-compile schema inspect failed: ${postCompileResult.error}`)
       }
       if (postCompileResult.schema) {
         postCompileRealm = postCompileResult.schema

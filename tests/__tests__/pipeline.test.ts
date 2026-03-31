@@ -250,22 +250,4 @@ describe('SQLite dialect', () => {
       expect(result.errors).toHaveLength(0)
     })
   })
-
-  describe('ns-validate: sqlite-validate-test.sql', () => {
-    it('produces no CHECK constraints (SQLite cannot ALTER TABLE ADD CONSTRAINT)', async () => {
-      const result = await compileFixture('sqlite-validate-test.sql', 'sqlite')
-      expect(result.mergedSql).not.toContain('ADD CONSTRAINT')
-      expect(result.mergedSql).not.toContain('CHECK')
-    })
-
-    it('preserves original CREATE TABLE in output', async () => {
-      const result = await compileFixture('sqlite-validate-test.sql', 'sqlite')
-      expect(result.mergedSql).toContain('CREATE TABLE items')
-    })
-
-    it('produces no errors', async () => {
-      const result = await compileFixture('sqlite-validate-test.sql', 'sqlite')
-      expect(result.errors).toHaveLength(0)
-    })
-  })
 })

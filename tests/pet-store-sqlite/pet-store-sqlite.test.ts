@@ -1,90 +1,83 @@
 /**
  * Pet Store E2E integration test (SQLite dialect).
  *
- * Exercises SQLite-compatible plugins (no: rls, anon, postgraphile, comment, deprecated)
- * + 1 custom local plugin. Zero-config — uses in-memory SQLite.
+ * Exercises SQLite-compatible plugins (codegen, lint, custom)
+ * + @external/@include directives. Zero-config — uses in-memory SQLite.
  */
 
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, initProject, it, runCli } from '@sqldoc/test-utils'
+import { describe, expect, initProject, it, runCli } from '@sqldoc/test-utils'
 
-function setupProject(tmpDir: string): void {
-  initProject(tmpDir)
+const projectDir = import.meta.dirname
 
-  fs.writeFileSync(
-    path.join(tmpDir, 'sqldoc.config.ts'),
-    `export default {
-  dialect: 'sqlite',
-  schema: 'schema.sql',
-  namespaces: {
-    codegen: {
-      templates: [
-        { template: '@sqldoc/templates/typescript', output: 'generated/types.ts' },
-      ],
-    },
-  },
-}
-`,
-  )
-
-  const schemaSource = fs.readFileSync(path.join(import.meta.dirname, 'schema.sql'), 'utf-8')
-  fs.writeFileSync(path.join(tmpDir, 'schema.sql'), schemaSource)
-
-  const pluginSource = fs.readFileSync(path.join(import.meta.dirname, 'custom-plugin.ts'), 'utf-8')
-  fs.writeFileSync(path.join(tmpDir, 'custom-plugin.ts'), pluginSource)
-
-  // Copy external/ and include/ directories for @external/@include directives
-  const fixtureDir = import.meta.dirname
-  for (const sub of ['external', 'include']) {
-    const srcDir = path.join(fixtureDir, sub)
-    const destDir = path.join(tmpDir, sub)
-    fs.mkdirSync(destDir, { recursive: true })
-    for (const file of fs.readdirSync(srcDir)) {
-      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file))
-    }
+function ensureInit(): void {
+  const sqldocDir = path.join(projectDir, '.sqldoc')
+  if (!fs.existsSync(sqldocDir)) {
+    initProject(projectDir)
   }
 }
 
-// -- Test suite --
-
-let tmpDir: string
-
-beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sqldoc-pet-store-sqlite-'))
-})
-
-afterEach(() => {
-  fs.rmSync(tmpDir, { recursive: true, force: true })
-})
-
 describe('validate workflow', { timeout: 120_000 }, () => {
   it('validates all tags with zero errors', () => {
-    setupProject(tmpDir)
-    const result = runCli('validate schema.sql', tmpDir)
+    ensureInit()
+    const result = runCli('validate schema.sql', projectDir)
     const combined = result.stdout + result.stderr
     expect(combined).toContain('0 error(s)')
   })
 })
 
-// Note: codegen (Tier 2) requires Atlas WASI + better-sqlite3 which uses CJS require().
-// This fails under node --test with ESM. SQLite codegen is tested via unit tests instead.
+describe('codegen workflow', { timeout: 120_000 }, () => {
+  it('runs codegen and generates output in place', () => {
+    ensureInit()
+    const result = runCli('codegen', projectDir)
+    expect(result.exitCode).toBe(0)
+  })
 
-// Note: lint also requires Tier 2 pipeline (Atlas WASI + better-sqlite3 CJS).
-// SQLite lint is tested via unit tests instead.
+  it('generates TypeScript types for project, external, and included tables', () => {
+    const tsPath = path.join(projectDir, 'generated', 'types.ts')
+    expect(fs.existsSync(tsPath)).toBe(true)
+
+    const tsContent = fs.readFileSync(tsPath, 'utf-8')
+    expect(tsContent).toContain('export interface Adoption')
+    expect(tsContent).toContain('export interface Category')
+    expect(tsContent).toContain('export interface Pet')
+    expect(tsContent).not.toContain('export interface Staff {')
+
+    // External table (locations)
+    expect(tsContent).toContain('export interface Location')
+
+    // Included table (reviews)
+    expect(tsContent).toContain('export interface Review')
+  })
+})
+
+describe('migrate workflow', { timeout: 120_000 }, () => {
+  it('produces no new migration (schema matches committed migration)', () => {
+    ensureInit()
+    const result = runCli('migrate', projectDir)
+    const combined = result.stdout + result.stderr
+    expect(combined).toContain('No schema changes detected')
+  })
+})
+
+describe('lint workflow', { timeout: 120_000 }, () => {
+  it('reports no lint errors', () => {
+    ensureInit()
+    const result = runCli('lint', projectDir)
+    expect(result.exitCode).toBe(0)
+  })
+})
 
 describe('namespace coverage', { timeout: 120_000 }, () => {
-  it('schema imports 6 plugins (5 portable + 1 custom)', () => {
-    setupProject(tmpDir)
-    const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
+  it('schema imports 3 plugins (2 portable + 1 custom)', () => {
+    const schema = fs.readFileSync(path.join(projectDir, 'schema.sql'), 'utf-8')
     const importLines = schema.split('\n').filter((line) => line.match(/^-- @import /))
-    expect(importLines).toHaveLength(6)
+    expect(importLines).toHaveLength(3)
   })
 
   it('schema declares @external and @include directives', () => {
-    setupProject(tmpDir)
-    const schema = fs.readFileSync(path.join(tmpDir, 'schema.sql'), 'utf-8')
+    const schema = fs.readFileSync(path.join(projectDir, 'schema.sql'), 'utf-8')
     expect(schema).toContain("-- @external './external/locations.sql'")
     expect(schema).toContain("-- @include './include/reviews.sql'")
   })

@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schema Documentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; }
+    .sidebar { width: 260px; height: 100vh; position: fixed; overflow-y: auto; background: #f8f9fa; border-right: 1px solid #dee2e6; padding: 16px; }
+    .sidebar h1 { font-size: 18px; margin-bottom: 16px; }
+    .sidebar h2 { font-size: 14px; text-transform: uppercase; color: #6c757d; margin: 16px 0 8px; }
+    .sidebar a { display: block; padding: 4px 8px; color: #212529; text-decoration: none; font-size: 14px; border-radius: 4px; }
+    .sidebar a:hover { background: #e9ecef; }
+    .sidebar a.active { background: #0d6efd; color: white; }
+    .content { margin-left: 260px; padding: 32px; max-width: 1100px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }
+    th { background: #f8f9fa; }
+    .annotation { display: inline-block; background: #d1ecf1; color: #0c5460; border-radius: 4px; padding: 2px 8px; font-size: 12px; margin: 2px; }
+    .annotations { margin: 8px 0; }
+    .generated-badge { display: inline-block; background: #fff3cd; color: #856404; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+    .description { color: #495057; margin: 8px 0; }
+    .previously { color: #6c757d; font-style: italic; font-size: 13px; margin: 4px 0; display: block; }
+    h3 { margin-top: 32px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+    .mermaid { margin: 24px 0; padding: 16px; background: #f8f9fa; border-radius: 8px; }
+    .timestamp { color: #6c757d; font-size: 14px; }
+    h4 { margin: 16px 0 8px; font-size: 15px; }
+    ul { margin: 0 0 16px 24px; }
+    li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <h1>Schema Documentation</h1>
+    <h2>Tables</h2>
+    <a href="#adoptions">adoptions</a>
+    <a href="#adoptions_audit_log">adoptions_audit_log</a>
+    <a href="#categories">categories</a>
+    <a href="#locations">locations</a>
+    <a href="#medical_records">medical_records</a>
+    <a href="#owners">owners</a>
+    <a href="#pets">pets</a>
+    <a href="#reviews">reviews</a>
+    <a href="#staff">staff</a>
+    <a href="#staff_audit_log">staff_audit_log</a>
+  </nav>
+  <main class="content">
+    <section id="er-diagram">
+      <h2>Entity Relationship Diagram</h2>
+      <pre class="mermaid">erDiagram
+    adoptions {
+        serial id PK
+        integer pet_id FK
+        integer owner_id FK
+        timestamp_without_time_zone adopted_at
+        numeric adoption_fee
+    }
+    adoptions_audit_log {
+        bigserial id PK
+        text table_name
+        text operation
+        jsonb old_data
+        jsonb new_data
+        timestamp_with_time_zone changed_at
+    }
+    categories {
+        serial id PK
+        character_varying name
+        text description
+    }
+    legacy_inventory {
+        serial id PK
+        character_varying item_name
+        character_varying old_sku
+        integer quantity
+    }
+    locations {
+        serial id PK
+        character_varying name
+        text address
+        character_varying city
+        character_varying zip
+    }
+    medical_records {
+        serial id PK
+        integer pet_id FK
+        date visit_date
+        text diagnosis
+        text treatment
+        character_varying vet_name
+    }
+    owners {
+        serial id PK
+        character_varying name
+        character_varying email
+        character_varying phone
+        timestamp_without_time_zone created_at
+    }
+    pets {
+        serial id PK
+        integer category_id FK
+        character_varying name
+        character_varying sku
+        numeric price
+        text internal_notes
+        character_varying status
+        timestamp_without_time_zone created_at
+    }
+    reviews {
+        serial id PK
+        integer pet_id
+        integer owner_id
+        integer rating
+        text body
+        integer location_id FK
+        timestamp_without_time_zone created_at
+    }
+    staff {
+        serial id PK
+        character_varying name
+        character_varying role
+        date hired_at
+    }
+    staff_audit_log {
+        bigserial id PK
+        text table_name
+        text operation
+        jsonb old_data
+        jsonb new_data
+        timestamp_with_time_zone changed_at
+    }
+    adoptions }o--|| owners : &quot;adoptions_owner_id_fkey&quot;
+    adoptions }o--|| pets : &quot;adoptions_pet_id_fkey&quot;
+    medical_records }o--|| pets : &quot;medical_records_pet_id_fkey&quot;
+    pets }o--|| categories : &quot;pets_category_id_fkey&quot;
+    reviews }o--|| locations : &quot;reviews_location_id_fkey&quot;
+    adoptions ||..o{ adoptions_audit_log : "audit events"
+    staff ||..o{ staff_audit_log : "audit events"</pre>
+    </section>
+  <section id="adoptions">
+    <h3>adoptions</h3>
+    <p class="description">Tracks each adoption event with timestamps and fees</p>
+    <div class="annotations">
+      <span class="annotation">Audited (insert, update, delete)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>integer</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>owner_id</td>
+        <td>integer</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>adopted_at</td>
+        <td>timestamp without time zone</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>adoption_fee</td>
+        <td>numeric</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>adoptions_owner_id_fkey: owner_id -&gt; owners(id)</li>
+      <li>adoptions_pet_id_fkey: pet_id -&gt; pets(id)</li>
+    </ul>
+  </section>
+  <section id="adoptions_audit_log">
+    <h3>adoptions_audit_log <span class="generated-badge">Generated by @audit</span></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>bigserial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>table_name</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>operation</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>old_data</td>
+        <td>jsonb</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>new_data</td>
+        <td>jsonb</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>changed_at</td>
+        <td>timestamp with time zone</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="categories">
+    <h3>categories</h3>
+    <p class="description">Lookup table for pet species and breed categories</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>description</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="locations">
+    <h3>locations</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>address</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>city</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>zip</td>
+        <td>character varying</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="medical_records">
+    <h3>medical_records</h3>
+    <div class="annotations">
+      <span class="annotation">RLS enabled</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>integer</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>visit_date</td>
+        <td>date</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>diagnosis</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>treatment</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>vet_name</td>
+        <td>character varying</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>medical_records_pet_id_fkey: pet_id -&gt; pets(id)</li>
+    </ul>
+  </section>
+  <section id="owners">
+    <h3>owners</h3>
+    <div class="annotations">
+      <span class="annotation">RLS enabled</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>email</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Pattern: ^[^@]+@[^@]+\.[^@]+$</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>phone</td>
+        <td>character varying</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Length: 7–20</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>timestamp without time zone</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Indexes</h4>
+    <ul>
+      <li>owners_email_key (email) UNIQUE</li>
+    </ul>
+  </section>
+  <section id="pets">
+    <h3>pets</h3>
+    <p class="description">Central registry of all pets available for adoption</p>
+    <div class="annotations">
+      <span class="annotation">RLS enabled</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>category_id</td>
+        <td>integer</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>sku</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Pattern: ^[A-Z]{3}-[0-9]{4}$</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>price</td>
+        <td>numeric</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Range: 0–99999</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>internal_notes</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>status</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>timestamp without time zone</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>pets_category_id_fkey: category_id -&gt; categories(id)</li>
+    </ul>
+    <h4>Indexes</h4>
+    <ul>
+      <li>pets_sku_key (sku) UNIQUE</li>
+    </ul>
+  </section>
+  <section id="reviews">
+    <h3>reviews</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>integer</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>owner_id</td>
+        <td>integer</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>rating</td>
+        <td>integer</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Range: 1–5</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>body</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>location_id</td>
+        <td>integer</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>timestamp without time zone</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>reviews_location_id_fkey: location_id -&gt; locations(id)</li>
+    </ul>
+  </section>
+  <section id="staff">
+    <h3>staff</h3>
+    <div class="annotations">
+      <span class="annotation">Audited (insert, update, delete)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>serial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>role</td>
+        <td>character varying</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>hired_at</td>
+        <td>date</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="staff_audit_log">
+    <h3>staff_audit_log <span class="generated-badge">Generated by @audit</span></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>GraphQL</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>bigserial</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>table_name</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>operation</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>old_data</td>
+        <td>jsonb</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>new_data</td>
+        <td>jsonb</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>changed_at</td>
+        <td>timestamp with time zone</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  </main>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+          const link = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>

@@ -5,15 +5,15 @@ dist/
 **/node_modules
 **/*.vsix
 vscode-sqldoc/out
-docs/
+/docs/
 .planning
 
 out.sql
 
 .DS_Store
 
-# Local sqldoc project directory (created during testing)
-.sqldoc/
+# Local sqldoc project directories (created by sqldoc init)
+**/.sqldoc/
 
 # Atlas WASI binary (built externally, ~14MB)
 # packages/db/wasm/*.wasm

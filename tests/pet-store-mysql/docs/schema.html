@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schema Documentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; }
+    .sidebar { width: 260px; height: 100vh; position: fixed; overflow-y: auto; background: #f8f9fa; border-right: 1px solid #dee2e6; padding: 16px; }
+    .sidebar h1 { font-size: 18px; margin-bottom: 16px; }
+    .sidebar h2 { font-size: 14px; text-transform: uppercase; color: #6c757d; margin: 16px 0 8px; }
+    .sidebar a { display: block; padding: 4px 8px; color: #212529; text-decoration: none; font-size: 14px; border-radius: 4px; }
+    .sidebar a:hover { background: #e9ecef; }
+    .sidebar a.active { background: #0d6efd; color: white; }
+    .content { margin-left: 260px; padding: 32px; max-width: 1100px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }
+    th { background: #f8f9fa; }
+    .annotation { display: inline-block; background: #d1ecf1; color: #0c5460; border-radius: 4px; padding: 2px 8px; font-size: 12px; margin: 2px; }
+    .annotations { margin: 8px 0; }
+    .generated-badge { display: inline-block; background: #fff3cd; color: #856404; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+    .description { color: #495057; margin: 8px 0; }
+    .previously { color: #6c757d; font-style: italic; font-size: 13px; margin: 4px 0; display: block; }
+    h3 { margin-top: 32px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+    .mermaid { margin: 24px 0; padding: 16px; background: #f8f9fa; border-radius: 8px; }
+    .timestamp { color: #6c757d; font-size: 14px; }
+    h4 { margin: 16px 0 8px; font-size: 15px; }
+    ul { margin: 0 0 16px 24px; }
+    li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <h1>Schema Documentation</h1>
+    <h2>Tables</h2>
+    <a href="#adoptions">adoptions</a>
+    <a href="#adoptions_audit_log">adoptions_audit_log</a>
+    <a href="#categories">categories</a>
+    <a href="#locations">locations</a>
+    <a href="#medical_records">medical_records</a>
+    <a href="#owners">owners</a>
+    <a href="#pets">pets</a>
+    <a href="#reviews">reviews</a>
+    <a href="#staff">staff</a>
+    <a href="#staff_audit_log">staff_audit_log</a>
+  </nav>
+  <main class="content">
+    <section id="er-diagram">
+      <h2>Entity Relationship Diagram</h2>
+      <pre class="mermaid">erDiagram
+    adoptions {
+        int id PK
+        int pet_id FK
+        int owner_id FK
+        timestamp adopted_at
+        decimal(10,2) adoption_fee
+        text updated_by
+    }
+    adoptions_audit_log {
+        bigint id PK
+        text table_name
+        text operation
+        json old_data
+        json new_data
+        timestamp changed_at
+    }
+    categories {
+        int id PK
+        varchar(100) name
+        text description
+    }
+    legacy_inventory {
+        int id PK
+        varchar(200) item_name
+        varchar(50) old_sku
+        int quantity
+    }
+    locations {
+        int id PK
+        varchar(200) name
+        text address
+        varchar(100) city
+        varchar(20) zip
+    }
+    medical_records {
+        int id PK
+        int pet_id FK
+        date visit_date
+        text diagnosis
+        text treatment
+        varchar(150) vet_name
+    }
+    owners {
+        int id PK
+        varchar(150) name
+        varchar(255) email
+        varchar(20) phone
+        timestamp created_at
+    }
+    pets {
+        int id PK
+        int category_id FK
+        varchar(100) name
+        varchar(20) sku
+        decimal(10,2) price
+        text internal_notes
+        varchar(20) status
+        timestamp created_at
+    }
+    reviews {
+        int id PK
+        int pet_id FK
+        int owner_id FK
+        int rating
+        text body
+        int location_id FK
+        timestamp created_at
+    }
+    staff {
+        int id PK
+        varchar(150) name
+        varchar(50) role
+        date hired_at
+    }
+    staff_audit_log {
+        bigint id PK
+        text table_name
+        text operation
+        json old_data
+        json new_data
+        timestamp changed_at
+    }
+    adoptions }o--|| pets : &quot;adoptions_ibfk_1&quot;
+    adoptions }o--|| owners : &quot;adoptions_ibfk_2&quot;
+    medical_records }o--|| pets : &quot;medical_records_ibfk_1&quot;
+    pets }o--|| categories : &quot;pets_ibfk_1&quot;
+    reviews }o--|| pets : &quot;reviews_ibfk_1&quot;
+    reviews }o--|| owners : &quot;reviews_ibfk_2&quot;
+    reviews }o--|| locations : &quot;reviews_ibfk_3&quot;
+    adoptions ||..o{ adoptions_audit_log : "audit events"
+    staff ||..o{ staff_audit_log : "audit events"</pre>
+    </section>
+  <section id="adoptions">
+    <h3>adoptions</h3>
+    <p class="description">Tracks each adoption event with timestamps and fees</p>
+    <div class="annotations">
+      <span class="annotation">Audited (insert, update, delete)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>owner_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>adopted_at</td>
+        <td>timestamp</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>adoption_fee</td>
+        <td>decimal(10,2)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>updated_by</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>adoptions_ibfk_1: pet_id -&gt; pets(id)</li>
+      <li>adoptions_ibfk_2: owner_id -&gt; owners(id)</li>
+    </ul>
+    <h4>Indexes</h4>
+    <ul>
+      <li>owner_id (owner_id)</li>
+      <li>pet_id (pet_id)</li>
+    </ul>
+  </section>
+  <section id="adoptions_audit_log">
+    <h3>adoptions_audit_log</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>bigint</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>table_name</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>operation</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>old_data</td>
+        <td>json</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>new_data</td>
+        <td>json</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>changed_at</td>
+        <td>timestamp</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="categories">
+    <h3>categories</h3>
+    <p class="description">Lookup table for pet species and breed categories</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>varchar(100)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>description</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="locations">
+    <h3>locations</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>varchar(200)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>address</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>city</td>
+        <td>varchar(100)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>zip</td>
+        <td>varchar(20)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="medical_records">
+    <h3>medical_records</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>visit_date</td>
+        <td>date</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>diagnosis</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>treatment</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>vet_name</td>
+        <td>varchar(150)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>medical_records_ibfk_1: pet_id -&gt; pets(id)</li>
+    </ul>
+    <h4>Indexes</h4>
+    <ul>
+      <li>pet_id (pet_id)</li>
+    </ul>
+  </section>
+  <section id="owners">
+    <h3>owners</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>varchar(150)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>email</td>
+        <td>varchar(255)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Pattern: ^[^@]+@[^@]+\\.[^@]+$</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>phone</td>
+        <td>varchar(20)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Length: 7–20</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>timestamp</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Indexes</h4>
+    <ul>
+      <li>email (email) UNIQUE</li>
+    </ul>
+  </section>
+  <section id="pets">
+    <h3>pets</h3>
+    <p class="description">Central registry of all pets available for adoption</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>category_id</td>
+        <td>int</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>varchar(100)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>sku</td>
+        <td>varchar(20)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Pattern: ^[A-Z]{3}-[0-9]{4}$</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>price</td>
+        <td>decimal(10,2)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Range: 0–99999</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>internal_notes</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>status</td>
+        <td>varchar(20)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>timestamp</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>pets_ibfk_1: category_id -&gt; categories(id)</li>
+    </ul>
+    <h4>Indexes</h4>
+    <ul>
+      <li>category_id (category_id)</li>
+      <li>sku (sku) UNIQUE</li>
+    </ul>
+  </section>
+  <section id="reviews">
+    <h3>reviews</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>owner_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>rating</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Range: 1–5</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>body</td>
+        <td>text</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>location_id</td>
+        <td>int</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>timestamp</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>reviews_ibfk_1: pet_id -&gt; pets(id)</li>
+      <li>reviews_ibfk_2: owner_id -&gt; owners(id)</li>
+      <li>reviews_ibfk_3: location_id -&gt; locations(id)</li>
+    </ul>
+    <h4>Indexes</h4>
+    <ul>
+      <li>location_id (location_id)</li>
+      <li>owner_id (owner_id)</li>
+      <li>pet_id (pet_id)</li>
+    </ul>
+  </section>
+  <section id="staff">
+    <h3>staff</h3>
+    <div class="annotations">
+      <span class="annotation">Audited (insert, update, delete)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>varchar(150)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>role</td>
+        <td>varchar(50)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>hired_at</td>
+        <td>date</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="staff_audit_log">
+    <h3>staff_audit_log</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>bigint</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>table_name</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>operation</td>
+        <td>text</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>old_data</td>
+        <td>json</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>new_data</td>
+        <td>json</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>changed_at</td>
+        <td>timestamp</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  </main>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+          const link = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>

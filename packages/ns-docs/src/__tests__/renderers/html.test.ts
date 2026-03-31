@@ -113,10 +113,4 @@ describe('renderHtml', () => {
     const result = renderHtml(schema)
     expect(result).toContain('class="description"')
   })
-
-  it('timestamp paragraph has class "timestamp"', () => {
-    const result = renderHtml(schema)
-    expect(result).toContain('class="timestamp"')
-    expect(result).toContain('Generated:')
-  })
 })

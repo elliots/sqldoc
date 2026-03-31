@@ -16,6 +16,7 @@ function isTextType(type: string | undefined): boolean {
 const plugin: NamespacePlugin = {
   apiVersion: 1,
   name: 'validate',
+  databases: ['postgres', 'mysql'],
   tags: {
     check: {
       description: 'Add a CHECK constraint with a custom expression',
@@ -29,7 +30,6 @@ const plugin: NamespacePlugin = {
       targets: ['column'],
       validate: (ctx) => {
         if (!isTextType(ctx.columnType)) {
-          console.log('XXXXX', ctx.columnType, ctx)
           return { message: 'notEmpty is typically used on text columns', severity: 'warning' }
         }
       },
@@ -127,10 +127,6 @@ const plugin: NamespacePlugin = {
           columns: [
             { header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}\u2013${max}` },
           ],
-        }
-
-        if (dialect === 'sqlite') {
-          return { docs }
         }
 
         return {

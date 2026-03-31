@@ -4,7 +4,6 @@
 -- each decorated with tags from multiple namespaces to verify that
 -- all plugins work together without conflict.
 
--- @import '@sqldoc/ns-anon'
 -- @import '@sqldoc/ns-audit'
 -- @import '@sqldoc/ns-codegen'
 -- @import '@sqldoc/ns-comment'
@@ -47,7 +46,6 @@ CREATE TABLE pets (
   sku VARCHAR(20) NOT NULL UNIQUE,
   -- @validate.range(min: 0, max: 99999)
   price NUMERIC(10, 2) NOT NULL DEFAULT 0,
-  -- @anon.mask('anon.partial(internal_notes, 2)')
   internal_notes TEXT,
   -- @codegen.rename('petStatus')
   status VARCHAR(20) NOT NULL DEFAULT 'available',
@@ -65,10 +63,8 @@ CREATE TABLE owners (
   -- @validate.notEmpty
   name VARCHAR(150) NOT NULL,
   -- @validate.pattern('^[^@]+@[^@]+\.[^@]+$')
-  -- @anon.mask('anon.partial_email(email)')
   email VARCHAR(255) NOT NULL UNIQUE,
   -- @validate.length(min: 7, max: 20)
-  -- @anon.fake('anon.fake_phone()')
   phone VARCHAR(20),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -97,7 +93,6 @@ CREATE TABLE medical_records (
   id SERIAL PRIMARY KEY,
   pet_id INTEGER NOT NULL REFERENCES pets(id),
   visit_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  -- @anon.mask('anon.lorem_ipsum()')
   diagnosis TEXT NOT NULL,
   treatment TEXT,
   vet_name VARCHAR(150)
