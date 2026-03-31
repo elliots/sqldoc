@@ -41,7 +41,7 @@ describe('atlas runner (integration)', () => {
     if (runner) await runner.close()
   })
 
-  it('inspect with simple CREATE TABLE returns schema', { timeout: 30_000 }, async () => {
+  it('inspect with simple CREATE TABLE returns schema', async () => {
     const result = await runner.inspect(['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, email TEXT NOT NULL);'], {
       schema: 'public',
     })
@@ -65,7 +65,7 @@ describe('atlas runner (integration)', () => {
     expect(colNames).toContain('email')
   })
 
-  it('inspect with tagged SQL returns tags in attrs', { timeout: 30_000 }, async () => {
+  it('inspect with tagged SQL returns tags in attrs', async () => {
     const sql = [
       `-- @audit.track(on: [delete, update])
 CREATE TABLE orders (
@@ -101,7 +101,7 @@ CREATE TABLE orders (
     expect(piiTag).not.toBe(undefined)
   })
 
-  it('diff with empty from and CREATE TABLE to returns statements', { timeout: 30_000 }, async () => {
+  it('diff with empty from and CREATE TABLE to returns statements', async () => {
     const result = await runner.diff([], ['CREATE TABLE items (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);'], {
       schema: 'public',
     })
@@ -115,7 +115,7 @@ CREATE TABLE orders (
     expect(hasCreate).toBe(true)
   })
 
-  it('diff with non-empty from and modified to returns ALTER statements', { timeout: 30_000 }, async () => {
+  it('diff with non-empty from and modified to returns ALTER statements', async () => {
     const from = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL);']
     const to = ['CREATE TABLE users (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT);']
     const result = await runner.diff(from, to, { schema: 'public' })
@@ -131,7 +131,7 @@ CREATE TABLE orders (
     expect(hasAlter).toBe(true)
   })
 
-  it('includes RLS policies in diff output', { timeout: 30_000 }, async () => {
+  it('includes RLS policies in diff output', async () => {
     const from: string[] = []
     const to = [
       `CREATE TABLE users (id BIGSERIAL PRIMARY KEY, org_id BIGINT NOT NULL);
@@ -150,7 +150,7 @@ CREATE TABLE orders (
     expect(allSql).toContain('CREATE POLICY')
   })
 
-  it('includes event triggers in realm-level diff output', { timeout: 30_000 }, async () => {
+  it('includes event triggers in realm-level diff output', async () => {
     const from: string[] = []
     const to = [
       `CREATE TABLE audit_log (id BIGSERIAL PRIMARY KEY, event TEXT);
@@ -187,11 +187,3 @@ describe('atlas runner (unit)', () => {
     ).rejects.toThrow(/not found/)
   })
 })
-
-// Report skip reasons
-if (!wasmExists) {
-  console.log(`[SKIP] atlas.wasm not found at: ${WASM_PATH}`)
-}
-if (!workerExists) {
-  console.log(`[SKIP] Built worker not found at: ${WORKER_JS} or ${WORKER_TS}. Run 'pnpm build' first.`)
-}

@@ -39,7 +39,7 @@ afterEach(() => {
 
 // -- 1. Init test --
 
-describe('init workflow', { timeout: 120_000 }, () => {
+describe('init workflow', () => {
   it('creates .sqldoc/ directory structure with --dev flag', () => {
     initProject(tmpDir)
 
@@ -109,7 +109,7 @@ describe('init workflow', { timeout: 120_000 }, () => {
 
 // -- 2. Codegen test --
 
-describe('codegen workflow', { timeout: 120_000 }, () => {
+describe('codegen workflow', () => {
   it('generates HTML docs and TypeScript types from schema', () => {
     initProject(tmpDir)
 
@@ -230,7 +230,7 @@ CREATE TABLE products (
 
 // -- 3. Schema inspect test --
 
-describe('schema inspect workflow', { timeout: 120_000 }, () => {
+describe('schema inspect workflow', () => {
   it('outputs JSON schema with tables, columns, and types', () => {
     initProject(tmpDir)
 
@@ -300,7 +300,7 @@ CREATE TABLE orders (
 
 // -- 4. Schema diff test --
 
-describe('schema diff workflow', { timeout: 120_000 }, () => {
+describe('schema diff workflow', () => {
   it('detects added column with ALTER TABLE', () => {
     initProject(tmpDir)
 
@@ -441,7 +441,7 @@ CREATE TABLE orders (
 
 // -- 5. Lint test --
 
-describe('lint workflow', { timeout: 120_000 }, () => {
+describe('lint workflow', () => {
   it('reports lint warnings for tables missing @audit', () => {
     initProject(tmpDir)
 
@@ -591,7 +591,7 @@ CREATE TABLE users (
 
 // -- 6. Migrate test --
 
-describe('migrate workflow', { timeout: 120_000 }, () => {
+describe('migrate workflow', () => {
   it('generates a goose migration file from schema', () => {
     initProject(tmpDir)
 
@@ -788,7 +788,7 @@ DROP TABLE "public"."users";
 
 // -- 7. Validate test --
 
-describe('validate workflow', { timeout: 120_000 }, () => {
+describe('validate workflow', () => {
   it('succeeds with valid tags and imports', () => {
     initProject(tmpDir)
 
@@ -844,8 +844,8 @@ CREATE TABLE bad (
 
 // -- 8. Combined workflow test --
 
-describe('combined workflow', { timeout: 120_000 }, () => {
-  it('runs full init -> codegen -> inspect -> diff -> migrate pipeline', { timeout: 30_000 }, () => {
+describe('combined workflow', () => {
+  it('runs full init -> codegen -> inspect -> diff -> migrate pipeline', () => {
     // 1. Init
     initProject(tmpDir)
 

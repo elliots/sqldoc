@@ -11,7 +11,7 @@ describe('MySQL Docker adapter', () => {
     }
   })
 
-  it('creates adapter from docker://mysql:8 image', { timeout: 120_000 }, async () => {
+  it('creates adapter from docker://mysql:8 image', async () => {
     const adapter = await createMysqlDockerAdapter('docker://mysql:8')
     adapters.push(adapter)
 
@@ -20,7 +20,7 @@ describe('MySQL Docker adapter', () => {
     expect(result.rows[0][0]).toBe(1)
   })
 
-  it('can execute DDL and query tables', { timeout: 120_000 }, async () => {
+  it('can execute DDL and query tables', async () => {
     const adapter = await createMysqlDockerAdapter('docker://mysql:8')
     adapters.push(adapter)
 
@@ -33,7 +33,7 @@ describe('MySQL Docker adapter', () => {
     expect(result.rows[0][1]).toBe('hello')
   })
 
-  it('exec reports rows affected for INSERT', { timeout: 120_000 }, async () => {
+  it('exec reports rows affected for INSERT', async () => {
     const adapter = await createMysqlDockerAdapter('docker://mysql:8')
     adapters.push(adapter)
 

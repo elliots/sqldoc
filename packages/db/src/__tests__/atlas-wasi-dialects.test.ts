@@ -10,7 +10,7 @@ describe('Atlas WASI dialect validation', () => {
       if (runner) await runner.close()
     })
 
-    it('inspect produces valid schema for SQLite SQL', { timeout: 30_000 }, async () => {
+    it('inspect produces valid schema for SQLite SQL', async () => {
       runner = await createRunner({ dialect: 'sqlite' })
 
       const sql = `
@@ -49,7 +49,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(postTable).not.toBe(undefined)
     })
 
-    it('diff produces migration SQL for SQLite schema changes', { timeout: 30_000 }, async () => {
+    it('diff produces migration SQL for SQLite schema changes', async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const from = 'CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);'
@@ -65,7 +65,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(stmts).toContain('price')
     })
 
-    it('inspect captures views in SQLite schema', { timeout: 30_000 }, async () => {
+    it('inspect captures views in SQLite schema', async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const sql = `
@@ -82,7 +82,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(views[0].name).toBe('order_summary')
     })
 
-    it('diff produces CREATE VIEW for new SQLite view', { timeout: 30_000 }, async () => {
+    it('diff produces CREATE VIEW for new SQLite view', async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const from = 'CREATE TABLE orders (id INTEGER PRIMARY KEY, customer TEXT, total REAL);'
@@ -100,7 +100,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(stmts).toContain('ORDER_SUMMARY')
     })
 
-    it('inspect captures triggers in SQLite schema', { timeout: 30_000 }, async () => {
+    it('inspect captures triggers in SQLite schema', async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const sql = `
@@ -124,7 +124,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(triggers[0].name).toBe('items_after_insert')
     })
 
-    it('diff produces CREATE TRIGGER for new SQLite trigger', { timeout: 30_000 }, async () => {
+    it('diff produces CREATE TRIGGER for new SQLite trigger', async () => {
       if (!runner) runner = await createRunner({ dialect: 'sqlite' })
 
       const from = `
@@ -157,7 +157,7 @@ describe('Atlas WASI dialect validation', () => {
       if (runner) await runner.close()
     })
 
-    it('inspect produces valid schema for MySQL SQL', { timeout: 120_000 }, async () => {
+    it('inspect produces valid schema for MySQL SQL', async () => {
       runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -192,7 +192,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(userTable!.columns!.length >= 4).toBeTruthy()
     })
 
-    it('diff produces migration SQL for MySQL schema changes', { timeout: 120_000 }, async () => {
+    it('diff produces migration SQL for MySQL schema changes', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from = 'CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));'
@@ -208,7 +208,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(stmts).toContain('price')
     })
 
-    it('inspect captures views in MySQL schema', { timeout: 120_000 }, async () => {
+    it('inspect captures views in MySQL schema', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -225,7 +225,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(views[0].name).toBe('order_summary')
     })
 
-    it('diff produces CREATE VIEW for new MySQL view', { timeout: 120_000 }, async () => {
+    it('diff produces CREATE VIEW for new MySQL view', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from =
@@ -244,7 +244,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(stmts).toContain('ORDER_SUMMARY')
     })
 
-    it('inspect captures triggers in MySQL schema', { timeout: 120_000 }, async () => {
+    it('inspect captures triggers in MySQL schema', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -265,7 +265,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(triggers[0].name).toBe('items_after_insert')
     })
 
-    it('diff produces CREATE TRIGGER for new MySQL trigger', { timeout: 120_000 }, async () => {
+    it('diff produces CREATE TRIGGER for new MySQL trigger', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from = `
@@ -287,7 +287,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(stmts).toContain('ITEMS_AFTER_DELETE')
     })
 
-    it('inspect captures functions in MySQL schema', { timeout: 120_000 }, async () => {
+    it('inspect captures functions in MySQL schema', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const sql = `
@@ -304,7 +304,7 @@ describe('Atlas WASI dialect validation', () => {
       expect(addTax).not.toBe(undefined)
     })
 
-    it('diff produces CREATE FUNCTION for new MySQL function', { timeout: 120_000 }, async () => {
+    it('diff produces CREATE FUNCTION for new MySQL function', async () => {
       if (!runner) runner = await createRunner({ dialect: 'mysql' })
 
       const from = ''

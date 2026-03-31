@@ -22,7 +22,7 @@ function ensureInit(): void {
 
 // -- validate workflow --
 
-describe('validate workflow', { timeout: 120_000 }, () => {
+describe('validate workflow', () => {
   it('validates all tags with zero errors', () => {
     ensureInit()
     const result = runCli('validate schema.sql', projectDir)
@@ -33,7 +33,7 @@ describe('validate workflow', { timeout: 120_000 }, () => {
 
 // -- codegen workflow --
 
-describe('codegen workflow', { timeout: 120_000 }, () => {
+describe('codegen workflow', () => {
   it('runs codegen and generates output in place', () => {
     ensureInit()
     const result = runCli('codegen', projectDir)
@@ -82,7 +82,7 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
 
 // -- migrate workflow --
 
-describe('migrate workflow', { timeout: 120_000 }, () => {
+describe('migrate workflow', () => {
   it('produces no new migration (schema matches committed migration)', () => {
     ensureInit()
     const result = runCli('migrate', projectDir)
@@ -93,7 +93,7 @@ describe('migrate workflow', { timeout: 120_000 }, () => {
 
 // -- lint workflow --
 
-describe('lint workflow', { timeout: 120_000 }, () => {
+describe('lint workflow', () => {
   it('reports no lint errors', () => {
     ensureInit()
     const result = runCli('lint', projectDir)
@@ -111,7 +111,7 @@ describe('lint workflow', { timeout: 120_000 }, () => {
 
 // -- namespace coverage --
 
-describe('namespace coverage', { timeout: 120_000 }, () => {
+describe('namespace coverage', () => {
   it('schema imports all 10 namespace plugins plus custom local plugin', () => {
     const schema = fs.readFileSync(path.join(projectDir, 'schema.sql'), 'utf-8')
     const importLines = schema.split('\n').filter((line) => line.match(/^-- @import /))
@@ -133,7 +133,7 @@ describe('namespace coverage', { timeout: 120_000 }, () => {
 
 // -- @external/@include directives --
 
-describe('directive behavior', { timeout: 120_000 }, () => {
+describe('directive behavior', () => {
   it('rejects external files that FK-reference project tables', () => {
     ensureInit()
 
@@ -171,7 +171,7 @@ describe('directive behavior', { timeout: 120_000 }, () => {
 
 // -- custom local plugin --
 
-describe('custom local plugin', { timeout: 120_000 }, () => {
+describe('custom local plugin', () => {
   it('custom plugin file is loaded via relative import', () => {
     ensureInit()
     const result = runCli('validate schema.sql', projectDir)

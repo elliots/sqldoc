@@ -18,7 +18,7 @@ function ensureInit(): void {
   }
 }
 
-describe('validate workflow', { timeout: 120_000 }, () => {
+describe('validate workflow', () => {
   it('validates all tags with zero errors', () => {
     ensureInit()
     const result = runCli('validate schema.sql', projectDir)
@@ -27,7 +27,7 @@ describe('validate workflow', { timeout: 120_000 }, () => {
   })
 })
 
-describe('codegen workflow', { timeout: 120_000 }, () => {
+describe('codegen workflow', () => {
   it('runs codegen and generates output in place', () => {
     ensureInit()
     const result = runCli('codegen', projectDir)
@@ -52,7 +52,7 @@ describe('codegen workflow', { timeout: 120_000 }, () => {
   })
 })
 
-describe('migrate workflow', { timeout: 120_000 }, () => {
+describe('migrate workflow', () => {
   it('produces no new migration (schema matches committed migration)', () => {
     ensureInit()
     const result = runCli('migrate', projectDir)
@@ -61,7 +61,7 @@ describe('migrate workflow', { timeout: 120_000 }, () => {
   })
 })
 
-describe('lint workflow', { timeout: 120_000 }, () => {
+describe('lint workflow', () => {
   it('reports no lint errors', () => {
     ensureInit()
     const result = runCli('lint', projectDir)
@@ -69,7 +69,7 @@ describe('lint workflow', { timeout: 120_000 }, () => {
   })
 })
 
-describe('namespace coverage', { timeout: 120_000 }, () => {
+describe('namespace coverage', () => {
   it('schema imports 3 plugins (2 portable + 1 custom)', () => {
     const schema = fs.readFileSync(path.join(projectDir, 'schema.sql'), 'utf-8')
     const importLines = schema.split('\n').filter((line) => line.match(/^-- @import /))

@@ -43,7 +43,7 @@ function dockerExec(cmd: string, timeout = 30_000) {
   return execSync(cmd, { stdio: 'pipe', timeout }).toString()
 }
 
-describe('docker template tests', { timeout: 180_000 }, () => {
+describe('docker template tests', () => {
   before(async () => {
     // Clean up any leftovers from previous runs, then create fresh
     try {
@@ -112,7 +112,7 @@ describe('docker template tests', { timeout: 180_000 }, () => {
 
   describe('docker templates', () => {
     for (const name of templates) {
-      it(name, { timeout: 180_000 }, () => {
+      it(name, () => {
         const testDir = join(SRC_DIR, name, 'test')
         const tag = `sqldoc-test-${name}`
         try {

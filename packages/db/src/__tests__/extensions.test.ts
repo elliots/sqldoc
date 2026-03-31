@@ -105,7 +105,7 @@ describe('validatePostgresExtensions', () => {
   })
 })
 
-describe('pglite extension loading (integration)', { timeout: 30_000 }, () => {
+describe('pglite extension loading (integration)', () => {
   it('loads uuid-ossp and generates UUIDs', async () => {
     const adapter = await createPgliteAdapter(['uuid_ossp'])
     try {
@@ -144,7 +144,7 @@ describe('pglite extension loading (integration)', { timeout: 30_000 }, () => {
       const tables = result.schema?.schemas?.[0]?.tables ?? []
       expect(tables.some((t) => t.name === 'settings')).toBe(true)
     } finally {
-      await runner.close()
+      runner.close()
     }
   })
 })

@@ -14,7 +14,7 @@ describe('Docker adapter', () => {
     }
   })
 
-  it('creates adapter from docker:// image', { timeout: 60_000 }, async () => {
+  it('creates adapter from docker:// image', async () => {
     const adapter = await createPostgresDockerAdapter('docker://postgres:16')
     adapters.push(adapter)
 
@@ -23,7 +23,7 @@ describe('Docker adapter', () => {
     expect(result.rows[0][0]).toBe(1)
   })
 
-  it('can execute DDL and query tables', { timeout: 60_000 }, async () => {
+  it('can execute DDL and query tables', async () => {
     const adapter = await createPostgresDockerAdapter('docker://postgres:16')
     adapters.push(adapter)
 
@@ -36,7 +36,7 @@ describe('Docker adapter', () => {
     expect(result.rows[0][1]).toBe('hello')
   })
 
-  it('creates adapter from dockerfile://', { timeout: 120_000 }, async () => {
+  it('creates adapter from dockerfile://', async () => {
     // Create a minimal Dockerfile
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sqldoc-docker-test-'))
     const dockerfile = path.join(tmpDir, 'Dockerfile')
@@ -53,7 +53,7 @@ describe('Docker adapter', () => {
     }
   })
 
-  it('works with createRunner docker:// scheme', { timeout: 60_000 }, async () => {
+  it('works with createRunner docker:// scheme', async () => {
     const { createRunner } = await import('../index.ts')
     const runner = await createRunner({ dialect: 'postgres', devUrl: 'docker://postgres:16' })
 

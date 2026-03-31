@@ -14,7 +14,7 @@ describe('codegenCommand', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('does not write SQL to stdout', { timeout: 30_000 }, async () => {
+  it('does not write SQL to stdout', async () => {
     const nsFile = path.join(tmpDir, 'ns-test.ts')
     fs.writeFileSync(
       nsFile,
