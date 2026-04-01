@@ -155,9 +155,11 @@ The @docs namespace generates HTML documentation and Mermaid ER diagrams rather 
 function generateNamespaceDoc(plugin: PluginMeta): string {
   const parts: string[] = []
 
-  // Title and description
-  parts.push(`# @${plugin.name}`)
+  // Title
+  parts.push(`<div class="doc-title"><h1>@${plugin.name}</h1></div>`)
   parts.push('')
+
+  // Description
   if (plugin.description) {
     parts.push(plugin.description)
     parts.push('')
@@ -189,6 +191,10 @@ export default {
     const plugins = extractAllPlugins()
     return plugins.map((plugin) => ({
       params: { ns: plugin.dirName },
+      frontmatter: {
+        title: `@${plugin.name}`,
+        outline: 'deep',
+      },
       content: generateNamespaceDoc(plugin),
     }))
   },

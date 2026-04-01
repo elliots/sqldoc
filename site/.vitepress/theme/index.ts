@@ -5,6 +5,7 @@ import DialectBadge from './components/DialectBadge.vue'
 import PluginCard from './components/PluginCard.vue'
 import TemplateCard from './components/TemplateCard.vue'
 import CommunityCallout from './components/CommunityCallout.vue'
+import HomepageExample from './components/HomepageExample.vue'
 
 export default {
   extends: VPCarbon,
@@ -14,5 +15,6 @@ export default {
     app.component('PluginCard', PluginCard)
     app.component('TemplateCard', TemplateCard)
     app.component('CommunityCallout', CommunityCallout)
+    app.component('HomepageExample', HomepageExample)
   },
 } satisfies Theme

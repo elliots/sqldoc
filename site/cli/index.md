@@ -18,255 +18,183 @@ brew install elliots/sqldoc/sqldoc
 npx @sqldoc/cli init
 ```
 
-```bash [Binary]
-# Download from GitHub Releases
-# https://github.com/elliots/sqldoc/releases
-```
-
 :::
 
-## Global Options
+## `sqldoc compile`
 
-Every command accepts these options:
+Compile SQL files and output merged SQL with generated statements
 
-| Option | Description |
-|--------|-------------|
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `--project <name>` | Select a named project from multi-project config |
-| `-V, --version` | Output the version number |
-| `-h, --help` | Display help for the command |
+```bash
+sqldoc compile [path] [options]
+```
 
-## Commands
+**Arguments:**
 
-### `sqldoc codegen`
+| Name | Required | Description |
+|------|----------|-------------|
+| `path` | No | Path to SQL files or directory (defaults to config schema) |
 
-Run code generation plugins (templates, docs, etc.).
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>-o, --output &lt;path&gt;</code> | Write to file instead of stdout |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+
+---
+
+## `sqldoc codegen`
+
+Run code generation plugins (templates, docs, etc.)
 
 ```bash
 sqldoc codegen [path] [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `[path]` | Path to SQL files or directory (defaults to config `schema`) |
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `-p, --plugins <names>` | Comma-separated project-level plugin names to run (default: all) |
-| `--project <name>` | Select a named project from multi-project config |
+**Arguments:**
 
-**Examples:**
+| Name | Required | Description |
+|------|----------|-------------|
+| `path` | No | Path to SQL files or directory (defaults to config schema) |
 
-```bash
-# Generate all configured outputs
-sqldoc codegen
+**Options:**
 
-# Generate from specific SQL files
-sqldoc codegen ./schema/*.sql
+| Flag | Description |
+|------|-------------|
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>-p, --plugins &lt;names&gt;</code> | Comma-separated project-level plugin names to run (default: all) |
+| <code v-pre>-t, --template &lt;names&gt;</code> | Run template(s) by slug (comma-separated), ignoring config (output to stdout or -o dir) |
+| <code v-pre>-o, --output &lt;path&gt;</code> | Output file path (used with --template) |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 
-# Generate only docs output
-sqldoc codegen -p docs
+---
 
-# Generate for a specific project in multi-project config
-sqldoc codegen --project main
-```
+## `sqldoc validate`
 
-### `sqldoc validate`
-
-Validate tags in SQL files. Checks for unknown namespaces, invalid tag arguments, wrong targets, and import resolution errors.
+Validate tags in SQL files
 
 ```bash
 sqldoc validate [path] [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `[path]` | Path to SQL files or directory (defaults to config `schema`) |
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `--project <name>` | Select a named project from multi-project config |
+**Arguments:**
 
-**Examples:**
+| Name | Required | Description |
+|------|----------|-------------|
+| `path` | No | Path to SQL files or directory (defaults to config schema) |
 
-```bash
-# Validate all schema files
-sqldoc validate
+**Options:**
 
-# Validate a specific file
-sqldoc validate ./schema/users.sql
+| Flag | Description |
+|------|-------------|
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 
-# Validate with a specific config
-sqldoc validate -c ./custom-config.ts
-```
+---
 
-### `sqldoc lint`
+## `sqldoc lint`
 
-Run lint rules from namespace plugins against SQL files. Plugins can define custom lint rules that check for best practices, missing tags, or common mistakes.
+Run lint rules from namespace plugins against SQL files
 
 ```bash
 sqldoc lint [path] [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `[path]` | Path to SQL files or directory (defaults to config `schema`) |
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `-v, --verbose` | Show ignored rules |
-| `--project <name>` | Select a named project from multi-project config |
+**Arguments:**
 
-**Examples:**
+| Name | Required | Description |
+|------|----------|-------------|
+| `path` | No | Path to SQL files or directory (defaults to config schema) |
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>-v, --verbose</code> | Show ignored rules |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+
+---
+
+## `sqldoc schema`
+
+Schema inspection and comparison
 
 ```bash
-# Lint all schema files
-sqldoc lint
-
-# Lint with verbose output (shows ignored rules)
-sqldoc lint -v
-
-# Lint a specific directory
-sqldoc lint ./schema/
+sqldoc schema [options]
 ```
 
 ### `sqldoc schema inspect`
 
-Inspect schema from SQL files, directory, or database. Uses the Atlas WASI engine to parse and normalize schema.
+Inspect schema from SQL files, directory, or database
 
 ```bash
 sqldoc schema inspect [source] [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `[source]` | SQL file, directory, or database URL (defaults to config `schema`) |
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `-f, --format <format>` | Output format: `sql`, `json` (default: `sql`) |
-| `--dev-url <url>` | Dev database URL (`pglite`, `docker://<image>`, `dockerfile://<path>`, `postgres://...`) |
-| `--project <name>` | Select a named project from multi-project config |
+**Arguments:**
 
-**Examples:**
+| Name | Required | Description |
+|------|----------|-------------|
+| `source` | No | SQL file, directory, or database URL (defaults to config schema) |
 
-```bash
-# Inspect compiled schema as normalized SQL
-sqldoc schema inspect
+**Options:**
 
-# Inspect as JSON
-sqldoc schema inspect -f json
-
-# Inspect a live database
-sqldoc schema inspect postgres://localhost:5432/mydb
-
-# Inspect using Docker for dev database
-sqldoc schema inspect --dev-url docker://postgres:16
-```
+| Flag | Description |
+|------|-------------|
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>-f, --format &lt;format&gt;</code> | Output format: sql, json |
+| <code v-pre>--dev-url &lt;url&gt;</code> | Dev database URL (pglite, docker://&lt;image&gt;, dockerfile://&lt;path&gt;, postgres://...) |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 
 ### `sqldoc schema diff`
 
-Compare two schema states. Useful for reviewing changes before generating migrations, or as a CI check to detect schema drift.
+Compare two schema states
 
 ```bash
 sqldoc schema diff [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--from <source>` | Source state: SQL file, directory, or database URL (default: empty) |
-| `--to <source>` | Target state: SQL file, directory, or database URL |
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `-f, --format <format>` | Output format: `sql`, `json`, `pretty` (default: `sql`) |
-| `--dev-url <url>` | Dev database URL (`pglite`, `docker://<image>`, `dockerfile://<path>`, `postgres://...`) |
-| `--check` | Exit non-zero if schemas differ (CI mode) |
-| `--project <name>` | Select a named project from multi-project config |
+**Options:**
 
-**Examples:**
+| Flag | Description |
+|------|-------------|
+| <code v-pre>--from &lt;source&gt;</code> | Source state: SQL file, directory, or database URL (default: empty) |
+| <code v-pre>--to &lt;source&gt;</code> | Target state: SQL file, directory, or database URL |
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>-f, --format &lt;format&gt;</code> | Output format: sql, json, pretty |
+| <code v-pre>--dev-url &lt;url&gt;</code> | Dev database URL (pglite, docker://&lt;image&gt;, dockerfile://&lt;path&gt;, postgres://...) |
+| <code v-pre>--check</code> | Exit non-zero if schemas differ (CI mode) |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 
-```bash
-# Diff from empty to current schema (see all statements)
-sqldoc schema diff --to ./schema/
+---
 
-# Diff between two schema versions
-sqldoc schema diff --from ./v1.sql --to ./v2.sql
+## `sqldoc migrate`
 
-# Pretty-print the diff
-sqldoc schema diff --from ./v1.sql --to ./v2.sql -f pretty
-
-# CI check: fail if production schema differs from source
-sqldoc schema diff --from postgres://prod/db --to ./schema/ --check
-```
-
-### `sqldoc migrate`
-
-Generate migration files or check for schema drift. Compares the current schema (SQL files + compiled tag output) against existing migrations and generates a new migration if they differ.
+Generate migration files or check for schema drift
 
 ```bash
 sqldoc migrate [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `-c, --config <path>` | Path to `sqldoc.config.ts` |
-| `--project <name>` | Select a named project from multi-project config |
-| `--check` | Exit non-zero if schema differs from migrations (CI mode) |
-| `--name <name>` | Custom migration name |
-| `--force` | Allow destructive changes (DROP TABLE, DROP COLUMN, etc.) |
+**Options:**
 
-**Examples:**
+| Flag | Description |
+|------|-------------|
+| <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
+| <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--check</code> | Exit non-zero if schema differs from migrations (CI mode) |
+| <code v-pre>--name &lt;name&gt;</code> | Custom migration name |
+| <code v-pre>--force</code> | Allow destructive changes (DROP TABLE, DROP COLUMN, etc.) |
 
-```bash
-# Generate a migration
-sqldoc migrate
+---
 
-# Generate with a custom name
-sqldoc migrate --name add-orders-table
+## `sqldoc doctor`
 
-# CI check: verify no schema drift
-sqldoc migrate --check
-
-# Allow destructive changes
-sqldoc migrate --force --name remove-legacy-tables
-```
-
-### `sqldoc doctor`
-
-Check project setup and report status. Verifies configuration, plugin availability, database connectivity, and reports any issues.
+Check project setup and report status
 
 ```bash
-sqldoc doctor
+sqldoc doctor [options]
 ```
 
-**Example output:**
-
-```
-sqldoc doctor
-  Config:     sqldoc.config.ts found
-  Dialect:    postgres
-  Plugins:    @sqldoc/ns-audit, @sqldoc/ns-validate, @sqldoc/ns-codegen
-  Schema:     ./schema/ (12 files)
-  Dev DB:     pglite (in-memory)
-  Status:     All checks passed
-```
-
-## Exit Codes
-
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | Error (invalid config, validation failure, database connection error) |
-| `2` | Schema drift detected (when using `--check`) |
-
-## Configuration
-
-The CLI reads configuration from `sqldoc.config.ts` in your project root. See the [Configuration guide](/guide/configuration) for details.
-
-```typescript
-import { defineConfig } from '@sqldoc/cli'
-
-export default defineConfig({
-  dialect: 'postgres',
-  schema: './schema/',
-  plugins: {
-    audit: {},
-    validate: {},
-    codegen: {
-      templates: ['typescript', 'zod'],
-      output: './src/generated/',
-    },
-  },
-})
-```

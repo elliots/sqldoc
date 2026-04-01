@@ -1,16 +1,85 @@
 /**
  * Dynamic route loader for template detail pages.
- * Generates one page per code generation template with usage examples
- * and configuration tables where applicable.
+ * Generates one page per code generation template with usage examples,
+ * configuration tables, and pet-store example output.
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
 import { extractAllTemplates, type TemplateMeta } from '../data/extract-templates.ts'
+
+const generatedDir = path.resolve(import.meta.dirname!, '../../tests/pet-store-postgres/generated')
+
+interface GeneratedFile {
+  name: string
+  content: string
+}
+
+function readGeneratedOutput(slug: string): GeneratedFile[] {
+  const dir = path.join(generatedDir, slug)
+  if (!fs.existsSync(dir)) return []
+
+  const files = fs.readdirSync(dir).filter(f => !f.startsWith('.')).sort()
+  return files.map(f => ({
+    name: f,
+    content: fs.readFileSync(path.join(dir, f), 'utf-8'),
+  }))
+}
+
+// Devicon class for the template — prefer package-specific icon, fall back to language
+const DEVICON_MAP: Record<string, string> = {
+  // Package-specific icons
+  prisma: 'devicon-prisma-plain',
+  knex: 'devicon-knexjs-plain',
+  sqlalchemy: 'devicon-sqlalchemy-plain',
+  jpa: 'devicon-hibernate-plain',
+  hibernate: 'devicon-hibernate-plain',
+  // Language icons (fallback)
+  typescript: 'devicon-typescript-plain',
+  go: 'devicon-go-plain',
+  python: 'devicon-python-plain',
+  java: 'devicon-java-plain',
+  kotlin: 'devicon-kotlin-plain',
+  rust: 'devicon-rust-original',
+  csharp: 'devicon-csharp-plain',
+  json: 'devicon-json-plain',
+  xml: 'devicon-xml-plain',
+  cobol: 'devicon-cobol-plain',
+}
+
+function getDeviconClass(tpl: TemplateMeta): string | null {
+  return DEVICON_MAP[tpl.slug] ?? DEVICON_MAP[tpl.language] ?? null
+}
+
+function langForCodeBlock(tpl: TemplateMeta): string {
+  const map: Record<string, string> = {
+    typescript: 'typescript',
+    go: 'go',
+    python: 'python',
+    java: 'java',
+    kotlin: 'kotlin',
+    rust: 'rust',
+    csharp: 'csharp',
+    json: 'json',
+    xml: 'xml',
+    protobuf: 'protobuf',
+    cobol: 'cobol',
+    sql: 'sql',
+  }
+  return map[tpl.language] ?? 'text'
+}
 
 export default {
   async paths() {
     const templates = await extractAllTemplates()
     return templates.map(tpl => ({
-      params: { tpl: tpl.slug },
+      params: {
+        tpl: tpl.slug,
+      },
+      frontmatter: {
+        title: tpl.name,
+        outline: 'deep',
+      },
       content: generateTemplatePage(tpl),
     }))
   },
@@ -19,8 +88,10 @@ export default {
 function generateTemplatePage(tpl: TemplateMeta): string {
   const lines: string[] = []
 
-  // Title
-  lines.push(`# ${tpl.name}`)
+  // Title with icon
+  const icon = getDeviconClass(tpl)
+  const iconHtml = icon ? `<i class="${icon} template-title-icon"></i> ` : ''
+  lines.push(`<h1>${iconHtml}${tpl.name}</h1>`)
   lines.push('')
 
   // Language badge
@@ -30,6 +101,27 @@ function generateTemplatePage(tpl: TemplateMeta): string {
   // Description
   lines.push(tpl.description)
   lines.push('')
+
+  // Example output section
+  const outputs = readGeneratedOutput(tpl.slug)
+  if (outputs.length > 0) {
+    const lang = langForCodeBlock(tpl)
+    lines.push('## Example Output')
+    lines.push('')
+    lines.push(`Generated from the [pet-store](/guide/quick-start) sample schema:`)
+    lines.push('')
+
+    for (const file of outputs) {
+      if (outputs.length > 1) {
+        lines.push(`#### \`${file.name}\``)
+        lines.push('')
+      }
+      lines.push(`\`\`\`${lang}`)
+      lines.push(file.content.trim())
+      lines.push('```')
+      lines.push('')
+    }
+  }
 
   // Usage section
   lines.push('## Usage')
@@ -81,6 +173,12 @@ function generateTemplatePage(tpl: TemplateMeta): string {
 
   // Style for lang badge
   lines.push('<style>')
+  lines.push('.template-title-icon {')
+  lines.push('  font-size: 0.85em;')
+  lines.push('  vertical-align: baseline;')
+  lines.push('  margin-right: 4px;')
+  lines.push('  color: var(--vp-c-brand-1);')
+  lines.push('}')
   lines.push('.template-lang-badge {')
   lines.push('  display: inline-block;')
   lines.push('  font-size: 12px;')

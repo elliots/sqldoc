@@ -163,7 +163,7 @@ export async function runCompilePipeline(
 
     for (const filePath of allFiles) {
       const rel = path.relative(process.cwd(), filePath)
-      console.log(pc.cyan(`── ${rel}`))
+      console.error(pc.cyan(`── ${rel}`))
       // Use merged content (includes inlined) for project files, raw content for externals
       const source = mergedProjectContents.get(filePath) ?? fs.readFileSync(filePath, 'utf-8')
 

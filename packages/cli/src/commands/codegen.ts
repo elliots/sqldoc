@@ -16,13 +16,27 @@ import { filterExternalFromRealm, runCompilePipeline } from '../utils/pipeline.t
  */
 export async function codegenCommand(
   inputPath: string | undefined,
-  options: { config?: string; plugins?: string; project?: string },
+  options: { config?: string; plugins?: string; project?: string; template?: string; output?: string },
 ): Promise<void> {
   const configRoot = options.config
     ? path.dirname(path.resolve(options.config))
     : process.env.SQLDOC_PROJECT_ROOT || process.cwd()
   const { config: rawConfig, configPath } = await loadConfig(configRoot, options.config)
   const config: ResolvedConfig = resolveProject(rawConfig, options.project)
+
+  // --template flag: override codegen config to run specified templates only
+  const isTemplateMode = !!options.template
+  if (isTemplateMode) {
+    const slugs = options.template!.split(',').map((s) => s.trim())
+    const outputDir = options.output
+    const templates = slugs.map((slug) => ({
+      template: `@sqldoc/templates/${slug}`,
+      output: outputDir ? (slugs.length > 1 ? path.join(outputDir, slug) : outputDir) : '/dev/stdout',
+    }))
+    config.namespaces = {
+      codegen: { templates },
+    }
+  }
 
   // Resolve input path: explicit arg > config.schema > error
   const resolvedInput = inputPath ?? config.schema
@@ -36,7 +50,11 @@ export async function codegenCommand(
     generateConfigTypes(sqldocDir)
   }
 
-  const pluginFilter = options.plugins ? new Set(options.plugins.split(',').map((s) => s.trim())) : null
+  const pluginFilter = isTemplateMode
+    ? new Set(['codegen'])
+    : options.plugins
+      ? new Set(options.plugins.split(',').map((s) => s.trim()))
+      : null
 
   let result
   try {
@@ -115,6 +133,10 @@ export async function codegenCommand(
         if (result?.files) {
           for (const file of result.files) {
             const outPath = path.resolve(configRoot, file.filePath)
+            if (isTemplateMode && !options.output) {
+              process.stdout.write(file.content)
+              continue
+            }
             try {
               fs.mkdirSync(path.dirname(outPath), { recursive: true })
               fs.writeFileSync(outPath, file.content, 'utf-8')

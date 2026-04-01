@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { codegenCommand } from './commands/codegen.ts'
+import { compileCommand } from './commands/compile.ts'
 import { doctorCommand } from './commands/doctor.ts'
 import { lintCommand } from './commands/lint.ts'
 import { migrateCommand } from './commands/migrate.ts'
@@ -20,11 +21,25 @@ const program = new Command()
 program.name('sqldoc').description('SQL documentation and code generation tool').version(version)
 
 program
+  .command('compile')
+  .description('Compile SQL files and output merged SQL with generated statements')
+  .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
+  .option('-c, --config <path>', 'Path to sqldoc.config.ts')
+  .option('-o, --output <path>', 'Write to file instead of stdout')
+  .option('--project <name>', 'Select a named project from multi-project config')
+  .action(compileCommand)
+
+program
   .command('codegen')
   .description('Run code generation plugins (templates, docs, etc.)')
   .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
   .option('-c, --config <path>', 'Path to sqldoc.config.ts')
   .option('-p, --plugins <names>', 'Comma-separated project-level plugin names to run (default: all)')
+  .option(
+    '-t, --template <names>',
+    'Run template(s) by slug (comma-separated), ignoring config (output to stdout or -o dir)',
+  )
+  .option('-o, --output <path>', 'Output file path (used with --template)')
   .option('--project <name>', 'Select a named project from multi-project config')
   .action(codegenCommand)
 
@@ -83,10 +98,30 @@ program.command('doctor').description('Check project setup and report status').a
 
 // Machine-readable command listing for the shim binary
 if (process.argv.includes('--help-json')) {
-  const commands = program.commands.map((cmd) => {
-    const subs = cmd.commands?.map((c: Command) => ({ name: c.name(), description: c.description() }))
-    return { name: cmd.name(), description: cmd.description(), ...(subs?.length ? { subcommands: subs } : {}) }
-  })
+  function serializeCommand(cmd: Command) {
+    const args =
+      cmd.registeredArguments?.map((a: any) => ({
+        name: a.name(),
+        description: a.description,
+        required: a.required,
+      })) ?? []
+    const opts =
+      cmd.options
+        ?.filter((o: any) => o.long !== '--help')
+        .map((o: any) => ({
+          flags: o.flags,
+          description: o.description,
+        })) ?? []
+    const subs = cmd.commands?.map(serializeCommand)
+    return {
+      name: cmd.name(),
+      description: cmd.description(),
+      ...(args.length ? { arguments: args } : {}),
+      ...(opts.length ? { options: opts } : {}),
+      ...(subs?.length ? { subcommands: subs } : {}),
+    }
+  }
+  const commands = program.commands.map(serializeCommand)
   console.log(JSON.stringify(commands))
   process.exit(0)
 }

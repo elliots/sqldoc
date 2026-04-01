@@ -2,8 +2,11 @@
 layout: home
 hero:
   name: sqldoc
-  text: SQL tags that compile to SQL and typed code
-  tagline: Annotate your SQL with tags in comments. sqldoc compiles them into correct SQL statements and typed code across PostgreSQL, MySQL, and SQLite.
+  text: SQL-first development
+  tagline: A pluggable compiler pipeline for SQL schemas. Tags in comments drive code generation, migrations, and custom plugins.
+  
+
+    Your .sql files are the source of truth.
   actions:
     - theme: brand
       text: Get Started
@@ -15,7 +18,7 @@ features:
   - title: SQL is the Source of Truth
     details: Tags live in SQL comments — your schema files remain valid SQL that any tool can read. No lock-in, no runtime dependencies.
   - title: Multi-Dialect
-    details: First-class support for PostgreSQL, MySQL (beta), and SQLite (beta). One tag syntax, correct output per dialect.
+    details: First-class support for PostgreSQL, with MySQL and SQLite in beta.
   - title: Code Generation
     details: Generate typed interfaces, query builders, ORMs, and schemas in 10+ languages from your SQL — TypeScript, Go, Python, Rust, Java, and more.
   - title: Namespace Plugins
@@ -36,47 +39,7 @@ const languages = [...new Set(templates.map(t => t.language))]
 
 Write standard SQL with tags in comments:
 
-<SqlTransform>
-<template #input>
-
-```sql
--- @import '@sqldoc/ns-audit'
--- @import '@sqldoc/ns-validate'
-
--- @audit
-CREATE TABLE orders (
-  id SERIAL PRIMARY KEY,
-  -- @validate.notEmpty
-  customer_name VARCHAR(100) NOT NULL,
-  -- @validate.range(min: 0)
-  total NUMERIC(10,2) NOT NULL
-);
-```
-
-</template>
-<template #output>
-
-```sql
-CREATE TABLE IF NOT EXISTS "orders_audit_log" (
-  id BIGSERIAL PRIMARY KEY,
-  table_name TEXT NOT NULL,
-  operation TEXT NOT NULL,
-  old_data JSONB,
-  new_data JSONB,
-  changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE "orders"
-  ADD CONSTRAINT "orders_customer_name_not_empty"
-  CHECK (length(trim("customer_name")) > 0);
-
-ALTER TABLE "orders"
-  ADD CONSTRAINT "orders_total_range"
-  CHECK ("total" >= 0);
-```
-
-</template>
-</SqlTransform>
+<!--@include: ./partials/homepage-example.md-->
 
 Tags compile to correct SQL for your dialect. The original SQL stays unchanged — tags are comments.
 
@@ -163,5 +126,34 @@ Tags compile to correct SQL for your dialect. The original SQL stays unchanged �
 .section-link a {
   color: var(--vp-c-brand-1);
   font-weight: 500;
+}
+.homepage-example {
+  margin: 24px 0;
+}
+.example-block {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+.example-block .example-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+  padding: 8px 16px;
+  background: var(--vp-c-bg-soft);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.example-block div[class*="language-"] {
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+.example-arrow {
+  text-align: center;
+  font-size: 24px;
+  color: var(--vp-c-text-3);
+  padding: 8px 0;
 }
 </style>
