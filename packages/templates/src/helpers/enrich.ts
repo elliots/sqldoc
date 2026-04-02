@@ -385,9 +385,19 @@ function extractEnums(tables: EnrichedTable[], views: EnrichedView[]): EnrichedE
 function extractDefault(def: unknown): string | undefined {
   if (!def || typeof def !== 'object') return undefined
   const d = def as Record<string, unknown>
-  if ('X' in d) return String(d.X)
-  if ('V' in d) return String(d.V)
-  return undefined
+  let val: string | undefined
+  if ('X' in d) val = String(d.X)
+  else if ('V' in d) val = String(d.V)
+  if (!val) return undefined
+
+  // Strip SQL type casts: 'available'::character varying -> 'available'
+  const castIdx = val.indexOf('::')
+  if (castIdx !== -1) val = val.slice(0, castIdx)
+
+  // Strip SQL string quotes: 'available' -> available
+  if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1)
+
+  return val
 }
 
 function toCamelCase(name: string): string {

@@ -118,7 +118,7 @@ function formatDefault(defaultValue: string | undefined): string | undefined {
     return `sql\`${defaultValue}\``
   }
   if (defaultValue === 'true' || defaultValue === 'false') return defaultValue
-  if (/^\d+$/.test(defaultValue)) return defaultValue
+  if (/^-?\d+(\.\d+)?$/.test(defaultValue)) return defaultValue
   return `'${defaultValue}'`
 }
 
