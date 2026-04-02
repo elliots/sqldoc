@@ -1,12 +1,6 @@
 // Types
 
 export type { SqlAstAdapter, SqlColumn, SqlCommentOn, SqlStatement } from './ast/index.ts'
-// Directives
-export type { FileDirective, FileProvenance } from './directives.ts'
-export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'
-// Resolver
-export type { ResolvedFiles } from './resolver.ts'
-export { resolveDirectives } from './resolver.ts'
 // AST Adapters
 export { SqlparserTsAdapter } from './ast/index.ts'
 // Blocks
@@ -41,6 +35,9 @@ export type {
 } from './compiler/index.ts'
 // Compiler
 export { compile, defineConfig, loadConfig, resolveAllProjects, resolveProject } from './compiler/index.ts'
+// Directives
+export type { FileDirective, FileProvenance } from './directives.ts'
+export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'
 // Lint engine
 export { lint } from './lint.ts'
 export type { ImportError, LoadResult } from './loader.ts'
@@ -49,6 +46,9 @@ export { loadImports, setImportLogger } from './loader.ts'
 export type { ArgValue, ImportStatement, ParsedArgs, ParsedTag, ParseResult } from './parser.ts'
 // Parser
 export { parse, parseArgs } from './parser.ts'
+// Resolver
+export type { ResolvedFiles } from './resolver.ts'
+export { resolveDirectives } from './resolver.ts'
 
 // SQL Emitter
 export type { Dialect } from './sql-emitter.ts'

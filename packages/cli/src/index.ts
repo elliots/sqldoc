@@ -98,7 +98,7 @@ program.command('doctor').description('Check project setup and report status').a
 
 // Machine-readable command listing for the shim binary
 if (process.argv.includes('--help-json')) {
-  function serializeCommand(cmd: Command) {
+  function serializeCommand(cmd: Command): unknown {
     const args =
       cmd.registeredArguments?.map((a: any) => ({
         name: a.name(),

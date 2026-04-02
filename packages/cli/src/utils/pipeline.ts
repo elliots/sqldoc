@@ -10,8 +10,8 @@ import {
   SqlparserTsAdapter,
   validate,
 } from '@sqldoc/core'
-import { createRunner, extractExtensions } from '@sqldoc/db'
 import type { AtlasRealm, AtlasSchema } from '@sqldoc/db'
+import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { promptAndInstallMissing } from './auto-install.ts'
 import { discoverSqlFiles } from './discover.ts'
@@ -118,7 +118,7 @@ export async function runCompilePipeline(
   const allPlugins = new Map<string, NamespacePlugin>()
   let totalErrors = 0
   let atlasRealm: unknown
-  let externalObjectNames = new Set<string>()
+  const externalObjectNames = new Set<string>()
 
   try {
     // ── Dual Atlas inspection when @external directives present (D-16, D-17) ──

@@ -91,9 +91,8 @@ export async function migrateCommand(options: {
   }
 
   // Prepend external SQL to current state so external objects cancel out in diff
-  const currentWithExternals = externalSqlParts.length > 0
-    ? [externalSqlParts.join('\n'), currentSql].filter(Boolean).join('\n')
-    : currentSql
+  const currentWithExternals =
+    externalSqlParts.length > 0 ? [externalSqlParts.join('\n'), currentSql].filter(Boolean).join('\n') : currentSql
 
   // ── Step 3: Build known renames from @docs.previously tags ─────────
   const knownRenames = buildRenamesFromPreviously(pipelineResult.outputs)
@@ -155,7 +154,9 @@ export async function migrateCommand(options: {
 
     // ── Step 5: Diff desired -> current (down migration) ──────────────
     // Down diff also uses currentWithExternals so external objects cancel out
-    const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], { schema: schemaOpt })
+    const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], {
+      schema: schemaOpt,
+    })
 
     if (downResult.error) {
       throw new CliError(`Schema diff (reverse) error: ${downResult.error}`)

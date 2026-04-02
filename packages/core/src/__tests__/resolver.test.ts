@@ -5,8 +5,7 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { describe, expect, it } from '@sqldoc/test-utils'
-import { useTmpDir } from '@sqldoc/test-utils'
+import { describe, expect, it, useTmpDir } from '@sqldoc/test-utils'
 import { resolveDirectives } from '../resolver.ts'
 
 const tmpDir = useTmpDir('sqldoc-resolver-')

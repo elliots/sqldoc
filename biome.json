@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["packages/**", "*.json", "tests/**"]
+    "includes": ["packages/**", "*.json", "tests/**", "!!**/docs/*.html", "!!**/generated"]
   },
   "assist": {
     "actions": {
