@@ -4,7 +4,7 @@ declare const data: TemplateMeta[]
 export { data }
 
 export default {
-  async load(): Promise<TemplateMeta[]> {
+  load(): TemplateMeta[] {
     return extractAllTemplates()
   },
 }

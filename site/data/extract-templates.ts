@@ -1,6 +1,7 @@
 /**
- * Template metadata extraction -- dynamically imports each template's index.ts
- * via Bun's native TS support and reads the defineTemplate() export directly.
+ * Template metadata extraction -- reads each template's index.ts as plain text
+ * and extracts the defineTemplate() properties. No dynamic imports needed,
+ * so this works on Cloudflare Pages without monorepo dependencies.
  */
 
 import * as fs from 'node:fs'
@@ -20,7 +21,7 @@ export interface TemplateMeta {
 
 // -- Directories to exclude (not templates) --
 
-const EXCLUDED_DIRS = new Set(['__tests__', 'helpers', 'types', 'tags'])
+const EXCLUDED_DIRS = new Set(['__tests__', 'helpers', 'types', 'tags', 'typeorm'])
 
 // -- Language sort order for consistent grouping --
 
@@ -39,9 +40,19 @@ const LANGUAGE_ORDER: Record<string, number> = {
   sql: 11,
 }
 
+// -- Simple property extraction from defineTemplate({ ... }) --
+
+function extractStringProp(source: string, prop: string): string | null {
+  // Match: prop: 'value' or prop: "value" — only before generate(
+  const genIdx = source.indexOf('generate(')
+  const area = genIdx !== -1 ? source.slice(0, genIdx) : source.slice(0, 1000)
+  const match = area.match(new RegExp(`${prop}:\\s*['"]([^'"]+)['"]`))
+  return match ? match[1] : null
+}
+
 // -- Extraction --
 
-export async function extractAllTemplates(): Promise<TemplateMeta[]> {
+export function extractAllTemplates(): TemplateMeta[] {
   const templatesDir = path.resolve(import.meta.dirname!, '../../packages/templates/src')
   const entries = fs.readdirSync(templatesDir, { withFileTypes: true })
   const templates: TemplateMeta[] = []
@@ -53,25 +64,22 @@ export async function extractAllTemplates(): Promise<TemplateMeta[]> {
     const indexPath = path.join(templatesDir, entry.name, 'index.ts')
     if (!fs.existsSync(indexPath)) continue
 
-    try {
-      const mod = await import(indexPath)
-      const tpl = mod.default
+    const source = fs.readFileSync(indexPath, 'utf-8')
+    if (!source.includes('defineTemplate')) continue
 
-      if (!tpl || typeof tpl !== 'function') continue
+    const name = extractStringProp(source, 'name') ?? entry.name
+    const description = extractStringProp(source, 'description') ?? ''
+    const language = extractStringProp(source, 'language') ?? 'unknown'
+    const hasConfigSchema = /export\s+const\s+configSchema\s*=/.test(source)
 
-      templates.push({
-        name: tpl.name ?? entry.name,
-        slug: entry.name,
-        description: tpl.description ?? '',
-        language: tpl.language ?? 'unknown',
-        hasConfigSchema: tpl.configSchema != null,
-        configSchema: tpl.configSchema,
-        sourceFile: indexPath,
-      })
-    } catch {
-      // Skip templates that fail to import (e.g. missing dependencies)
-      continue
-    }
+    templates.push({
+      name,
+      slug: entry.name,
+      description,
+      language,
+      hasConfigSchema,
+      sourceFile: indexPath,
+    })
   }
 
   // Sort by language grouping, then by name within same language

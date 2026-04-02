@@ -70,8 +70,8 @@ function langForCodeBlock(tpl: TemplateMeta): string {
 }
 
 export default {
-  async paths() {
-    const templates = await extractAllTemplates()
+  paths() {
+    const templates = extractAllTemplates()
     return templates.map(tpl => ({
       params: {
         tpl: tpl.slug,
