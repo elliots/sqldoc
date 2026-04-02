@@ -115,7 +115,7 @@ The extension activates for these language IDs:
 
 The extension reads your project's `sqldoc.config.ts` to determine the dialect and available namespaces. No additional VSCode settings are needed.
 
-The extension looks for a `.sqldoc/` directory in your workspace to resolve package imports. Make sure you've run `npx @sqldoc/cli init` to set up the project-local installation.
+The extension looks for a `.sqldoc/` directory in your workspace to resolve package imports. Make sure you've run `sqldoc init` to set up the project-local installation.
 
 ## Requirements
 

@@ -87,10 +87,7 @@ The sqldoc CLI provides commands for code generation, validation, linting, schem
 brew install elliots/sqldoc/sqldoc
 \`\`\`
 
-\`\`\`bash [npm (project-local)]
-npx @sqldoc/cli init
-\`\`\`
-
+or download the latest release from [GitHub Releases](https://github.com/elliots/sqldoc/releases) for your platform.
 :::
 
 ${sections}

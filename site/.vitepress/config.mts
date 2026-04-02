@@ -48,10 +48,10 @@ export default defineConfigWithTheme<ThemeConfig>({
       {
         text: 'Getting Started',
         items: [
+          { text: 'Quick Start', link: '/guide/quick-start' },
           { text: 'What is sqldoc?', link: '/guide/' },
           { text: 'Why sqldoc?', link: '/guide/why' },
           { text: 'Installation', link: '/guide/installation' },
-          { text: 'Quick Start', link: '/guide/quick-start' },
           { text: 'Configuration', link: '/guide/configuration' },
         ],
       },

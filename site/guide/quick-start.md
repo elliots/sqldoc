@@ -4,7 +4,7 @@ outline: deep
 
 # Quick Start
 
-Get sqldoc running in 5 minutes. This guide walks through creating a schema, adding tags, and generating typed code.
+Get sqldoc running in 5 minutes. This guide walks through creating a schema, adding tags, generating migrations, and generating typed code.
 
 ## 1. Install
 
@@ -14,13 +14,17 @@ Get sqldoc running in 5 minutes. This guide walks through creating a schema, add
 brew install elliots/sqldoc/sqldoc
 ```
 
-```bash [npm]
-npx @sqldoc/cli init
-```
-
 :::
 
-## 2. Create a schema
+or download the latest release from [GitHub Releases](https://github.com/elliots/sqldoc/releases) for your platform.
+
+## 2. Initialise in your project
+
+```bash
+sqldoc init
+```
+
+## 3. Create a schema
 
 Create a `schema.sql` file:
 
@@ -51,9 +55,9 @@ CREATE TABLE posts (
 );
 ```
 
-## 3. Create a config
+## 4. Update the config
 
-Create `sqldoc.config.ts`:
+Update `sqldoc.config.ts`:
 
 ```typescript
 export default {
@@ -65,6 +69,9 @@ export default {
       output: './generated/types.ts',
     },
   ],
+  migrations: {
+    dir: 'migrations',
+  },
 }
 ```
 
@@ -86,7 +93,17 @@ sqldoc codegen
 
 This creates `./generated/types.ts` with typed interfaces matching your schema, plus the SQL output with COMMENT ON statements and CHECK constraints compiled from your tags.
 
-## 6. Explore more
+## 6. Create a migration
+
+```bash
+sqldoc migrate
+```
+
+And check for your migration in `./migrations`. By default it only saves up migrations, not down.
+
+Then make a change to your schema (e.g. add a column), run migrate again, and check for the second migration file.
+
+## 7. Explore more
 
 - Add `@audit` for audit trails -- see [@audit](/namespaces/audit)
 - Add `@rls` for row-level security -- see [@rls](/namespaces/rls)
@@ -100,7 +117,8 @@ sqldoc read your SQL file, parsed the tags in comments, and:
 
 1. **Validated** that all tags have correct syntax, arguments, and targets
 2. **Compiled** the tags into additional SQL (COMMENT ON statements, CHECK constraints)
-3. **Generated** TypeScript interfaces from your schema via Atlas
+3. **Verified** the compiled sql was run in an embedded Postgres (PGLite), as well as the migrations, and then diffed.
+4. **Generated** TypeScript interfaces from your schema via Atlas
 
 The input SQL stayed unchanged -- tags are comments, so the file is always valid SQL.
 
