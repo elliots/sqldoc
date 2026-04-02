@@ -30,7 +30,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # -- Current version --
-CURRENT=$(node -e "console.log(require('./package.json').version)")
+CURRENT=$(bun -e "console.log(require('./package.json').version)")
 echo -e "${CYAN}Current version: ${CURRENT}${NC}"
 
 # -- Prompt for new version --
@@ -60,7 +60,7 @@ echo ""
 echo -e "${YELLOW}Updating package.json versions...${NC}"
 
 # Root package.json
-node -e "
+bun -e "
 const fs = require('fs')
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'))
 pkg.version = '${VERSION}'
@@ -69,7 +69,7 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')
 
 # All workspace packages (except private ones keep their version)
 for pkg in packages/*/package.json; do
-  node -e "
+  bun -e "
 const fs = require('fs')
 const pkg = JSON.parse(fs.readFileSync('${pkg}', 'utf-8'))
 if (!pkg.private) {
@@ -138,22 +138,7 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
   exit 0
 fi
 
-echo -e "${YELLOW}Publishing to npm...${NC}"
-for pkg in packages/*/; do
-  if [[ -f "${pkg}package.json" ]]; then
-    IS_PRIVATE=$(node -e "console.log(require('./${pkg}package.json').private || false)")
-    if [[ "$IS_PRIVATE" == "false" ]]; then
-      PKG_NAME=$(node -e "console.log(require('./${pkg}package.json').name)")
-      echo -e "  ${CYAN}Publishing ${PKG_NAME}@${VERSION}...${NC}"
-      (cd "$pkg" && npm publish --access public) || {
-        echo -e "${RED}Failed to publish ${PKG_NAME}${NC}"
-        echo -e "${YELLOW}Fix the issue and re-run: cd ${pkg} && npm publish --access public${NC}"
-        exit 1
-      }
-    fi
-  fi
-done
-echo -e "${GREEN}All packages published to npm${NC}"
+bash scripts/npm-publish.sh
 
 # -- 5. Push to origin --
 echo -e "${YELLOW}Pushing to origin...${NC}"
