@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo -noEmit",
     "test": "node --test '__tests__/**/*.test.ts' 'pagila/*.test.ts' 'postgraphile-kitchensink/*.test.ts' 'pet-store/*.test.ts'"
   },
   "devDependencies": {
@@ -21,6 +21,6 @@
     "@sqldoc/ns-postgraphile": "workspace:*",
     "@sqldoc/ns-rls": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:"
   }
 }

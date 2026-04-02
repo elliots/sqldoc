@@ -7,11 +7,11 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo -noEmit"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "expect": "^30.3.0"
   }
 }

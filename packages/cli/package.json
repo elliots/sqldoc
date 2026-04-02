@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo -noEmit"
   },
   "dependencies": {
     "@sqldoc/core": "workspace:*",
@@ -33,6 +33,6 @@
   },
   "devDependencies": {
     "@sqldoc/test-utils": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:"
   }
 }

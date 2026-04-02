@@ -25,7 +25,7 @@
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
     "lint": "biome check src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo -noEmit"
   },
   "dependencies": {
     "@sqldoc/sqlparser-ts": "workspace:*",
@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
-    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
 }

@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo -noEmit",
     "build:wasm": "cd ../../../atlastest/atlas/cmd/atlas-wasi && GOOS=wasip1 GOARCH=wasm go build -o atlas.wasm . && cp atlas.wasm ../../../../sqldoc/packages/db/wasm/atlas.wasm",
     "codegen:schema": "echo 'Types hand-crafted from atlas/sql/schema/schema.go -- see src/types.ts. tygo cannot handle Go interfaces (Attr, Type, Expr). Re-read schema.go and update src/types.ts manually when the Go source changes.'"
   },
@@ -35,7 +35,7 @@
   "devDependencies": {
     "@types/pg": "^8.11.0",
     "tsx": "^4.21.0",
-    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
 }

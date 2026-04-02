@@ -19,14 +19,14 @@
   ],
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo -noEmit"
   },
   "peerDependencies": {
     "@sqldoc/core": "workspace:*"
   },
   "devDependencies": {
     "@sqldoc/core": "workspace:*",
-    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
 }
