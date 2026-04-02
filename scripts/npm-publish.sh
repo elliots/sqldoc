@@ -26,7 +26,7 @@ for dir in packages/*/; do
   fi
 
   echo "  PUBLISH ${NAME}@${VERSION}"
-  if (cd "$dir" && npm publish --access public); then
+  if (cd "$dir" && bun publish --access public); then
     PUBLISHED=$((PUBLISHED + 1))
   else
     echo "  FAILED ${NAME}"
