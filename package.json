@@ -34,5 +34,6 @@
     "vscode-sqldoc",
     "sqlparser-ts",
     "tests"
-  ]
+  ],
+  "version": "0.0.3"
 }
