@@ -167,6 +167,31 @@ CREATE TABLE orders (
     expect(allSql).toContain('CREATE TABLE')
     expect(allSql).toContain('CREATE EVENT TRIGGER')
   })
+
+  it('identity columns do not produce orphaned sequences', async () => {
+    const sql = [
+      `CREATE TABLE events (
+        id bigint GENERATED ALWAYS AS IDENTITY,
+        type text NOT NULL,
+        CONSTRAINT events_pkey PRIMARY KEY (id)
+      );`,
+    ]
+
+    // Initial diff: empty -> schema
+    const init = await runner.diff([], sql)
+    expect(init.error).toBe(undefined)
+    const initSql = init.statements!.join('\n')
+    // Should use IDENTITY, not bigserial
+    expect(initSql).toContain('GENERATED ALWAYS AS IDENTITY')
+    expect(initSql).not.toContain('bigserial')
+    // Should not create a standalone sequence
+    expect(initSql).not.toMatch(/CREATE SEQUENCE/)
+
+    // Self-diff: schema -> schema (must produce zero changes)
+    const noop = await runner.diff(sql, sql)
+    expect(noop.error).toBe(undefined)
+    expect(noop.statements ?? []).toHaveLength(0)
+  })
 })
 
 describe('atlas runner (unit)', () => {

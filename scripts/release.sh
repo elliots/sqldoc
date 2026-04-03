@@ -59,10 +59,10 @@ fi
 echo -e "${CYAN}Step 4: Publish to npm${NC}"
 bash scripts/npm-publish.sh
 
-# -- 5. Push --
-echo -e "${CYAN}Step 5: Push${NC}"
-git push origin main --tags
-echo -e "${GREEN}Pushed${NC}"
+# # -- 5. Push --
+# echo -e "${CYAN}Step 5: Push${NC}"
+# git push origin main --tags
+# echo -e "${GREEN}Pushed${NC}"
 
 # # -- 6. GoReleaser --
 # only needs doing if its actually changed.
