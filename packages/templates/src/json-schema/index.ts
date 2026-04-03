@@ -176,13 +176,13 @@ function buildTableSchema(
   }
 
   if (required.length > 0) schema.required = required
-  if (baseId) schema.$id = `${baseId}/${table.name}`
+  if (baseId) schema.$id = `${baseId}/${table.sqlName}`
 
   return schema
 }
 
 function buildViewSchema(
-  view: { pascalName: string; name: string; columns: EnrichedColumn[] },
+  view: { pascalName: string; name: string; sqlName: string; columns: EnrichedColumn[] },
   baseId?: string,
 ): Record<string, unknown> {
   const required: string[] = []
@@ -211,7 +211,7 @@ function buildViewSchema(
   }
 
   if (required.length > 0) schema.required = required
-  if (baseId) schema.$id = `${baseId}/${view.name}`
+  if (baseId) schema.$id = `${baseId}/${view.sqlName}`
 
   return schema
 }
@@ -242,7 +242,7 @@ export default defineTemplate({
     if (config.mode === 'per-table') {
       const files = [
         ...tables.map((table) => ({
-          path: `${table.name}.schema.json`,
+          path: `${table.sqlName.replace(/\./g, '-')}.schema.json`,
           content: `${JSON.stringify(
             { $schema: 'https://json-schema.org/draft/2020-12/schema', ...buildTableSchema(table, baseId) },
             null,
@@ -250,7 +250,7 @@ export default defineTemplate({
           )}\n`,
         })),
         ...views.map((view) => ({
-          path: `${view.name}.schema.json`,
+          path: `${view.sqlName.replace(/\./g, '-')}.schema.json`,
           content: `${JSON.stringify(
             { $schema: 'https://json-schema.org/draft/2020-12/schema', ...buildViewSchema(view, baseId) },
             null,
@@ -306,7 +306,7 @@ export default defineTemplate({
       let returnSchema: Record<string, unknown>
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         if (table) {
           returnSchema = { type: 'array', items: { $ref: `#/$defs/${table.pascalName}` } }
         } else {

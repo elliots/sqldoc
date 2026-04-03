@@ -202,7 +202,7 @@ export default defineTemplate({
       lines.push(`message ${respName} {`)
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         const retType = table ? table.pascalName : toPascalCase(tableName)
         lines.push(`  repeated ${retType} results = 1;`)
       } else if (fn.returnType) {

@@ -3,4 +3,5 @@
 !.gitignore
 !Dockerfile
 !test.*
+!test-invalid.*
 !Test.*

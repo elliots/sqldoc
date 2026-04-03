@@ -85,7 +85,17 @@ export default defineTemplate({
       classes.push('}')
     }
 
-    for (const table of activeTables(schema)) {
+    // Build schema-aware lookup for FK target type resolution
+    const allTables = activeTables(schema)
+    const pascalNameByQualified = new Map<string, string>()
+    for (const t of allTables) {
+      pascalNameByQualified.set(`${t.schema}.${t.name}`, t.pascalName)
+      if (!pascalNameByQualified.has(t.name)) {
+        pascalNameByQualified.set(t.name, t.pascalName)
+      }
+    }
+
+    for (const table of allTables) {
       const propertyLines: string[] = []
       for (const col of table.columns) {
         let csType: string
@@ -107,9 +117,13 @@ export default defineTemplate({
           annotations.push('    [Key]')
         }
 
-        // FK annotation
+        // FK annotation — reference the navigation property name
         if (col.foreignKey) {
-          annotations.push(`    [ForeignKey("${col.pascalName}")]`)
+          const fkTargetType =
+            pascalNameByQualified.get(`${col.foreignKey.schema}.${col.foreignKey.table}`) ??
+            pascalNameByQualified.get(col.foreignKey.table) ??
+            toPascalCase(col.foreignKey.table)
+          annotations.push(`    [ForeignKey("${fkTargetType}")]`)
         }
 
         // Required for non-nullable reference types
@@ -135,6 +149,10 @@ export default defineTemplate({
         propertyLines.push('')
       }
 
+      // Add [Table] attribute with schema when multi-schema
+      if (table.sqlName !== table.name) {
+        classes.push(`[Table("${table.name}", Schema = "${table.schema}")]`)
+      }
       classes.push(`public class ${table.pascalName}`)
       classes.push('{')
       classes.push(propertyLines.join('\n'))
@@ -163,6 +181,9 @@ export default defineTemplate({
 
       classes.push(`/// <summary>Read-only (from view)</summary>`)
       classes.push(`[Keyless]`)
+      if (view.sqlName !== view.name) {
+        classes.push(`[Table("${view.name}", Schema = "${view.schema}")]`)
+      }
       classes.push(`public class ${view.pascalName}`)
       classes.push('{')
       classes.push(propertyLines.join('\n'))

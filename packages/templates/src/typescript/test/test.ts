@@ -4,7 +4,7 @@
  */
 import { Client } from 'pg'
 // Import the generated type -- file is copied from codegen output at test time
-import type { User, Post } from './models.ts'
+import type { User, ContentPost } from './models.ts'
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
@@ -49,12 +49,12 @@ async function run() {
     assert(typeof _typedUser.email === 'string', 'typed user email is string')
 
     // 2. Query known seeded post
-    const { rows: postRows } = await client.query('SELECT * FROM posts WHERE id = 1')
+    const { rows: postRows } = await client.query('SELECT * FROM content.posts WHERE id = 1')
     assert(postRows.length === 1, 'seeded post found')
     assert(postRows[0].title === 'Hello World', 'post title matches')
 
-    // Verify Post type assignability
-    const _typedPost: Partial<Post> = {
+    // Verify ContentPost type assignability
+    const _typedPost: Partial<ContentPost> = {
       id: Number(postRows[0].id),
       title: postRows[0].title,
       body: postRows[0].body,
@@ -63,11 +63,11 @@ async function run() {
 
     // 3. Insert a new post
     await client.query(
-      "INSERT INTO posts (user_id, title, body, view_count) VALUES (1, 'Post from typescript', 'test body', 0)",
+      "INSERT INTO content.posts (user_id, title, body, view_count) VALUES (1, 'Post from typescript', 'test body', 0)",
     )
 
     // 4. Read it back
-    const { rows: newPosts } = await client.query("SELECT * FROM posts WHERE title = 'Post from typescript'")
+    const { rows: newPosts } = await client.query("SELECT * FROM content.posts WHERE title = 'Post from typescript'")
     assert(newPosts.length === 1, 'inserted post found')
     assert(newPosts[0].title === 'Post from typescript', 'inserted post title matches')
     // pg returns bigint columns as strings; use Number() for comparison

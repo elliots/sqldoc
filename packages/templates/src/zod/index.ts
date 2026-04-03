@@ -242,7 +242,7 @@ export default defineTemplate({
       let outputSchema: string
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         if (table) {
           outputSchema = `z.array(${toCamelCase(table.pascalName)}Schema)`
         } else {

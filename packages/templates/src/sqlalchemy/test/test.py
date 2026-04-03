@@ -42,7 +42,7 @@ def main():
         assert_eq(user.is_active, True, "user is_active matches")
 
         # 2. Query known seeded post via ORM model
-        post = session.query(models.Post).filter_by(id=1).one()
+        post = session.query(models.ContentPost).filter_by(id=1).one()
         assert_eq(post.title, "Hello World", "post title matches")
 
         # 3. Query view via Table object

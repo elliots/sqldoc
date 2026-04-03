@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Invalid data: User is missing required fields (id, email, isActive, createdAt) -->
+<testData>
+  <User>
+    <name>Missing Required Fields</name>
+  </User>
+</testData>

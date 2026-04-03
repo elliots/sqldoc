@@ -97,19 +97,29 @@ export default defineTemplate({
 
     // Views (read-only)
     for (const view of schema.views.filter((v) => !v.skipped)) {
-      lines.push(`/** Read-only (from view) */`)
-      lines.push(`export interface ${view.pascalName} {`)
-      for (const col of view.columns) {
-        const tsType = resolveType(col, config, options)
-        const propName = toCamelCase(col.name)
-        if (col.nullable && config.nullableStyle !== 'null-union') {
-          lines.push(`  ${propName}?: ${tsType}`)
-        } else {
-          lines.push(`  ${propName}: ${tsType}`)
+      const hasUnnamed = view.columns.some((c) => !c.name)
+      if (hasUnnamed) {
+        // Views with unnamed columns (e.g. SELECT 1) → tuple type
+        const types = view.columns.map((col) => resolveType(col, config, options))
+        const tupleType = types.length === 1 ? types[0] : `[${types.join(', ')}]`
+        lines.push(`/** Read-only (from view) */`)
+        lines.push(`export type ${view.pascalName} = ${tupleType}`)
+        lines.push('')
+      } else {
+        lines.push(`/** Read-only (from view) */`)
+        lines.push(`export interface ${view.pascalName} {`)
+        for (const col of view.columns) {
+          const tsType = resolveType(col, config, options)
+          const propName = toCamelCase(col.name)
+          if (col.nullable && config.nullableStyle !== 'null-union') {
+            lines.push(`  ${propName}?: ${tsType}`)
+          } else {
+            lines.push(`  ${propName}: ${tsType}`)
+          }
         }
+        lines.push('}')
+        lines.push('')
       }
-      lines.push('}')
-      lines.push('')
     }
 
     // Functions (skip trigger functions — they're not user-callable)
@@ -117,11 +127,16 @@ export default defineTemplate({
       const retRaw = fn.returnType?.type?.toLowerCase() ?? ''
       if (retRaw === 'trigger') continue
 
-      const params = fn.args
-        .filter((a) => !a.name?.startsWith('_') && (a as any).mode !== 'OUT')
-        .map((a) => {
+      const filteredArgs = fn.args.filter((a) => !a.name?.startsWith('_') && (a as any).mode !== 'OUT')
+      const usedNames = new Set<string>()
+      const params = filteredArgs
+        .map((a, i) => {
           const argType = pgToTs(a.type, false, options, a.category as any)
-          return `${toCamelCase(a.name || 'arg')}: ${argType}`
+          let argName = a.name ? toCamelCase(a.name) : `arg${i + 1}`
+          // Deduplicate: if name already used, append index
+          if (usedNames.has(argName)) argName = `${argName}${i + 1}`
+          usedNames.add(argName)
+          return `${argName}: ${argType}`
         })
         .join(', ')
 
@@ -129,7 +144,7 @@ export default defineTemplate({
       if (retRaw.startsWith('setof ')) {
         // RETURNS SETOF tablename → Table[]
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         retType = table ? `${table.pascalName}[]` : `${pgToTs(tableName, false, options)}[]`
       } else if (fn.returnType) {
         retType = pgToTs(fn.returnType.type, false, options, fn.returnType.category as any)

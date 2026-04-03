@@ -58,10 +58,10 @@ fun main() {
         }
 
         // 2. Query post and construct generated data class
-        conn.prepareStatement("SELECT id, user_id, title, body, view_count FROM posts WHERE id = 1").use { ps ->
+        conn.prepareStatement("SELECT id, user_id, title, body, view_count FROM content.posts WHERE id = 1").use { ps ->
             val rs = ps.executeQuery()
             rs.next()
-            val post = Post(
+            val post = ContentPost(
                 id = rs.getLong("id"),
                 userId = rs.getLong("user_id"),
                 title = rs.getString("title"),

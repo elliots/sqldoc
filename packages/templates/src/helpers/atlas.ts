@@ -1,13 +1,23 @@
 import type { AtlasColumn, AtlasRealm, AtlasTable, AtlasView } from '@sqldoc/db'
 
-/** Extract all tables from all schemas in a realm */
-export function getTablesFromRealm(realm: AtlasRealm): AtlasTable[] {
-  return realm.schemas.flatMap((s) => s.tables ?? [])
+/** AtlasTable with schema origin preserved */
+export interface SchemaTable extends AtlasTable {
+  _schema: string
 }
 
-/** Extract all views from all schemas in a realm */
-export function getViewsFromRealm(realm: AtlasRealm): AtlasView[] {
-  return realm.schemas.flatMap((s) => s.views ?? [])
+/** AtlasView with schema origin preserved */
+export interface SchemaView extends AtlasView {
+  _schema: string
+}
+
+/** Extract all tables from all schemas in a realm, preserving schema origin */
+export function getTablesFromRealm(realm: AtlasRealm): SchemaTable[] {
+  return realm.schemas.flatMap((s) => (s.tables ?? []).map((t) => ({ ...t, _schema: s.name })))
+}
+
+/** Extract all views from all schemas in a realm, preserving schema origin */
+export function getViewsFromRealm(realm: AtlasRealm): SchemaView[] {
+  return realm.schemas.flatMap((s) => (s.views ?? []).map((v) => ({ ...v, _schema: s.name })))
 }
 
 /** Check if a column is nullable */

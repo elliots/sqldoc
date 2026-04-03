@@ -66,7 +66,17 @@ export default defineTemplate({
       return mapped.type
     }
 
-    for (const table of activeTables(schema)) {
+    // Build schema-aware lookup for FK target type resolution
+    const allTables = activeTables(schema)
+    const pascalNameByQualified = new Map<string, string>()
+    for (const t of allTables) {
+      pascalNameByQualified.set(`${t.schema}.${t.name}`, t.pascalName)
+      if (!pascalNameByQualified.has(t.name)) {
+        pascalNameByQualified.set(t.name, t.pascalName)
+      }
+    }
+
+    for (const table of allTables) {
       const fields: string[] = []
 
       for (const col of table.columns) {
@@ -90,7 +100,14 @@ export default defineTemplate({
         fields.push(`\t${col.pascalName} ${goType} ${tag}`)
       }
 
-      structBlocks.push(`type ${table.pascalName} struct {\n${fields.join('\n')}\n}`)
+      const structBlock = `type ${table.pascalName} struct {\n${fields.join('\n')}\n}`
+      // Add TableName() override for multi-schema so GORM uses schema-qualified name
+      if (table.sqlName !== table.name) {
+        structBlocks.push(structBlock)
+        structBlocks.push(`func (${table.pascalName}) TableName() string { return "${table.sqlName}" }`)
+      } else {
+        structBlocks.push(structBlock)
+      }
     }
 
     // Views (read-only)

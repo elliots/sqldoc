@@ -139,27 +139,49 @@ export default defineTemplate({
     const schema = enrichRealm(ctx)
     const tables = activeTables(schema)
 
-    // Build model name map for relations
+    // Build model name map for relations -- keyed by schema-qualified name for multi-schema uniqueness
     const modelNameMap = new Map<string, string>()
     for (const table of tables) {
-      modelNameMap.set(table.name, table.pascalName)
+      modelNameMap.set(`${table.schema}.${table.name}`, table.pascalName)
+      // Also set unqualified for backward compat / single-schema fallback
+      if (!modelNameMap.has(table.name)) {
+        modelNameMap.set(table.name, table.pascalName)
+      }
+    }
+
+    /** Resolve a model name from FK target. Try schema-qualified first, then unqualified fallback. */
+    function resolveModelName(foreignSchema: string, foreignTable: string): string {
+      return (
+        modelNameMap.get(`${foreignSchema}.${foreignTable}`) ??
+        modelNameMap.get(foreignTable) ??
+        toPascalCase(foreignTable)
+      )
     }
 
     const provider = (ctx.config as any)?.provider ?? 'postgresql'
 
+    // ── Multi-schema detection ──────────────────────────────────────
+    const allSchemas = new Set<string>()
+    for (const table of tables) allSchemas.add(table.schema)
+    for (const view of schema.views.filter((v) => !v.skipped && v.columns.length > 0)) allSchemas.add(view.schema)
+    const isMultiSchema = allSchemas.size > 1
+
     // Pre-compute: count how many FK relations target each model, to decide if we need named relations
     // Also track reverse relations that need to be added to target models
+    // Keys use schema-qualified names for uniqueness
     const reverseRelations = new Map<string, Array<{ fromTable: string; relName: string; needsName: boolean }>>()
-    // Count per-model how many FKs point to the same target, keyed by "sourceTable -> targetTable"
+    // Count per-model how many FKs point to the same target, keyed by schema-qualified source
     const fkCountByTarget = new Map<string, Map<string, number>>()
 
     for (const table of tables) {
       if (table.belongsTo.length > 0) {
+        const qualifiedName = `${table.schema}.${table.name}`
         const targetCounts = new Map<string, number>()
         for (const rel of table.belongsTo) {
-          targetCounts.set(rel.foreignTable, (targetCounts.get(rel.foreignTable) ?? 0) + 1)
+          const qualifiedTarget = `${rel.foreignSchema}.${rel.foreignTable}`
+          targetCounts.set(qualifiedTarget, (targetCounts.get(qualifiedTarget) ?? 0) + 1)
         }
-        fkCountByTarget.set(table.name, targetCounts)
+        fkCountByTarget.set(qualifiedName, targetCounts)
       }
     }
 
@@ -168,6 +190,7 @@ export default defineTemplate({
       column: string
       refTable: string
       refColumn: string
+      refSchema: string
       constraintName: string
       relName: string
       relationName: string | undefined
@@ -178,37 +201,40 @@ export default defineTemplate({
     for (const table of tables) {
       if (table.belongsTo.length === 0) continue
 
-      const targetCounts = fkCountByTarget.get(table.name) ?? new Map()
+      const qualifiedName = `${table.schema}.${table.name}`
+      const targetCounts = fkCountByTarget.get(qualifiedName) ?? new Map()
       const relations: FkRelation[] = []
 
       for (const rel of table.belongsTo) {
         const relName = rel.column.replace(/_id$/, '')
+        const qualifiedTarget = `${rel.foreignSchema}.${rel.foreignTable}`
         // Need explicit relation name for self-relations or multiple FKs to the same target
-        const isSelfRelation = rel.foreignTable === table.name
-        const needsRelationName = isSelfRelation || (targetCounts.get(rel.foreignTable) ?? 0) > 1
+        const isSelfRelation = rel.foreignTable === table.name && rel.foreignSchema === table.schema
+        const needsRelationName = isSelfRelation || (targetCounts.get(qualifiedTarget) ?? 0) > 1
         const relationName = needsRelationName ? rel.constraintName || `${table.name}_${rel.column}` : undefined
 
         relations.push({
           column: rel.column,
           refTable: rel.foreignTable,
           refColumn: rel.foreignColumn,
+          refSchema: rel.foreignSchema,
           constraintName: rel.constraintName,
           relName,
           relationName,
         })
 
-        // Track reverse relation
-        if (!reverseRelations.has(rel.foreignTable)) {
-          reverseRelations.set(rel.foreignTable, [])
+        // Track reverse relation using schema-qualified target key
+        if (!reverseRelations.has(qualifiedTarget)) {
+          reverseRelations.set(qualifiedTarget, [])
         }
-        reverseRelations.get(rel.foreignTable)!.push({
-          fromTable: table.name,
-          relName: needsRelationName ? relName : (modelNameMap.get(table.name) ?? toPascalCase(table.name)),
+        reverseRelations.get(qualifiedTarget)!.push({
+          fromTable: `${table.schema}.${table.name}`,
+          relName: needsRelationName ? relName : resolveModelName(table.schema, table.name),
           needsName: needsRelationName,
         })
       }
 
-      tableRelations.set(table.name, relations)
+      tableRelations.set(qualifiedName, relations)
     }
 
     const blocks: string[] = [
@@ -217,13 +243,19 @@ export default defineTemplate({
       `datasource db {`,
       `  provider = "${provider}"`,
       `  url      = env("DATABASE_URL")`,
-      `}`,
-      '',
-      `generator client {`,
-      `  provider = "prisma-client-js"`,
-      `}`,
-      '',
     ]
+    if (isMultiSchema) {
+      const sortedSchemas = [...allSchemas].sort()
+      blocks.push(`  schemas  = [${sortedSchemas.map((s) => `"${s}"`).join(', ')}]`)
+    }
+    blocks.push(`}`, '')
+
+    blocks.push(`generator client {`)
+    blocks.push(`  provider = "prisma-client-js"`)
+    if (isMultiSchema) {
+      blocks.push(`  previewFeatures = ["multiSchema"]`)
+    }
+    blocks.push(`}`, '')
 
     // Enums
     for (const e of schema.enums) {
@@ -249,11 +281,13 @@ export default defineTemplate({
           prismaType = col.typeOverride
         } else if (col.category === 'enum' && col.enumValues?.length) {
           prismaType = toPascalCase(col.pgType)
+        } else if (col.category === 'composite') {
+          prismaType = `Unsupported("${col.pgType}")`
         } else {
           prismaType = pgToPrisma(col.pgType)
         }
 
-        if (col.nullable && !prismaType.endsWith('[]')) {
+        if (col.nullable && !prismaType.startsWith('Unsupported') && !prismaType.endsWith('[]')) {
           prismaType += '?'
         }
 
@@ -282,9 +316,10 @@ export default defineTemplate({
       }
 
       // Add relation fields for foreign keys on this table
-      const relations = tableRelations.get(table.name) ?? []
+      const qualifiedName = `${table.schema}.${table.name}`
+      const relations = tableRelations.get(qualifiedName) ?? []
       for (const rel of relations) {
-        const refModelName = modelNameMap.get(rel.refTable) ?? toPascalCase(rel.refTable)
+        const refModelName = resolveModelName(rel.refSchema, rel.refTable)
         const relNameAttr = rel.relationName ? `, name: "${rel.relationName}"` : ''
         // If the FK column is nullable, the relation field must also be optional
         const fkCol = table.columns.find((c: any) => c.name === rel.column)
@@ -295,7 +330,7 @@ export default defineTemplate({
       }
 
       // Add reverse relation fields (other models that reference this one)
-      const reverseRels = reverseRelations.get(table.name) ?? []
+      const reverseRels = reverseRelations.get(qualifiedName) ?? []
       // Group by source table to handle naming
       const reverseBySource = new Map<string, typeof reverseRels>()
       for (const rev of reverseRels) {
@@ -305,8 +340,12 @@ export default defineTemplate({
         reverseBySource.get(rev.fromTable)!.push(rev)
       }
 
-      for (const [sourceTable, rels] of reverseBySource) {
-        const sourceModelName = modelNameMap.get(sourceTable) ?? toPascalCase(sourceTable)
+      for (const [sourceQualified, rels] of reverseBySource) {
+        // sourceQualified is "schema.table" format
+        const [sourceSchema, sourceTable] = sourceQualified.includes('.')
+          ? [sourceQualified.split('.')[0], sourceQualified.split('.').slice(1).join('.')]
+          : ['', sourceQualified]
+        const sourceModelName = resolveModelName(sourceSchema, sourceTable)
         if (rels.length === 1 && !rels[0].needsName) {
           // Simple reverse: just add ModelName[]
           const fieldName = sourceTable
@@ -314,7 +353,7 @@ export default defineTemplate({
         } else {
           // Multiple relations from same source: need named relations
           for (const rel of rels) {
-            const sourceRelations = tableRelations.get(sourceTable) ?? []
+            const sourceRelations = tableRelations.get(sourceQualified) ?? []
             const matchingRel = sourceRelations.find((r) => r.relName === rel.relName)
             const relationName = matchingRel?.relationName
             const relNameAttr = relationName ? `(name: "${relationName}")` : ''
@@ -330,6 +369,18 @@ export default defineTemplate({
         fieldLines.push(`  @@id([${pkCols.map((c: any) => c.name).join(', ')}])`)
       }
 
+      // Add @@map when the Prisma model name differs from the SQL table name
+      if (table.pascalName !== table.name) {
+        fieldLines.push('')
+        fieldLines.push(`  @@map("${table.name}")`)
+      }
+
+      // Add @@schema for all tables when multi-schema is active (Prisma requires it on every model)
+      if (isMultiSchema) {
+        if (table.sqlName === table.name) fieldLines.push('')
+        fieldLines.push(`  @@schema("${table.schema}")`)
+      }
+
       blocks.push(`model ${modelName} {`)
       blocks.push(fieldLines.join('\n'))
       blocks.push('}')
@@ -337,7 +388,7 @@ export default defineTemplate({
     }
 
     // Views (read-only — represented as Prisma models with @@map)
-    for (const view of schema.views.filter((v) => !v.skipped)) {
+    for (const view of schema.views.filter((v) => !v.skipped && v.columns.length > 0)) {
       const fieldLines: string[] = []
 
       // Views need a dummy @id — use the first column as a stand-in
@@ -353,12 +404,15 @@ export default defineTemplate({
           prismaType = pgToPrisma(col.pgType)
         }
 
-        if (col.nullable && !prismaType.endsWith('[]')) {
+        const isIdCol = firstCol != null && col.name === firstCol.name
+
+        // Prisma requires @id fields to be non-nullable, so skip '?' for the dummy @id column on views
+        if (col.nullable && !prismaType.endsWith('[]') && !isIdCol) {
           prismaType += '?'
         }
 
         const attrs: string[] = []
-        if (firstCol && col.name === firstCol.name) {
+        if (isIdCol) {
           attrs.push('@id')
         }
         const attrStr = attrs.length > 0 ? ` ${attrs.join(' ')}` : ''
@@ -367,6 +421,11 @@ export default defineTemplate({
 
       fieldLines.push('')
       fieldLines.push(`  @@map("${view.name}")`)
+
+      // Add @@schema for all views when multi-schema is active (Prisma requires it on every model)
+      if (isMultiSchema) {
+        fieldLines.push(`  @@schema("${view.schema}")`)
+      }
 
       blocks.push(`/// Read-only (from view)`)
       blocks.push(`model ${view.pascalName} {`)

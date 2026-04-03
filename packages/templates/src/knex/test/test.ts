@@ -40,12 +40,12 @@ async function run() {
     assert(user.is_active === true, 'user is_active matches')
 
     // 2. Query known seeded post
-    const posts = await db('posts').where({ id: 1 })
+    const posts = await db('content.posts').where({ id: 1 })
     assert(posts.length === 1, 'seeded post found')
     assert(posts[0].title === 'Hello World', 'post title matches')
 
     // 3. Insert a new post
-    await db('posts').insert({
+    await db('content.posts').insert({
       user_id: 1,
       title: 'Post from knex',
       body: 'test body',
@@ -53,7 +53,7 @@ async function run() {
     })
 
     // 4. Read it back
-    const newPosts = await db('posts').where({ title: 'Post from knex' })
+    const newPosts = await db('content.posts').where({ title: 'Post from knex' })
     assert(newPosts.length === 1, 'inserted post found')
     assert(newPosts[0].title === 'Post from knex', 'inserted post title matches')
     // pg returns bigint columns as strings; use Number() for comparison

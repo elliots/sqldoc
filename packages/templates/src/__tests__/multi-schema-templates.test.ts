@@ -148,13 +148,23 @@ describe('multi-schema: zod template', () => {
 // ── Drizzle template (SQL-name template, updated in Plan 02) ────
 
 describe('multi-schema: drizzle template', () => {
-  it('uses schema-qualified table names in pgTable', () => {
+  it('uses pgSchema for non-default schemas', () => {
     const result = drizzle.generate(makeCtx('drizzle'))
     const content = result.files[0].content
 
-    expect(content).toContain("pgTable('auth.users'")
-    expect(content).toContain("pgTable('core.projects'")
-    expect(content).toContain("pgTable('core.roles'")
+    // Should declare pgSchema constants for non-default schemas
+    expect(content).toContain("pgSchema('auth')")
+    expect(content).toContain("pgSchema('core')")
+
+    // Should use schemaVar.table() instead of pgTable() for non-default schemas
+    expect(content).toContain("authSchema.table('users'")
+    expect(content).toContain("coreSchema.table('projects'")
+    expect(content).toContain("coreSchema.table('roles'")
+
+    // Should NOT use pgTable with schema-qualified names
+    expect(content).not.toContain("pgTable('auth.users'")
+    expect(content).not.toContain("pgTable('core.projects'")
+    expect(content).not.toContain("pgTable('core.roles'")
   })
 
   it('cross-schema FK references resolve correctly', () => {

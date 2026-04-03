@@ -95,7 +95,7 @@ export default defineTemplate({
       let retType: string
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         retType = table ? `IEnumerable<${table.pascalName}>` : `IEnumerable<${toPascalCase(tableName)}>`
       } else if (fn.returnType) {
         retType = pgToCsharp(fn.returnType.type, false, fn.returnType.category)

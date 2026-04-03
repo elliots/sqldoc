@@ -6,7 +6,7 @@ import os
 import sys
 import psycopg2
 
-from models import User, Post
+from models import User, ContentPost
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
@@ -43,9 +43,9 @@ def main():
     assert_eq(user.is_active, True, "user.is_active matches")
 
     # 2. Query post and construct dataclass
-    cur.execute("SELECT id, user_id, title, body, view_count, rating FROM posts WHERE id = 1")
+    cur.execute("SELECT id, user_id, title, body, view_count, rating FROM content.posts WHERE id = 1")
     row = cur.fetchone()
-    post = Post(id=row[0], user_id=row[1], title=row[2], body=row[3], view_count=row[4], rating=row[5])
+    post = ContentPost(id=row[0], user_id=row[1], title=row[2], body=row[3], view_count=row[4], rating=row[5])
     assert_eq(post.title, "Hello World", "post.title matches")
     assert_eq(post.user_id, 1, "post.user_id matches")
     assert_eq(post.view_count, 42, "post.view_count matches")

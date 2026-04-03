@@ -66,10 +66,10 @@ public class Test {
             }
 
             // 2. Query post and construct generated record
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM posts WHERE id = 1")) {
+            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM content.posts WHERE id = 1")) {
                 ResultSet rs = ps.executeQuery();
                 rs.next();
-                var post = new Post(
+                var post = new ContentPost(
                     rs.getLong("id"),
                     rs.getLong("user_id"),
                     rs.getString("title"),

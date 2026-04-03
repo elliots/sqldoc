@@ -40,13 +40,13 @@ async function run() {
     assert(user.is_active === true, 'user is_active matches')
 
     // 2. Query known seeded post
-    const post = await db.selectFrom('posts').selectAll().where('id', '=', 1).executeTakeFirstOrThrow()
+    const post = await db.selectFrom('content.posts').selectAll().where('id', '=', 1).executeTakeFirstOrThrow()
 
     assert(post.title === 'Hello World', 'post title matches')
 
     // 3. Insert a new post via type-safe insert
     await db
-      .insertInto('posts')
+      .insertInto('content.posts')
       .values({
         user_id: 1,
         title: 'Post from kysely',
@@ -57,7 +57,7 @@ async function run() {
 
     // 4. Read it back
     const newPost = await db
-      .selectFrom('posts')
+      .selectFrom('content.posts')
       .selectAll()
       .where('title', '=', 'Post from kysely')
       .executeTakeFirstOrThrow()

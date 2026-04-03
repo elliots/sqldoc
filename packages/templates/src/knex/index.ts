@@ -80,7 +80,7 @@ export default defineTemplate({
       lines.push('}')
       lines.push('')
 
-      tableEntries.push(`    ${table.name}: ${interfaceName}`)
+      tableEntries.push(`    '${table.sqlName}': ${interfaceName}`)
     }
 
     // Views (read-only)
@@ -100,7 +100,7 @@ export default defineTemplate({
       lines.push('}')
       lines.push('')
 
-      viewEntries.push(`    ${view.name}: ${interfaceName}`)
+      viewEntries.push(`    '${view.sqlName}': ${interfaceName}`)
     }
 
     // Knex module augmentation for type-safe table map
@@ -132,7 +132,7 @@ export default defineTemplate({
       let retType: string
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         retType = table ? `${table.pascalName}Table[]` : `${pgToTs(tableName, false, options)}[]`
       } else if (fn.returnType) {
         retType = pgToTs(fn.returnType.type, false, options, fn.returnType.category as any)

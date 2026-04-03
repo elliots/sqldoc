@@ -114,10 +114,19 @@ export default defineTemplate({
       compositeBlocks.push(`@dataclass\nclass ${typeName}:\n${fieldLines.join('\n')}`)
     }
 
+    // Build lookup of tables that have an explicit schema set (non-default schema)
+    // so FK references can be schema-qualified only when needed
+    const tablesWithSchema = new Set(
+      schema.tables.filter((t) => t.sqlName !== t.name).map((t) => `${t.schema}.${t.name}`),
+    )
+
     for (const table of activeTables(schema)) {
       const lines: string[] = []
       lines.push(`class ${table.pascalName}(Base):`)
       lines.push(`    __tablename__ = '${table.name}'`)
+      if (table.sqlName !== table.name) {
+        lines.push(`    __table_args__ = {'schema': '${table.schema}'}`)
+      }
       lines.push('')
 
       for (const col of table.columns) {
@@ -134,9 +143,14 @@ export default defineTemplate({
 
         const columnArgs: string[] = [saType]
 
-        // Foreign key
+        // Foreign key -- schema-qualify only when the target table has an explicit
+        // schema in __table_args__, so SQLAlchemy can resolve cross-schema references
         if (col.foreignKey) {
-          columnArgs.push(`ForeignKey('${col.foreignKey.table}.${col.foreignKey.column}')`)
+          const fkTargetKey = `${col.foreignKey.schema}.${col.foreignKey.table}`
+          const fkRef = tablesWithSchema.has(fkTargetKey)
+            ? `${col.foreignKey.schema}.${col.foreignKey.table}.${col.foreignKey.column}`
+            : `${col.foreignKey.table}.${col.foreignKey.column}`
+          columnArgs.push(`ForeignKey('${fkRef}')`)
           needsForeignKey.value = true
         }
 
@@ -157,7 +171,7 @@ export default defineTemplate({
     // Views (read-only, plain Table objects — no ORM PK requirement)
     const needsTable = { value: false }
     const viewBlocks: string[] = []
-    for (const view of schema.views.filter((v) => !v.skipped)) {
+    for (const view of schema.views.filter((v) => !v.skipped && v.columns.length > 0)) {
       needsTable.value = true
       const colDefs: string[] = []
       for (const col of view.columns) {
@@ -172,7 +186,10 @@ export default defineTemplate({
         }
         colDefs.push(`    Column('${col.name}', ${saType}),`)
       }
-      viewBlocks.push(`${view.name} = Table(\n    '${view.name}',\n    Base.metadata,\n${colDefs.join('\n')}\n)`)
+      const schemaArg = view.sqlName !== view.name ? `\n    schema='${view.schema}',` : ''
+      viewBlocks.push(
+        `${view.name} = Table(\n    '${view.name}',\n    Base.metadata,${schemaArg}\n${colDefs.join('\n')}\n)`,
+      )
     }
 
     // Collect needed SA type imports

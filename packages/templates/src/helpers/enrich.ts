@@ -20,8 +20,12 @@ export interface EnrichedSchema {
 export interface EnrichedTable {
   /** Original SQL name */
   name: string
-  /** PascalCase name (or @codegen.rename override) */
+  /** PascalCase name (or @codegen.rename override), schema-prefixed in multi-schema realms */
   pascalName: string
+  /** Schema this table belongs to */
+  schema: string
+  /** SQL-qualified name: "schema.table" in multi-schema, "table" in single-schema */
+  sqlName: string
   /** Whether this table is skipped for the current template */
   skipped: boolean
   /** Column definitions */
@@ -64,7 +68,7 @@ export interface EnrichedColumn {
   /** Default value expression (if any) */
   defaultValue?: string
   /** FK reference (if this column is a foreign key) */
-  foreignKey?: { table: string; column: string }
+  foreignKey?: { table: string; column: string; schema: string }
   /** Type override from @codegen.type tag (if any) */
   typeOverride?: string
   /** All tags on this column */
@@ -82,6 +86,8 @@ export interface Relation {
   foreignTable: string
   /** Column on the other table */
   foreignColumn: string
+  /** Schema of the foreign table */
+  foreignSchema: string
 }
 
 export interface TagEntry {
@@ -95,6 +101,10 @@ export interface EnrichedView {
   name: string
   /** PascalCase name */
   pascalName: string
+  /** Schema this view belongs to */
+  schema: string
+  /** SQL-qualified name: "schema.view" in multi-schema, "view" in single-schema */
+  sqlName: string
   /** Whether this view is skipped for the current template */
   skipped: boolean
   /** Column definitions (no PK, FK, or serial) */
@@ -108,6 +118,8 @@ export interface EnrichedEnum {
   name: string
   /** PascalCase name */
   pascalName: string
+  /** Schema this enum belongs to */
+  schema: string
   /** Enum variant values */
   values: string[]
 }
@@ -115,8 +127,10 @@ export interface EnrichedEnum {
 export interface EnrichedFunction {
   /** Original SQL function name */
   name: string
-  /** PascalCase name */
+  /** PascalCase name (schema-prefixed when multi-schema) */
   pascalName: string
+  /** Schema this function belongs to */
+  schema: string
   /** Function arguments */
   args: Array<{ name: string; type: string; category: string }>
   /** Return type */
@@ -130,55 +144,109 @@ export interface EnrichedFunction {
 /**
  * Enrich the raw Atlas realm into a template-friendly structure.
  * Computes relationships, PK/FK lookups, tag indexing, naming, etc.
+ *
+ * Schema-aware: multi-schema realms get schema-prefixed pascalNames (e.g. AuthUser),
+ * single-schema realms produce identical output to pre-multi-schema behavior.
  */
 export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
   const rawTables = getTablesFromRealm(ctx.realm)
 
-  // Build reverse FK index: targetTable → relations pointing at it
+  // ── Schema detection ──────────────────────────────────────────
+  const distinctSchemas = new Set(rawTables.map((t) => t._schema))
+  const isMultiSchema = distinctSchemas.size > 1
+  const stripSchema = ctx.stripSchemaFromName === true
+  const defaultSchema = ctx.defaultSchema ?? ''
+
+  // Build name-to-schemas lookup for FK schema resolution
+  const tableNameToSchemas = new Map<string, string[]>()
+  for (const t of rawTables) {
+    const schemas = tableNameToSchemas.get(t.name) ?? []
+    schemas.push(t._schema)
+    tableNameToSchemas.set(t.name, schemas)
+  }
+
+  /** Resolve which schema a ref_table belongs to */
+  function resolveRefSchema(refTable: string, currentSchema: string): string {
+    // If ref_table contains a dot, parse schema from it
+    if (refTable.includes('.')) {
+      return refTable.split('.')[0]
+    }
+    const schemas = tableNameToSchemas.get(refTable)
+    if (!schemas || schemas.length === 0) return currentSchema
+    if (schemas.length === 1) return schemas[0]
+    // Ambiguous: prefer same schema, fall back to first
+    return schemas.includes(currentSchema) ? currentSchema : schemas[0]
+  }
+
+  // Build reverse FK index: "schema.targetTable" -> relations pointing at it
   const reverseIndex = new Map<string, Relation[]>()
   for (const table of rawTables) {
     for (const fk of table.foreign_keys ?? []) {
       if (!fk.ref_table || !fk.columns?.length) continue
+      const refSchema = resolveRefSchema(fk.ref_table, table._schema)
+      const refKey = `${refSchema}.${fk.ref_table}`
       for (let i = 0; i < fk.columns.length; i++) {
         const rel: Relation = {
           constraintName: fk.symbol ?? '',
           column: fk.ref_columns?.[i] ?? 'id',
           foreignTable: table.name,
           foreignColumn: fk.columns[i],
+          foreignSchema: table._schema,
         }
-        const existing = reverseIndex.get(fk.ref_table) ?? []
+        const existing = reverseIndex.get(refKey) ?? []
         existing.push(rel)
-        reverseIndex.set(fk.ref_table, existing)
+        reverseIndex.set(refKey, existing)
       }
     }
   }
 
   const tables: EnrichedTable[] = rawTables.map((table) => {
+    const schema = table._schema
     const tableTags = findTagsForObject(ctx.allFileTags, table.name)
     const skipped = isSkipped(tableTags, ctx.templateName)
-    const pascalName = findRename(tableTags, ctx.templateName) ?? toPascalCase(singularizeLast(table.name))
+
+    // Compute pascalName with schema-awareness
+    const rename = findRename(tableTags, ctx.templateName)
+    let pascalName: string
+    if (rename) {
+      // @codegen.rename overrides schema prefix entirely
+      pascalName = rename
+    } else {
+      const baseName = toPascalCase(singularizeLast(table.name))
+      if (isMultiSchema && !stripSchema && schema !== defaultSchema) {
+        pascalName = toPascalCase(schema) + baseName
+      } else {
+        pascalName = baseName
+      }
+    }
+
+    // Compute sqlName
+    const sqlName = isMultiSchema && schema !== defaultSchema ? `${schema}.${table.name}` : table.name
+
     const pkColumns = new Set(
       (table.primary_key?.parts ?? []).map((p) => p.column).filter((c): c is string => c != null),
     )
 
     // Build FK map for this table
-    const fkMap = new Map<string, { table: string; column: string }>()
+    const fkMap = new Map<string, { table: string; column: string; schema: string }>()
     const belongsTo: Relation[] = []
     for (const fk of table.foreign_keys ?? []) {
       if (!fk.columns?.length || !fk.ref_table) continue
+      const refSchema = resolveRefSchema(fk.ref_table, schema)
       for (let i = 0; i < fk.columns.length; i++) {
-        const ref = { table: fk.ref_table, column: fk.ref_columns?.[i] ?? 'id' }
+        const ref = { table: fk.ref_table, column: fk.ref_columns?.[i] ?? 'id', schema: refSchema }
         fkMap.set(fk.columns[i], ref)
         belongsTo.push({
           constraintName: fk.symbol ?? '',
           column: fk.columns[i],
           foreignTable: fk.ref_table,
           foreignColumn: ref.column,
+          foreignSchema: refSchema,
         })
       }
     }
 
-    const hasMany = reverseIndex.get(table.name) ?? []
+    const hasMany = reverseIndex.get(`${schema}.${table.name}`) ?? []
 
     const columns: EnrichedColumn[] = (table.columns ?? []).map((col) =>
       enrichColumn(col, table.name, ctx.templateName, ctx.allFileTags, pkColumns, fkMap),
@@ -187,6 +255,8 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
     return {
       name: table.name,
       pascalName,
+      schema,
+      sqlName,
       skipped,
       columns,
       primaryKey: [...pkColumns],
@@ -197,25 +267,39 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
     }
   })
 
+  // ── Clash detection ──────────────────────────────────────────
+  detectNameClashes(tables)
+
   // ── Views ──────────────────────────────────────────────────────
   const rawViews = getViewsFromRealm(ctx.realm)
+  const viewSchemas = new Set(rawViews.map((v) => v._schema))
+  const isMultiSchemaViews = viewSchemas.size > 1 || isMultiSchema
+
   const views: EnrichedView[] = rawViews.map((view) => {
+    const schema = view._schema
     const viewTags = findTagsForObject(ctx.allFileTags, view.name)
     const skipped = isSkipped(viewTags, ctx.templateName)
-    const pascalName = findRename(viewTags, ctx.templateName) ?? toPascalCase(singularizeLast(view.name))
 
-    let columns: EnrichedColumn[]
-    if (view.columns?.length) {
-      // Atlas provided column metadata
-      columns = view.columns.map((col) => enrichColumn(col, view.name, ctx.templateName, ctx.allFileTags))
-    } else if (view.def) {
-      // Atlas didn't provide columns — resolve from the SELECT list + source tables
-      columns = resolveViewColumns(view.def, tables, view.name, ctx.templateName, ctx.allFileTags)
+    const rename = findRename(viewTags, ctx.templateName)
+    let pascalName: string
+    if (rename) {
+      pascalName = rename
     } else {
-      columns = []
+      const baseName = toPascalCase(singularizeLast(view.name))
+      if (isMultiSchemaViews && !stripSchema && schema !== defaultSchema) {
+        pascalName = toPascalCase(schema) + baseName
+      } else {
+        pascalName = baseName
+      }
     }
 
-    return { name: view.name, pascalName, skipped, columns, tags: viewTags }
+    const sqlName = isMultiSchemaViews && schema !== defaultSchema ? `${schema}.${view.name}` : view.name
+
+    const columns: EnrichedColumn[] = (view.columns ?? []).map((col) =>
+      enrichColumn(col, view.name, ctx.templateName, ctx.allFileTags),
+    )
+
+    return { name: view.name, pascalName, schema, sqlName, skipped, columns, tags: viewTags }
   })
 
   // ── Enums ─────────────────────────────────────────────────────
@@ -223,23 +307,34 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
   const enums: EnrichedEnum[] = extractEnums(tables, views)
 
   // ── Functions ─────────────────────────────────────────────────
-  const rawFuncs = ctx.realm.schemas.flatMap((s) => s.funcs ?? [])
-  const functions: EnrichedFunction[] = rawFuncs.map((fn) => ({
-    name: fn.name,
-    pascalName: toPascalCase(fn.name),
-    args: (fn.args ?? []).map((a) => ({
-      name: a.name ?? '',
-      type: a.type?.T ?? a.type?.raw ?? 'unknown',
-      category: a.type?.category ?? 'unknown',
-    })),
-    returnType: fn.ret
-      ? {
-          type: fn.ret.T ?? fn.ret.raw ?? 'unknown',
-          category: fn.ret.category ?? 'unknown',
-        }
-      : undefined,
-    language: fn.lang,
-  }))
+  const rawFuncsWithSchema = ctx.realm.schemas.flatMap((s) => (s.funcs ?? []).map((f) => ({ ...f, _schema: s.name })))
+  const funcSchemas = new Set(rawFuncsWithSchema.map((f) => f._schema))
+  const isMultiSchemaFuncs = funcSchemas.size > 1 || isMultiSchema
+
+  const functions: EnrichedFunction[] = rawFuncsWithSchema.map((fn) => {
+    const baseName = toPascalCase(fn.name)
+    const pascalName =
+      isMultiSchemaFuncs && !stripSchema && fn._schema !== defaultSchema
+        ? toPascalCase(fn._schema) + baseName
+        : baseName
+    return {
+      name: fn.name,
+      pascalName,
+      schema: fn._schema,
+      args: (fn.args ?? []).map((a) => ({
+        name: a.name ?? '',
+        type: a.type?.T ?? a.type?.raw ?? 'unknown',
+        category: a.type?.category ?? 'unknown',
+      })),
+      returnType: fn.ret
+        ? {
+            type: fn.ret.T ?? fn.ret.raw ?? 'unknown',
+            category: fn.ret.category ?? 'unknown',
+          }
+        : undefined,
+      language: fn.lang,
+    }
+  })
 
   return { tables, views, enums, functions }
 }
@@ -277,53 +372,23 @@ export function getNamedArg(tag: TagEntry, key: string): unknown {
 // ── Internals ────────────────────────────────────────────────────
 
 /**
- * Resolve view columns from its SELECT definition by matching column names
- * to source table columns. Handles "SELECT col1, col2 FROM tablename".
+ * Detect duplicate pascalNames among non-skipped tables and throw a descriptive error.
  */
-function resolveViewColumns(
-  viewDef: string,
-  tables: EnrichedTable[],
-  _viewName: string,
-  _templateName: string,
-  _allFileTags: TemplateContext<any>['allFileTags'],
-): EnrichedColumn[] {
-  // Parse "SELECT col1, col2, ... FROM tablename"
-  const selectMatch = viewDef.match(/SELECT\s+([\s\S]+?)\s+FROM\s+(\w+)/i)
-  if (!selectMatch) return []
-
-  const colList = selectMatch[1]
-  const sourceTableName = selectMatch[2]
-  const sourceTable = tables.find((t) => t.name === sourceTableName)
-  if (!sourceTable) return []
-
-  // Handle SELECT *
-  if (colList.trim() === '*') {
-    return sourceTable.columns.map((col) => ({
-      ...col,
-      isPrimaryKey: false,
-      isSerial: false,
-      foreignKey: undefined,
-    }))
+function detectNameClashes(tables: EnrichedTable[]): void {
+  const nameMap = new Map<string, string[]>()
+  for (const t of tables) {
+    if (t.skipped) continue
+    const existing = nameMap.get(t.pascalName) ?? []
+    existing.push(`${t.schema}.${t.name}`)
+    nameMap.set(t.pascalName, existing)
   }
-
-  // Parse column names (strip whitespace, handle aliases)
-  const colNames = colList.split(',').map((c) => {
-    const trimmed = c.trim()
-    // Handle "col AS alias" — use the original column name for lookup
-    const asMatch = trimmed.match(/^(\w+)\s+AS\s+/i)
-    return asMatch ? asMatch[1] : trimmed
-  })
-
-  return colNames
-    .map((name) => sourceTable.columns.find((c) => c.name === name))
-    .filter((c): c is EnrichedColumn => c != null)
-    .map((col) => ({
-      ...col,
-      // Views are read-only — no PK/FK/serial
-      isPrimaryKey: false,
-      isSerial: false,
-      foreignKey: undefined,
-    }))
+  for (const [name, sources] of nameMap) {
+    if (sources.length > 1) {
+      throw new Error(
+        `Codegen name clash: "${name}" maps to multiple tables: ${sources.join(', ')}. Use @codegen.rename to disambiguate or set stripSchemaFromName: false.`,
+      )
+    }
+  }
 }
 
 /** Enrich a single column using Atlas type metadata */
@@ -333,20 +398,21 @@ function enrichColumn(
   templateName: string,
   allFileTags: TemplateContext<any>['allFileTags'],
   pkColumns?: Set<string>,
-  fkMap?: Map<string, { table: string; column: string }>,
+  fkMap?: Map<string, { table: string; column: string; schema: string }>,
 ): EnrichedColumn {
-  const colTags = findTagsForObject(allFileTags, `${parentName}.${col.name}`)
+  const colName = col.name ?? ''
+  const colTags = colName ? findTagsForObject(allFileTags, `${parentName}.${colName}`) : []
   const pgType = getColumnType(col)
   const nullable = isNullable(col)
-  const typeOverride = findTypeOverride(colTags, templateName)
+  const typeOverride = colName ? findTypeOverride(colTags, templateName) : undefined
   const defaultValue = extractDefault(col.default)
   const category = (col.type?.category ?? 'unknown') as TypeCategory
   const isSerial = category === 'integer' && pgType.toLowerCase().includes('serial')
 
   return {
-    name: col.name,
-    pascalName: toPascalCase(col.name),
-    camelName: toCamelCase(col.name),
+    name: colName,
+    pascalName: colName ? toPascalCase(colName) : '',
+    camelName: colName ? toCamelCase(colName) : '',
     pgType,
     category,
     isCustomType: col.type?.is_custom ?? false,
@@ -365,19 +431,25 @@ function enrichColumn(
 
 /** Extract enums from all columns (tables + views) with category 'enum' and enum_values */
 function extractEnums(tables: EnrichedTable[], views: EnrichedView[]): EnrichedEnum[] {
-  const found = new Map<string, string[]>()
+  const found = new Map<string, { values: string[]; schema: string }>()
 
-  const allColumns = [...tables.flatMap((t) => t.columns), ...views.flatMap((v) => v.columns)]
+  const allSources = [
+    ...tables.map((t) => ({ schema: t.schema, columns: t.columns })),
+    ...views.map((v) => ({ schema: v.schema, columns: v.columns })),
+  ]
 
-  for (const col of allColumns) {
-    if (col.category === 'enum' && col.enumValues?.length && !found.has(col.pgType)) {
-      found.set(col.pgType, col.enumValues)
+  for (const source of allSources) {
+    for (const col of source.columns) {
+      if (col.category === 'enum' && col.enumValues?.length && !found.has(col.pgType)) {
+        found.set(col.pgType, { values: col.enumValues, schema: source.schema })
+      }
     }
   }
 
-  return [...found.entries()].map(([name, values]) => ({
+  return [...found.entries()].map(([name, { values, schema }]) => ({
     name,
     pascalName: toPascalCase(name),
+    schema,
     values,
   }))
 }

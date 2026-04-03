@@ -2,6 +2,7 @@ FROM node:23-slim
 WORKDIR /app
 COPY . .
 RUN npm init -y && npm install ajv@8 ajv-formats@3 --save-dev
+# Step 1: validate that each schema definition is valid JSON Schema
 RUN node -e " \
   const Ajv = require('ajv/dist/2020'); \
   const addFormats = require('ajv-formats'); \
@@ -15,4 +16,6 @@ RUN node -e " \
   } \
   console.log('All schemas valid'); \
 "
+# Step 2: validate sample data against schemas and test rejection
+RUN node test.js
 CMD ["echo", "ok"]

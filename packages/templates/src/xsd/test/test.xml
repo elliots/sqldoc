@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sample data for validating against the generated XSD -->
+<testData>
+  <User>
+    <id>1</id>
+    <email>alice@example.com</email>
+    <name>Alice</name>
+    <age>30</age>
+    <isActive>true</isActive>
+    <createdAt>2024-01-15T10:30:00Z</createdAt>
+    <tags>admin</tags>
+    <balance>99.95</balance>
+    <externalId>550e8400-e29b-41d4-a716-446655440000</externalId>
+  </User>
+  <ContentPost>
+    <id>1</id>
+    <userId>1</userId>
+    <title>Hello World</title>
+    <body>This is my first post.</body>
+    <publishedAt>2024-06-01T12:00:00Z</publishedAt>
+    <viewCount>42</viewCount>
+    <rating>4.5</rating>
+  </ContentPost>
+  <Comment>
+    <id>1</id>
+    <postId>1</postId>
+    <userId>1</userId>
+    <content>Great post!</content>
+    <createdAt>2024-06-02T08:00:00Z</createdAt>
+  </Comment>
+</testData>

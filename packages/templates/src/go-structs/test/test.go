@@ -52,8 +52,8 @@ func main() {
 	assert(user.IsActive == true, "user.IsActive matches")
 
 	// 2. Query post into generated struct
-	var post models.Post
-	err = conn.QueryRow(ctx, "SELECT id, user_id, title, body, view_count FROM posts WHERE id = 1").
+	var post models.ContentPost
+	err = conn.QueryRow(ctx, "SELECT id, user_id, title, body, view_count FROM content.posts WHERE id = 1").
 		Scan(&post.Id, &post.UserId, &post.Title, &post.Body, &post.ViewCount)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "query post error: %v\n", err)

@@ -131,13 +131,29 @@ export default defineTemplate({
   generate(ctx) {
     const schema = enrichRealm(ctx)
     const tables = activeTables(schema)
-    const tracker: ImportTracker = { used: new Set(['pgTable']) }
+    const tracker: ImportTracker = { used: new Set() }
     const tableBlocks: string[] = []
 
+    // Detect which non-default schemas are used (need pgSchema declarations)
+    const defaultSchema = ctx.defaultSchema ?? 'public'
+    const nonDefaultSchemas = new Set<string>()
+    for (const table of tables) {
+      if (table.schema !== defaultSchema) nonDefaultSchemas.add(table.schema)
+    }
+    for (const view of schema.views.filter((v) => !v.skipped)) {
+      if (view.schema !== defaultSchema) nonDefaultSchemas.add(view.schema)
+    }
+    if (nonDefaultSchemas.size > 0) tracker.used.add('pgSchema')
+
     // We'll need a map from table name to camelCase variable name for FK references
+    // Key by schema-qualified name for uniqueness in multi-schema realms
     const tableVarMap = new Map<string, string>()
     for (const table of tables) {
-      tableVarMap.set(table.name, toCamelCase(table.pascalName))
+      tableVarMap.set(`${table.schema}.${table.name}`, toCamelCase(table.pascalName))
+      // Also set unqualified name for backward compat / single-schema fallback
+      if (!tableVarMap.has(table.name)) {
+        tableVarMap.set(table.name, toCamelCase(table.pascalName))
+      }
     }
 
     // Enums
@@ -185,8 +201,10 @@ export default defineTemplate({
         }
 
         // Foreign key references (skip self-references to avoid circular implicit-any in TS)
-        if (col.foreignKey && col.foreignKey.table !== table.name) {
-          const refVar = tableVarMap.get(col.foreignKey.table) ?? toCamelCase(col.foreignKey.table)
+        if (col.foreignKey && !(col.foreignKey.table === table.name && col.foreignKey.schema === table.schema)) {
+          const qualifiedKey = `${col.foreignKey.schema}.${col.foreignKey.table}`
+          const refVar =
+            tableVarMap.get(qualifiedKey) ?? tableVarMap.get(col.foreignKey.table) ?? toCamelCase(col.foreignKey.table)
           const refCol = col.foreignKey.column
           builder += `.references(() => ${refVar}.${toCamelCase(refCol)})`
         }
@@ -194,13 +212,19 @@ export default defineTemplate({
         colLines.push(`  ${toCamelCase(col.name)}: ${builder},`)
       }
 
-      tableBlocks.push(`export const ${varName} = pgTable('${table.name}', {\n${colLines.join('\n')}\n})`)
+      // Use pgSchema().table() for non-default schemas, pgTable() for default schema
+      if (table.schema !== defaultSchema) {
+        const schemaVar = `${toCamelCase(table.schema)}Schema`
+        tableBlocks.push(`export const ${varName} = ${schemaVar}.table('${table.name}', {\n${colLines.join('\n')}\n})`)
+      } else {
+        tracker.used.add('pgTable')
+        tableBlocks.push(`export const ${varName} = pgTable('${table.name}', {\n${colLines.join('\n')}\n})`)
+      }
     }
 
     // Views (read-only)
     for (const view of schema.views.filter((v) => !v.skipped)) {
       const varName = toCamelCase(view.pascalName)
-      tracker.used.add('pgView')
 
       const colLines: string[] = []
       for (const col of view.columns) {
@@ -217,9 +241,18 @@ export default defineTemplate({
         colLines.push(`  ${toCamelCase(col.name)}: ${builder},`)
       }
 
-      tableBlocks.push(
-        `/** Read-only (from view) */\nexport const ${varName} = pgView('${view.name}', {\n${colLines.join('\n')}\n})`,
-      )
+      // Use pgSchema().view() for non-default schemas, pgView() for default schema
+      if (view.schema !== defaultSchema) {
+        const schemaVar = `${toCamelCase(view.schema)}Schema`
+        tableBlocks.push(
+          `/** Read-only (from view) */\nexport const ${varName} = ${schemaVar}.view('${view.name}', {\n${colLines.join('\n')}\n})`,
+        )
+      } else {
+        tracker.used.add('pgView')
+        tableBlocks.push(
+          `/** Read-only (from view) */\nexport const ${varName} = pgView('${view.name}', {\n${colLines.join('\n')}\n})`,
+        )
+      }
     }
 
     // Build imports
@@ -236,6 +269,16 @@ export default defineTemplate({
       lines.push("import { sql } from 'drizzle-orm'")
     }
     lines.push('')
+
+    // Emit pgSchema declarations for non-default schemas
+    if (nonDefaultSchemas.size > 0) {
+      const sortedSchemas = [...nonDefaultSchemas].sort()
+      for (const s of sortedSchemas) {
+        lines.push(`export const ${toCamelCase(s)}Schema = pgSchema('${s}')`)
+      }
+      lines.push('')
+    }
+
     if (enumBlocks.length > 0) {
       lines.push(enumBlocks.join('\n'))
       lines.push('')

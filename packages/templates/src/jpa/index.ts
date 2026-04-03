@@ -1,6 +1,6 @@
 import { defineTemplate } from '@sqldoc/ns-codegen'
 import { activeTables, enrichRealm, type TagEntry } from '../helpers/enrich.ts'
-import { toCamelCase, toPascalCase, toScreamingSnake } from '../helpers/naming.ts'
+import { singularizeLast, toCamelCase, toPascalCase, toScreamingSnake } from '../helpers/naming.ts'
 import { pgToJava } from '../types/pg-to-java.ts'
 
 /**
@@ -94,7 +94,7 @@ export default defineTemplate({
       })
     }
 
-    // Composite types as @Embeddable classes
+    // Composite types as @Embeddable + @Struct (Hibernate 6.2+ native Postgres composite support)
     const composites = new Map<string, Array<{ name: string; type: string }>>()
     for (const table of schema.tables) {
       for (const col of table.columns) {
@@ -105,37 +105,42 @@ export default defineTemplate({
     }
     for (const [name, fields] of composites) {
       const className = toPascalCase(name)
+
       const allImports = new Set<string>()
       allImports.add('jakarta.persistence.Embeddable')
+      allImports.add('org.hibernate.annotations.Struct')
 
       const fieldLines: string[] = []
       for (const f of fields) {
         const mapped = pgToJava(f.type, false)
         for (const imp of mapped.imports) allImports.add(imp)
-        fieldLines.push(`    private ${mapped.type} ${toCamelCase(f.name)};`)
-        fieldLines.push('')
+        fieldLines.push(`    public ${mapped.type} ${toCamelCase(f.name)};`)
       }
 
       const sortedImports = [...allImports].sort()
-      const importLines = sortedImports.map((imp) => `import ${imp};`)
-
       const parts: string[] = []
-      parts.push(importLines.join('\n'))
+      parts.push(sortedImports.map((imp) => `import ${imp};`).join('\n'))
       parts.push('')
       parts.push('@Embeddable')
+      parts.push(`@Struct(name = "${name}")`)
       parts.push(`public class ${className} {`)
-      parts.push('')
       parts.push(fieldLines.join('\n'))
+      parts.push(`    public ${className}() {}`)
       parts.push('}')
       parts.push('')
 
-      files.push({
-        path: `${className}.java`,
-        content: parts.join('\n'),
-      })
+      files.push({ path: `${className}.java`, content: parts.join('\n') })
     }
 
-    for (const table of activeTables(schema)) {
+    // Build schema-aware lookup for FK target resolution
+    const allTables = activeTables(schema)
+    const pascalNameByQualified = new Map<string, string>()
+    for (const t of allTables) {
+      pascalNameByQualified.set(`${t.schema}.${t.name}`, t.pascalName)
+      if (!pascalNameByQualified.has(t.name)) pascalNameByQualified.set(t.name, t.pascalName)
+    }
+
+    for (const table of allTables) {
       const allImports = new Set<string>()
       allImports.add('jakarta.persistence.*')
 
@@ -169,19 +174,36 @@ export default defineTemplate({
           annotations.push('    @Enumerated(EnumType.STRING)')
         }
 
-        // Composite annotation
+        // Composite types: @Embedded with @Struct (Hibernate 6.2+ handles Postgres composites natively)
         if (col.category === 'composite' && col.compositeFields?.length) {
+          javaType = toPascalCase(col.pgType)
           annotations.push('    @Embedded')
         }
 
-        // FK annotations
+        // FK annotations — emit @ManyToOne + @JoinColumn instead of @Column
         if (col.foreignKey) {
+          const fk = col.foreignKey
+          const refTable =
+            pascalNameByQualified.get(`${fk.schema}.${fk.table}`) ??
+            pascalNameByQualified.get(fk.table) ??
+            toPascalCase(singularizeLast(fk.table))
+          const navPropName = toCamelCase(singularizeLast(fk.table))
           annotations.push(`    @ManyToOne`)
           annotations.push(`    @JoinColumn(name = "${col.name}")`)
+
+          if (annotations.length > 0) {
+            fieldLines.push(annotations.join('\n'))
+          }
+          fieldLines.push(`    public ${refTable} ${navPropName};`)
+          fieldLines.push('')
+          continue
         }
 
         // Column annotations
         const colAnnotationParts: string[] = []
+        if (col.camelName !== col.name) {
+          colAnnotationParts.push(`name = "${col.name}"`)
+        }
         if (!col.nullable && !col.isPrimaryKey) {
           colAnnotationParts.push('nullable = false')
         }
@@ -205,7 +227,7 @@ export default defineTemplate({
         if (annotations.length > 0) {
           fieldLines.push(annotations.join('\n'))
         }
-        fieldLines.push(`    private ${javaType} ${col.camelName};`)
+        fieldLines.push(`    public ${javaType} ${col.camelName};`)
         fieldLines.push('')
       }
 
@@ -216,7 +238,12 @@ export default defineTemplate({
       parts.push(importLines.join('\n'))
       parts.push('')
       parts.push('@Entity')
-      parts.push(`@Table(name = "${table.name}")`)
+      // When multi-schema, add schema attribute to @Table
+      if (table.sqlName !== table.name) {
+        parts.push(`@Table(name = "${table.name}", schema = "${table.schema}")`)
+      } else {
+        parts.push(`@Table(name = "${table.name}")`)
+      }
       parts.push(`public class ${table.pascalName} {`)
       parts.push('')
       parts.push(fieldLines.join('\n'))
@@ -235,6 +262,7 @@ export default defineTemplate({
       allImports.add('jakarta.persistence.*')
 
       const fieldLines: string[] = []
+      let firstColumn = true
       for (const col of view.columns) {
         let javaType: string
         if (col.typeOverride) {
@@ -249,7 +277,12 @@ export default defineTemplate({
           for (const imp of mapped.imports) allImports.add(imp)
         }
 
-        fieldLines.push(`    private ${javaType} ${col.camelName};`)
+        // JPA requires @Id — use first column as the identifier for views
+        if (firstColumn) {
+          fieldLines.push('    @Id')
+          firstColumn = false
+        }
+        fieldLines.push(`    public ${javaType} ${col.camelName};`)
         fieldLines.push('')
       }
 
@@ -261,7 +294,11 @@ export default defineTemplate({
       parts.push('')
       parts.push('/** Read-only (from view) */')
       parts.push('@Entity')
-      parts.push(`@Table(name = "${view.name}")`)
+      if (view.sqlName !== view.name) {
+        parts.push(`@Table(name = "${view.name}", schema = "${view.schema}")`)
+      } else {
+        parts.push(`@Table(name = "${view.name}")`)
+      }
       parts.push(`public class ${view.pascalName} {`)
       parts.push('')
       parts.push(fieldLines.join('\n'))

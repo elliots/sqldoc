@@ -192,7 +192,7 @@ export default defineTemplate({
     }
 
     // Views (read-only)
-    for (const view of schema.views.filter((v) => !v.skipped)) {
+    for (const view of schema.views.filter((v) => !v.skipped && v.columns.length > 0)) {
       const recordName = `${toCobolName(view.name)}-VIEW`
       lines.push(`      *> Read-only (from view)`)
       lines.push(`       01  ${recordName}.`)

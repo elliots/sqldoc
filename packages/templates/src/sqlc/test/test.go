@@ -7,8 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	// Import the generated models to verify they compile
-	_ "sqldoc-test/models"
+	"sqldoc-test/models"
 )
 
 var failed int
@@ -39,49 +38,55 @@ func main() {
 
 	fmt.Println("--- sqlc integration test ---")
 
-	// 1. Query known seeded user
-	var email, name string
-	var age int32
-	var isActive bool
-	err = conn.QueryRow(ctx, "SELECT email, name, age, is_active FROM users WHERE id = 1").
-		Scan(&email, &name, &age, &isActive)
+	// 1. Query known seeded user into generated User struct
+	var user models.User
+	err = conn.QueryRow(ctx,
+		"SELECT id, email, name, age, is_active, created_at FROM users WHERE id = 1").
+		Scan(&user.Id, &user.Email, &user.Name, &user.Age, &user.IsActive, &user.CreatedAt)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "query user error: %v\n", err)
 		os.Exit(1)
 	}
-	assert(email == "test@example.com", "user email matches")
-	assert(name == "Test User", "user name matches")
-	assert(age == 30, "user age matches")
-	assert(isActive, "user is_active matches")
+	assert(user.Email == "test@example.com", "user.Email matches")
+	assert(user.Name.Valid && user.Name.String == "Test User", "user.Name matches")
+	assert(user.Age.Valid && user.Age.Int32 == 30, "user.Age matches")
+	assert(user.IsActive, "user.IsActive matches")
+	assert(user.Id == 1, "user.Id matches")
 
-	// 2. Query known seeded post
-	var title string
-	err = conn.QueryRow(ctx, "SELECT title FROM posts WHERE id = 1").Scan(&title)
+	// 2. Query known seeded post into generated ContentPost struct
+	var post models.ContentPost
+	err = conn.QueryRow(ctx,
+		"SELECT id, user_id, title, body, published_at, view_count, rating FROM content.posts WHERE id = 1").
+		Scan(&post.Id, &post.UserId, &post.Title, &post.Body, &post.PublishedAt, &post.ViewCount, &post.Rating)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "query post error: %v\n", err)
 		os.Exit(1)
 	}
-	assert(title == "Hello World", "post title matches")
+	assert(post.Title == "Hello World", "post.Title matches")
+	assert(post.UserId == 1, "post.UserId matches")
+	assert(post.ViewCount == 42, "post.ViewCount matches")
+	assert(post.Rating.Valid && post.Rating.Float64 == 4.5, "post.Rating matches")
 
 	// 3. Insert a new post
 	_, err = conn.Exec(ctx,
-		"INSERT INTO posts (user_id, title, body, view_count) VALUES (1, 'Post from sqlc', 'test body', 0)")
+		"INSERT INTO content.posts (user_id, title, body, view_count) VALUES (1, 'Post from sqlc', 'test body', 0)")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "insert error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 4. Read it back
-	var newTitle string
-	var userID int64
-	err = conn.QueryRow(ctx, "SELECT title, user_id FROM posts WHERE title = 'Post from sqlc'").
-		Scan(&newTitle, &userID)
+	// 4. Read it back into a ContentPost struct
+	var newPost models.ContentPost
+	err = conn.QueryRow(ctx,
+		"SELECT id, user_id, title, body, published_at, view_count, rating FROM content.posts WHERE title = 'Post from sqlc'").
+		Scan(&newPost.Id, &newPost.UserId, &newPost.Title, &newPost.Body, &newPost.PublishedAt, &newPost.ViewCount, &newPost.Rating)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read back error: %v\n", err)
 		os.Exit(1)
 	}
-	assert(newTitle == "Post from sqlc", "inserted post title matches")
-	assert(userID == 1, "inserted post user_id matches")
+	assert(newPost.Title == "Post from sqlc", "inserted post.Title matches")
+	assert(newPost.UserId == 1, "inserted post.UserId matches")
+	assert(newPost.ViewCount == 0, "inserted post.ViewCount matches")
 
 	if failed > 0 {
 		fmt.Fprintf(os.Stderr, "\n%d assertion(s) failed\n", failed)

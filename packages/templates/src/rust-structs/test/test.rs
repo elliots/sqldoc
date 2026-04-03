@@ -3,7 +3,7 @@
 //
 // Note: `mod models;` is prepended by the Dockerfile.
 
-use models::{User, Post};
+use models::{User, ContentPost};
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -57,9 +57,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Query post and populate generated struct
     let row = client
-        .query_one("SELECT id, user_id, title, body, view_count FROM posts WHERE id = 1", &[])
+        .query_one("SELECT id, user_id, title, body, view_count FROM content.posts WHERE id = 1", &[])
         .await?;
-    let post = Post {
+    let post = ContentPost {
         id: row.get("id"),
         user_id: row.get("user_id"),
         title: row.get("title"),

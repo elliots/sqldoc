@@ -48,7 +48,7 @@ func main() {
 	assert(user.IsActive == true, "user.IsActive matches")
 
 	// 2. Query post via GORM using generated model
-	var post models.Post
+	var post models.ContentPost
 	if err := db.First(&post, 1).Error; err != nil {
 		fmt.Fprintf(os.Stderr, "query post error: %v\n", err)
 		os.Exit(1)

@@ -64,7 +64,7 @@ export default defineTemplate({
     }
 
     // Views (read-only — val only)
-    for (const view of schema.views.filter((v) => !v.skipped)) {
+    for (const view of schema.views.filter((v) => !v.skipped && v.columns.length > 0)) {
       const fields: string[] = []
       for (const col of view.columns) {
         let ktType: string
@@ -105,7 +105,7 @@ export default defineTemplate({
       let retType: string
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName)
+        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         retType = table ? `List<${table.pascalName}>` : `List<${pgToKotlin(tableName, false)}>`
       } else if (fn.returnType) {
         retType = pgToKotlin(fn.returnType.type, false, fn.returnType.category)

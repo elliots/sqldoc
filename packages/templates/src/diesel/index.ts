@@ -125,17 +125,17 @@ export default defineTemplate({
       // Generate table! macro
       const macroColumns: string[] = []
       for (const col of table.columns) {
-        const dieselType =
-          col.category === 'enum'
-            ? 'Text'
-            : col.category === 'composite'
-              ? 'Text'
-              : pgToDieselType(col.pgType, col.nullable)
+        let dieselType: string
+        if (col.category === 'enum' || col.category === 'composite') {
+          dieselType = col.nullable ? 'Nullable<Text>' : 'Text'
+        } else {
+          dieselType = pgToDieselType(col.pgType, col.nullable)
+        }
         macroColumns.push(`        ${col.name} -> ${dieselType},`)
       }
 
       tableMacros.push(`diesel::table! {`)
-      tableMacros.push(`    ${table.name} (${pkColumn}) {`)
+      tableMacros.push(`    ${table.sqlName} (${pkColumn}) {`)
       tableMacros.push(macroColumns.join('\n'))
       tableMacros.push(`    }`)
       tableMacros.push(`}`)
@@ -150,8 +150,8 @@ export default defineTemplate({
           const enumType = toPascalCase(col.pgType)
           rustType = col.nullable ? `Option<${enumType}>` : enumType
         } else if (col.category === 'composite' && col.compositeFields?.length) {
-          const compositeType = toPascalCase(col.pgType)
-          rustType = col.nullable ? `Option<${compositeType}>` : compositeType
+          // Postgres composite types serialize as text in diesel
+          rustType = col.nullable ? 'Option<String>' : 'String'
         } else {
           const mapped = pgToRust(col.pgType, col.nullable, col.category)
           rustType = mapped.type
@@ -162,6 +162,7 @@ export default defineTemplate({
       }
 
       modelStructs.push('#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]')
+      // Diesel table! macro creates module named after the table (not schema-qualified)
       modelStructs.push(`#[diesel(table_name = ${table.name})]`)
       modelStructs.push(`pub struct ${table.pascalName} {`)
       modelStructs.push(fields.join('\n'))
@@ -169,22 +170,22 @@ export default defineTemplate({
     }
 
     // Views (read-only) — generate both view schema and Queryable struct
-    for (const view of schema.views.filter((v) => !v.skipped)) {
+    for (const view of schema.views.filter((v) => !v.skipped && v.columns.length > 0)) {
       // Generate table! macro for the view (Diesel uses table! for views too)
       const macroColumns: string[] = []
       const firstCol = view.columns[0]?.name ?? 'id'
       for (const col of view.columns) {
-        const dieselType =
-          col.category === 'enum'
-            ? 'Text'
-            : col.category === 'composite'
-              ? 'Text'
-              : pgToDieselType(col.pgType, col.nullable)
+        let dieselType: string
+        if (col.category === 'enum' || col.category === 'composite') {
+          dieselType = col.nullable ? 'Nullable<Text>' : 'Text'
+        } else {
+          dieselType = pgToDieselType(col.pgType, col.nullable)
+        }
         macroColumns.push(`        ${col.name} -> ${dieselType},`)
       }
 
       tableMacros.push(`diesel::table! {`)
-      tableMacros.push(`    ${view.name} (${firstCol}) {`)
+      tableMacros.push(`    ${view.sqlName} (${firstCol}) {`)
       tableMacros.push(macroColumns.join('\n'))
       tableMacros.push(`    }`)
       tableMacros.push(`}`)

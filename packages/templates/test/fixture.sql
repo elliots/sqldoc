@@ -22,7 +22,9 @@ CREATE TABLE users (
   external_id uuid
 );
 
-CREATE TABLE posts (
+CREATE SCHEMA content;
+
+CREATE TABLE content.posts (
   id bigserial PRIMARY KEY,
   user_id bigint NOT NULL REFERENCES users(id),
   title text NOT NULL,
@@ -36,7 +38,7 @@ CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived');
 
 CREATE TABLE comments (
   id bigserial PRIMARY KEY,
-  post_id bigint NOT NULL REFERENCES posts(id),
+  post_id bigint NOT NULL REFERENCES content.posts(id),
   user_id bigint NOT NULL REFERENCES users(id),
   parent_id bigint REFERENCES comments(id),
   content text NOT NULL,
@@ -44,7 +46,7 @@ CREATE TABLE comments (
 );
 
 CREATE TABLE post_tags (
-  post_id bigint NOT NULL REFERENCES posts(id),
+  post_id bigint NOT NULL REFERENCES content.posts(id),
   tag_id bigint NOT NULL REFERENCES comments(id),
   PRIMARY KEY (post_id, tag_id)
 );
@@ -54,6 +56,6 @@ CREATE VIEW active_users AS
   FROM users
   WHERE is_active = true;
 
-CREATE FUNCTION get_user_posts(p_user_id bigint) RETURNS SETOF posts AS $$
-  SELECT * FROM posts WHERE user_id = p_user_id;
+CREATE FUNCTION get_user_posts(p_user_id bigint) RETURNS SETOF content.posts AS $$
+  SELECT * FROM content.posts WHERE user_id = p_user_id;
 $$ LANGUAGE sql;

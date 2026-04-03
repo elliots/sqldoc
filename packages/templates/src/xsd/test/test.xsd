@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Test wrapper: imports the generated schema and adds root elements for validation -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="schema.xsd"/>
+
+  <xs:element name="User" type="User"/>
+  <xs:element name="ContentPost" type="ContentPost"/>
+  <xs:element name="Comment" type="Comment"/>
+  <xs:element name="PostTag" type="PostTag"/>
+  <xs:element name="ActiveUser" type="ActiveUser"/>
+
+  <xs:element name="testData">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="User" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="ContentPost" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="Comment" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="PostTag" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="ActiveUser" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
