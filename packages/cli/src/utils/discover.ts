@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import fg from 'fast-glob'
+
+const IGNORE_DIRS = new Set(['node_modules', '__tests__', 'test', 'dist', '.sqldoc'])
 
 /**
  * Discover SQL files from a path. If inputPath is a .sql file, returns it directly.
@@ -24,12 +25,12 @@ export async function discoverSqlFiles(inputPath: string, includePatterns?: stri
   }
 
   const patterns = includePatterns ?? ['**/*.sql']
-  const files = await fg(patterns, {
+  const matches = fs.globSync(patterns, {
     cwd: resolved,
-    absolute: true,
-    onlyFiles: true,
-    ignore: ['**/node_modules/**', '**/__tests__/**', '**/test/**', '**/*.test.*', '**/dist/**', '**/.sqldoc/**'],
+    exclude: (name) => IGNORE_DIRS.has(name),
   })
+
+  const files = matches.map((f) => path.resolve(resolved, f)).filter((f) => fs.statSync(f).isFile())
 
   return files.sort()
 }

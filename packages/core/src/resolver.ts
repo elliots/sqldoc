@@ -8,7 +8,6 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import fg from 'fast-glob'
 import type { FileProvenance } from './directives.ts'
 import { parseDirectives } from './directives.ts'
 
@@ -123,11 +122,8 @@ async function resolvePath(rawPath: string, fromDir: string, referrer: string): 
   const isGlob = rawPath.includes('*') || rawPath.includes('{') || rawPath.includes('?')
 
   if (isGlob) {
-    const files = await fg(rawPath, {
-      cwd: fromDir,
-      absolute: true,
-      onlyFiles: true,
-    })
+    const matches = fs.globSync(rawPath, { cwd: fromDir })
+    const files = matches.map((f) => path.resolve(fromDir, f)).filter((f) => fs.statSync(f).isFile())
     if (files.length === 0) {
       throw new Error(`No files matched glob: ${rawPath} (referenced from ${referrer})`)
     }
