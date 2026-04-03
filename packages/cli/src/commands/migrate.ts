@@ -155,7 +155,6 @@ export async function migrateCommand(options: {
         upChanges = rediffResult.changes
       }
     }
-
     // ── Step 5: Diff desired -> current (down migration) ──────────────
     // Down diff also uses currentWithExternals so external objects cancel out
     const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], {
