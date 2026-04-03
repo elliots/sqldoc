@@ -26,11 +26,9 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.4.0",
-    "@testcontainers/postgresql": "^11.13.0",
     "mysql2": "^3.20.0",
     "pg": "^8.13.0",
-    "picocolors": "catalog:",
-    "testcontainers": "^11.13.0"
+    "picocolors": "catalog:"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",
