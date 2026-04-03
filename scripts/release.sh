@@ -11,6 +11,8 @@
 #
 # Usage: bash scripts/release.sh
 
+npm login
+
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -20,29 +22,31 @@ YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# -- 1. Bump version --
-echo -e "${CYAN}Step 1: Bump version${NC}"
-bash scripts/bump-version.sh
+# # -- 1. Bump version --
+# echo -e "${CYAN}Step 1: Bump version${NC}"
+# bash scripts/bump-version.sh
+# bun install
 VERSION=$(bun -e "console.log(require('./package.json').version)")
+
 TAG="v${VERSION}"
 
-# -- 2. Changelog --
-echo -e "${CYAN}Step 2: Changelog${NC}"
-bash scripts/changelog.sh
+# # -- 2. Changelog --
+# echo -e "${CYAN}Step 2: Changelog${NC}"
+# bash scripts/changelog.sh
 
-if command -v code >/dev/null 2>&1; then
-  code --wait CHANGELOG.md
-else
-  echo -e "${YELLOW}Edit CHANGELOG.md then press Enter...${NC}"
-  read -r
-fi
+# if command -v code >/dev/null 2>&1; then
+#   code --wait CHANGELOG.md
+# else
+#   echo -e "${YELLOW}Edit CHANGELOG.md then press Enter...${NC}"
+#   read -r
+# fi
 
 # -- 3. Commit + tag --
-echo -e "${CYAN}Step 3: Commit + tag${NC}"
-git add package.json packages/*/package.json CHANGELOG.md
-git commit -m "release: ${TAG}"
-git tag -a "$TAG" -m "Release ${TAG}"
-echo -e "${GREEN}Tagged ${TAG}${NC}"
+# echo -e "${CYAN}Step 3: Commit + tag${NC}"
+git add package.json packages/*/package.json bun.lock CHANGELOG.md
+# git commit -m "release: ${TAG}"
+# git tag -a "$TAG" -m "Release ${TAG}"
+# echo -e "${GREEN}Tagged ${TAG}${NC}"
 
 # -- 4. Publish to npm --
 echo ""
@@ -60,13 +64,14 @@ echo -e "${CYAN}Step 5: Push${NC}"
 git push origin main --tags
 echo -e "${GREEN}Pushed${NC}"
 
-# -- 6. GoReleaser --
-echo -e "${CYAN}Step 6: GoReleaser${NC}"
-if command -v goreleaser >/dev/null 2>&1; then
-  goreleaser release --clean
-else
-  echo -e "${YELLOW}goreleaser not installed — run manually: goreleaser release --clean${NC}"
-fi
+# # -- 6. GoReleaser --
+# only needs doing if its actually changed.
+# echo -e "${CYAN}Step 6: GoReleaser${NC}"
+# if command -v goreleaser >/dev/null 2>&1; then
+#   goreleaser release --clean
+# else
+#   echo -e "${YELLOW}goreleaser not installed — run manually: goreleaser release --clean${NC}"
+# fi
 
 echo ""
 echo -e "${GREEN}Release ${TAG} complete!${NC}"

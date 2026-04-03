@@ -14,7 +14,7 @@ echo ""
 FAILED=0
 PUBLISHED=0
 
-for dir in packages/*/ sqlparser-ts/; do
+for dir in packages/*/; do
   [ -f "${dir}package.json" ] || continue
 
   PRIVATE=$(bun -e "const p = require('./${dir}package.json'); console.log(!!p.private)")

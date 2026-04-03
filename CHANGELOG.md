@@ -1,8 +1,11 @@
 # Changelog
 
+## v0.0.7 (2026-04-03)
+ - more publish issues
+
 ## v0.0.6 (2026-04-03)
-- multi-schema support
-- fix: monorepo support - one .sqldoc dir, many configs
+ - multi-schema support
+ - fix: monorepo support - one .sqldoc dir, many configs
 
 ## v0.0.5 (2026-04-03)
  - more publish issues
