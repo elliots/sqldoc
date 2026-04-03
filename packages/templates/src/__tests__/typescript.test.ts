@@ -114,10 +114,10 @@ describe('typescript template', () => {
     expect(content).toContain('tags?: string[]')
   })
 
-  it('maps jsonb to unknown', () => {
+  it('maps jsonb to Json', () => {
     const result = generate(makeCtx())
     const content = result.files[0].content
-    expect(content).toContain('metadata?: unknown')
+    expect(content).toContain('metadata?: Json')
   })
 
   it('maps bytea to Buffer', () => {

@@ -40,8 +40,8 @@ describe('pgToTs', () => {
     expect(pgToTs('varchar(255)', false)).toBe('string')
   })
 
-  it('maps jsonb to unknown', () => {
-    expect(pgToTs('jsonb', false)).toBe('unknown')
+  it('maps jsonb to Json', () => {
+    expect(pgToTs('jsonb', false)).toBe('Json')
   })
 
   it('maps uuid to string', () => {
@@ -89,8 +89,8 @@ describe('pgToTs', () => {
     expect(pgToTs('custom_ts', false, {}, 'time')).toBe('Date')
   })
 
-  it('maps json category to unknown', () => {
-    expect(pgToTs('custom_json', false, {}, 'json')).toBe('unknown')
+  it('maps json category to Json', () => {
+    expect(pgToTs('custom_json', false, {}, 'json')).toBe('Json')
   })
 
   it('maps uuid category to string', () => {
@@ -151,8 +151,8 @@ describe('pgToTs', () => {
       expect(pgToTs('set', false)).toBe('string')
     })
 
-    it('maps json to unknown', () => {
-      expect(pgToTs('json', false)).toBe('unknown')
+    it('maps json to Json', () => {
+      expect(pgToTs('json', false)).toBe('Json')
     })
   })
 
