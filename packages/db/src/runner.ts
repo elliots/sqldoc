@@ -257,7 +257,7 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     async diff(
       from: DiffSource,
       to: DiffSource,
-      opts?: { schema?: string; renames?: AtlasRename[] },
+      opts?: { schema?: string; defaultSchema?: string; renames?: AtlasRename[] },
     ): Promise<AtlasResult> {
       const fromIsDb = !Array.isArray(from)
       const toIsDb = !Array.isArray(to)
@@ -267,6 +267,7 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
         from: fromIsDb ? [] : from,
         to: toIsDb ? [] : to,
         schema: opts?.schema,
+        defaultSchema: opts?.defaultSchema,
         renames: opts?.renames,
         fromConnection: fromIsDb ? 'from' : undefined,
         toConnection: toIsDb ? 'to' : undefined,

@@ -31,6 +31,7 @@ export interface AtlasCommand {
   type: 'inspect' | 'diff' | 'apply'
   dialect: 'postgres' | 'mysql' | 'sqlite'
   schema?: string
+  defaultSchema?: string
   files?: string[]
   fileNames?: string[]
   from?: string[]
@@ -118,7 +119,8 @@ export interface AtlasTable {
  * Maps to flatColumn in marshal.go.
  */
 export interface AtlasColumn {
-  name: string
+  /** Column name. Omitted for unnamed expressions (e.g. SELECT 1 in a view). */
+  name?: string
   type?: AtlasColumnType
   default?: AtlasExpr
   attrs?: AtlasAttr[]

@@ -87,6 +87,8 @@ const plugin: NamespacePlugin = {
         output: entry.output,
         templateName,
         externalObjectNames: ctx.externalObjectNames,
+        stripSchemaFromName: config.stripSchemaFromName,
+        defaultSchema: ctx.dialect === 'postgres' ? 'public' : ctx.dialect === 'sqlite' ? 'main' : undefined,
       }
 
       const result = template.generate(templateCtx)

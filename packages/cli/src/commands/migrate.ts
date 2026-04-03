@@ -108,7 +108,8 @@ export async function migrateCommand(options: {
   }
 
   // ── Step 4: Diff current -> desired (up migration) ─────────────────
-  const schemaOpt = dialect === 'postgres' ? 'public' : undefined
+  // Inspect all schemas (no scope restriction) but strip the default schema from output.
+  const defaultSchemaOpt = dialect === 'postgres' ? 'public' : dialect === 'sqlite' ? 'main' : undefined
 
   const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)
@@ -123,7 +124,7 @@ export async function migrateCommand(options: {
     // External SQL is on both sides (currentWithExternals + desiredSql) so external objects cancel out (D-09)
     // Include files are only in desiredSql, so they produce migration changes (D-10)
     const upResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
-      schema: schemaOpt,
+      defaultSchema: defaultSchemaOpt,
       renames: knownRenames.length > 0 ? knownRenames : undefined,
     })
 
@@ -142,7 +143,7 @@ export async function migrateCommand(options: {
         // Re-diff with the accepted renames added to the known set
         const allRenames = [...knownRenames, ...accepted]
         const rediffResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
-          schema: schemaOpt,
+          defaultSchema: defaultSchemaOpt,
           renames: allRenames,
         })
 
@@ -158,7 +159,7 @@ export async function migrateCommand(options: {
     // ── Step 5: Diff desired -> current (down migration) ──────────────
     // Down diff also uses currentWithExternals so external objects cancel out
     const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], {
-      schema: schemaOpt,
+      defaultSchema: defaultSchemaOpt,
     })
 
     if (downResult.error) {
@@ -218,9 +219,9 @@ export async function migrateCommand(options: {
   // Determine migration name
   let migrationName = options.name ?? ''
 
-  // AI naming: pipe diff SQL to claude-code for a name
+  // AI naming: pipe diff SQL + context to claude-code for a name
   if (typeof namingConfig === 'object' && namingConfig.provider === 'claude-code' && !options.name) {
-    migrationName = await aiMigrationName(upStatements)
+    migrationName = await aiMigrationName(upStatements, currentSql, desiredSql)
   }
 
   if (!migrationName) {
@@ -341,16 +342,33 @@ async function promptRenameCandidates(candidates: AtlasRenameCandidate[]): Promi
 
 /**
  * Use claude-code CLI to generate a migration name from diff SQL.
+ * Sends the current schema, desired schema, and diff statements so the
+ * AI can understand what changed (especially for function modifications).
  * Falls back to 'migration' if claude-code is not available.
  */
-async function aiMigrationName(statements: string[]): Promise<string> {
+async function aiMigrationName(statements: string[], currentSql: string, desiredSql: string): Promise<string> {
   try {
     const { execSync } = await import('node:child_process')
     const diffSql = statements.join(';\n')
-    const result = execSync(
-      `echo ${JSON.stringify(diffSql)} | claude -p "Name this migration in 3-5 words, snake_case, no prefix. Output ONLY the name, nothing else."`,
-      { encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'] },
-    )
+    const prompt = [
+      'Name this database migration in 3-5 words, snake_case, no prefix.',
+      'Output ONLY the name, nothing else.',
+      '',
+      '=== CURRENT SCHEMA (before) ===',
+      currentSql?.slice(0, 2000) || '(empty)',
+      '',
+      '=== DESIRED SCHEMA (after) ===',
+      desiredSql?.slice(0, 2000) || '(empty)',
+      '',
+      '=== MIGRATION STATEMENTS ===',
+      diffSql,
+    ].join('\n')
+
+    const result = execSync(`claude -p ${JSON.stringify(prompt)}`, {
+      encoding: 'utf-8',
+      timeout: 30000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
     const name = result
       .trim()
       .replace(/[^a-z0-9_]/gi, '_')

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { DocsMeta, ProjectContext, ResolvedConfig } from '@sqldoc/core'
-import { loadConfig, resolveProject } from '@sqldoc/core'
+import { loadConfig, loadImports, resolveProject } from '@sqldoc/core'
 import type { AtlasRealm } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
@@ -64,6 +64,15 @@ export async function codegenCommand(
 
   const { mergedSql, outputs, plugins, totalErrors } = result
 
+  // Auto-load codegen plugin when config declares it but no SQL file imported it
+  if (config.namespaces?.codegen && !plugins.has('codegen')) {
+    const firstSqlFile = outputs[0]?.filePath
+    const { namespaces } = await loadImports(['@sqldoc/ns-codegen'], firstSqlFile ?? path.join(configRoot, 'dummy.sql'))
+    for (const [name, ns] of namespaces) {
+      plugins.set(name, ns as any)
+    }
+  }
+
   // Run afterCompile hooks BEFORE outputting SQL
   const projectPlugins = [...plugins.entries()].filter(
     ([name, p]) =>
@@ -94,9 +103,7 @@ export async function codegenCommand(
         devUrl: config.devUrl,
         extensions: extractExtensions([mergedSql]).extensions,
       })
-      const postCompileResult = await freshRunner.inspect([mergedSql], {
-        schema: dialect === 'postgres' ? 'public' : undefined,
-      })
+      const postCompileResult = await freshRunner.inspect([mergedSql])
       await freshRunner.close()
 
       if (postCompileResult.error) {

@@ -145,7 +145,6 @@ export async function runCompilePipeline(
     // Inspection 2 (or sole inspection when no externals): all files -> fullRealm
     const relFiles = allFiles.map((f) => path.relative(process.cwd(), f))
     const inspectResult = await atlasRunner.inspect(allSqlContents, {
-      schema: dialect === 'postgres' ? 'public' : undefined,
       fileNames: relFiles,
     })
     if (!inspectResult.schema) {

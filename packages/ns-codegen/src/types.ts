@@ -4,6 +4,8 @@ import type { AtlasRealm } from '@sqldoc/db'
 /** Config for the codegen namespace in sqldoc.config.ts namespaces.codegen */
 export interface CodegenConfig {
   templates?: TemplateEntry[]
+  /** When true, strip schema prefixes from generated type names. Hard error on name clashes. */
+  stripSchemaFromName?: boolean
 }
 
 export interface CodegenNamespaceConfig {
@@ -43,6 +45,10 @@ export interface TemplateContext<C = Record<string, unknown>> {
   templateName: string
   /** Set of object names from @external files. Templates can use this to annotate external types. */
   externalObjectNames?: Set<string>
+  /** When true, strip schema prefixes from generated type names. Propagated from CodegenConfig. */
+  stripSchemaFromName?: boolean
+  /** Default schema for the dialect (e.g. 'public' for postgres). Tables in this schema don't get schema-prefixed names. */
+  defaultSchema?: string
 }
 
 /** Result returned from a template's generate function */
