@@ -1,3 +1,10 @@
+/** Json type definition to emit in generated files when json/jsonb columns are present */
+export const JSON_TYPE_DECLARATION = `export type JsonPrimitive = string | number | boolean | null
+export type JsonArray = JsonValue[]
+export type JsonObject = { [key: string]: JsonValue | undefined }
+export type JsonValue = JsonPrimitive | JsonArray | JsonObject
+export type Json = JsonValue`
+
 export interface TsTypeOptions {
   dateType?: 'Date' | 'temporal' | 'dayjs' | 'luxon' | 'string'
   nullableStyle?: 'optional' | 'null-union'
@@ -13,7 +20,7 @@ const CATEGORY_TO_TS: Record<string, string> = {
   boolean: 'boolean',
   time: 'Date',
   binary: 'Buffer',
-  json: 'unknown',
+  json: 'Json',
   uuid: 'string',
   spatial: 'string',
   enum: 'string', // overridden per-column with actual enum type
@@ -72,8 +79,8 @@ const PG_TO_TS: Record<string, string> = {
   bytea: 'Buffer',
 
   // JSON
-  json: 'unknown',
-  jsonb: 'unknown',
+  json: 'Json',
+  jsonb: 'Json',
 
   // UUID
   uuid: 'string',
@@ -117,8 +124,8 @@ const TEMPORAL_MAP: Record<string, string> = {
   date: 'Temporal.PlainDate',
   timestamp: 'Temporal.PlainDateTime',
   'timestamp without time zone': 'Temporal.PlainDateTime',
-  timestamptz: 'Temporal.ZonedDateTime',
-  'timestamp with time zone': 'Temporal.ZonedDateTime',
+  timestamptz: 'Temporal.Instant',
+  'timestamp with time zone': 'Temporal.Instant',
   time: 'Temporal.PlainTime',
   'time without time zone': 'Temporal.PlainTime',
   timetz: 'string',

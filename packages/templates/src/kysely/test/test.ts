@@ -4,7 +4,7 @@
  */
 import { Kysely, PostgresDialect } from 'kysely'
 import pg from 'pg'
-import type { Database } from './database.ts'
+import { getUserPosts, type Database } from './database.ts'
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
@@ -65,6 +65,11 @@ async function run() {
     assert(newPost.title === 'Post from kysely', 'inserted post title matches')
     // pg returns bigint columns as strings; use loose equality for numeric comparison
     assert(Number(newPost.user_id) === 1, 'inserted post user_id matches')
+
+    // 5. Call generated function helper — getUserPosts returns SETOF content.posts
+    const userPosts = await getUserPosts(db, 1)
+    assert(userPosts.length >= 1, 'getUserPosts returns posts')
+    assert(userPosts[0].title === 'Hello World', 'getUserPosts returns seeded post')
 
     if (failed > 0) {
       console.error(`\n${failed} assertion(s) failed`)
