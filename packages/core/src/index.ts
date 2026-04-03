@@ -34,7 +34,14 @@ export type {
   TagOutput,
 } from './compiler/index.ts'
 // Compiler
-export { compile, defineConfig, loadConfig, resolveAllProjects, resolveProject } from './compiler/index.ts'
+export {
+  compile,
+  defineConfig,
+  findConfigRoot,
+  loadConfig,
+  resolveAllProjects,
+  resolveProject,
+} from './compiler/index.ts'
 // Directives
 export type { FileDirective, FileProvenance } from './directives.ts'
 export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'

@@ -47,8 +47,14 @@ export async function tsImport(specifier: string, fromDir?: string): Promise<any
   const abs = resolveSpecifier(specifier, fromDir)
 
   if (TS_EXTENSIONS.has(path.extname(abs))) {
-    if (canNativelyImportTs()) {
-      // Bun runs TypeScript natively -- no bundler needed
+    const isNodeModules = abs.includes('/node_modules/') || abs.includes('\\node_modules\\')
+    if (canNativelyImportTs() && !isNodeModules) {
+      // Bun and Node 22.21+ run TypeScript natively -- but Node refuses
+      // to strip types inside node_modules, so fall through to bundle-require
+      return import(abs)
+    }
+    if (typeof process.versions?.bun === 'string') {
+      // Bun handles .ts inside node_modules natively
       return import(abs)
     }
     // Node: use bundle-require (esbuild) to transpile .ts at runtime

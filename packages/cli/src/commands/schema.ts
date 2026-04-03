@@ -5,6 +5,7 @@ import { loadConfig, resolveProject } from '@sqldoc/core'
 import type { AtlasResult } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
+import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
 import { runCompilePipeline } from '../utils/pipeline.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
@@ -65,9 +66,7 @@ export async function schemaInspectCommand(
   source: string | undefined,
   options: { config?: string; format?: string; devUrl?: string; project?: string },
 ): Promise<void> {
-  const configRoot = options.config
-    ? path.dirname(path.resolve(options.config))
-    : process.env.SQLDOC_PROJECT_ROOT || process.cwd()
+  const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const config = resolveProject(rawConfig, options.project)
   if (options.devUrl) config.devUrl = options.devUrl
@@ -132,9 +131,7 @@ export async function schemaDiffCommand(options: {
   check?: boolean
   project?: string
 }): Promise<void> {
-  const configRoot = options.config
-    ? path.dirname(path.resolve(options.config))
-    : process.env.SQLDOC_PROJECT_ROOT || process.cwd()
+  const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const config = resolveProject(rawConfig, options.project)
   if (options.devUrl) config.devUrl = options.devUrl

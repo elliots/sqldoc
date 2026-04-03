@@ -6,6 +6,7 @@ import { loadConfig, resolveProject } from '@sqldoc/core'
 import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
+import { debug, resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
 import { detectDestructiveChanges } from '../utils/destructive.ts'
 import { concatUpScripts, readMigrations, writeMigration } from '../utils/migration-formats.ts'
@@ -33,11 +34,13 @@ export async function migrateCommand(options: {
   name?: string
   force?: boolean
 }): Promise<void> {
-  const configRoot = options.config
-    ? path.dirname(path.resolve(options.config))
-    : process.env.SQLDOC_PROJECT_ROOT || process.cwd()
-  const { config: rawConfig } = await loadConfig(configRoot, options.config)
+  const configRoot = resolveConfigRoot(options.config)
+  debug('migrate', 'configRoot:', configRoot)
+  const { config: rawConfig, configPath } = await loadConfig(configRoot, options.config)
+  debug('migrate', 'configPath:', configPath)
+  debug('migrate', 'rawConfig:', JSON.stringify(rawConfig, null, 2)?.slice(0, 500))
   const config: ResolvedConfig = resolveProject(rawConfig, options.project)
+  debug('migrate', 'resolved schema:', config.schema)
 
   if (!config.schema) {
     throw new CliError('No "schema" configured. Set "schema" in sqldoc.config.ts')

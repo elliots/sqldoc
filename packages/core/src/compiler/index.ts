@@ -1,7 +1,7 @@
 export type { CompileOptions } from './compile.ts'
 export { compile } from './compile.ts'
 export type { ConfigResult } from './config.ts'
-export { defineConfig, loadConfig, resolveAllProjects, resolveProject } from './config.ts'
+export { defineConfig, findConfigRoot, loadConfig, resolveAllProjects, resolveProject } from './config.ts'
 export type {
   CodeOutput,
   CompilerContext,

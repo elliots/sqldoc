@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
+import { resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
 import { runCompilePipeline } from '../utils/pipeline.ts'
 
@@ -12,9 +13,7 @@ export async function compileCommand(
   inputPath: string | undefined,
   options: { config?: string; output?: string; project?: string },
 ): Promise<void> {
-  const configRoot = options.config
-    ? path.dirname(path.resolve(options.config))
-    : process.env.SQLDOC_PROJECT_ROOT || process.cwd()
+  const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const config: ResolvedConfig = resolveProject(rawConfig, options.project)
 

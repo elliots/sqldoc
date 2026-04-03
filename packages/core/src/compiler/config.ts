@@ -6,6 +6,34 @@ import type { ProjectConfig, ResolvedConfig, SqldocConfig } from './types.ts'
 
 const CONFIG_FILENAMES = ['sqldoc.config.ts', 'sqldoc.config.js', 'sqldoc.config.mjs']
 
+/**
+ * Find the closest config file by walking up from startDir.
+ * Stops at the project root (directory containing .sqldoc/) or filesystem root.
+ * Returns { configRoot, configFile } or null if not found.
+ */
+export function findConfigRoot(startDir: string = process.cwd()): { configRoot: string; configFile: string } | null {
+  const projectRoot = process.env.SQLDOC_PROJECT_ROOT
+  let current = path.resolve(startDir)
+
+  while (true) {
+    for (const filename of CONFIG_FILENAMES) {
+      const candidate = path.join(current, filename)
+      if (fs.existsSync(candidate)) {
+        return { configRoot: current, configFile: candidate }
+      }
+    }
+
+    // Stop at project root (don't go above .sqldoc/ parent)
+    if (projectRoot && current === path.resolve(projectRoot)) break
+
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+
+  return null
+}
+
 export interface ConfigResult {
   config: SqldocConfig
   configPath: string | null

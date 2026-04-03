@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import type { Diagnostic, ResolvedConfig, SqlStatement } from '@sqldoc/core'
 import { loadConfig, loadImports, parse, resolveProject, SqlparserTsAdapter, validate } from '@sqldoc/core'
 import pc from 'picocolors'
+import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
 import { promptAndInstallMissing } from '../utils/auto-install.ts'
 import { discoverSqlFiles } from '../utils/discover.ts'
@@ -17,9 +18,7 @@ export async function validateCommand(
   options: { config?: string; project?: string },
 ): Promise<void> {
   // Load project config
-  const configRoot = options.config
-    ? path.dirname(path.resolve(options.config))
-    : process.env.SQLDOC_PROJECT_ROOT || process.cwd()
+  const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const config: ResolvedConfig = resolveProject(rawConfig, options.project)
 
