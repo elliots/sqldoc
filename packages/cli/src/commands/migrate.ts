@@ -5,6 +5,7 @@ import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveProject } from '@sqldoc/core'
 import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
+import { format as formatSql } from '@sqltools/formatter'
 import pc from 'picocolors'
 import { debug, resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
@@ -228,8 +229,14 @@ export async function migrateCommand(options: {
   }
 
   // Build up/down SQL content
-  const upSql = upStatements.map((s) => `${s};`).join('\n')
-  const downSql = downStatements.length > 0 ? downStatements.map((s) => `${s};`).join('\n') : undefined
+  let upSql = upStatements.map((s) => `${s};`).join('\n\n')
+  let downSql: string | undefined =
+    downStatements.length > 0 ? downStatements.map((s) => `${s};`).join('\n\n') : undefined
+
+  if (config.migrations?.pretty) {
+    upSql = formatSql(upSql, { language: 'sql', indent: '  ', linesBetweenQueries: 'preserve' })
+    if (downSql) downSql = formatSql(downSql, { language: 'sql', indent: '  ', linesBetweenQueries: 'preserve' })
+  }
 
   const writtenFiles = writeMigration({
     dir: migrationsDir,

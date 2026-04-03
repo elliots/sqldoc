@@ -28,6 +28,8 @@ export interface ProjectConfig<Namespaces = Record<string, unknown>> {
     format?: MigrationFormat
     /** File naming strategy. Default: 'timestamp' */
     naming?: MigrationNaming
+    /** Format migration SQL with sql-formatter before saving */
+    pretty?: boolean
   }
   /** Namespace plugin configuration */
   namespaces?: Namespaces

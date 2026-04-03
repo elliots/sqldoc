@@ -6,6 +6,7 @@
       "name": "sqldoc",
       "devDependencies": {
         "@biomejs/biome": "2.4.8",
+        "@sqltools/formatter": "^1.2.5",
         "@types/node": "catalog:",
         "lefthook": "2.1.4",
       },
@@ -596,6 +597,8 @@
     "@sqldoc/test-utils": ["@sqldoc/test-utils@workspace:packages/test-utils"],
 
     "@sqldoc/tests": ["@sqldoc/tests@workspace:tests"],
+
+    "@sqltools/formatter": ["@sqltools/formatter@1.2.5", "", {}, "sha512-Uy0+khmZqUrUGm5dmMqVlnvufZRSK0FbYzVgp0UMstm+F5+W2/jnEEQyc9vo1ZR/E5ZI/B1WjjoTqBqwJL6Krw=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

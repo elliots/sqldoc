@@ -12,6 +12,27 @@ import { migrateCommand } from './commands/migrate.ts'
 import { schemaDiffCommand, schemaInspectCommand } from './commands/schema.ts'
 import { validateCommand } from './commands/validate.ts'
 import { CliError } from './errors.ts'
+import { runForAllConfigs } from './utils/workspace.ts'
+
+/** Wrap a command action to support --all (run across all workspace configs) */
+function withAll<T extends (...args: any[]) => Promise<void>>(action: T): T {
+  return (async (...args: any[]) => {
+    // Commander passes options as last arg (before the Command object)
+    const opts = args.length >= 2 ? args[args.length - 2] : args[0]
+    if (opts?.all) {
+      const commandName = args[args.length - 1]?.name?.() ?? 'command'
+      await runForAllConfigs(commandName, async (configPath) => {
+        const newOpts = { ...opts, config: configPath, all: false }
+        const newArgs = [...args]
+        if (newArgs.length >= 2) newArgs[newArgs.length - 2] = newOpts
+        else newArgs[0] = newOpts
+        await action(...newArgs)
+      })
+    } else {
+      await action(...args)
+    }
+  }) as T
+}
 
 const req = createRequire(import.meta.url)
 const version: string = req('../package.json').version
@@ -27,7 +48,8 @@ program
   .option('-c, --config <path>', 'Path to sqldoc.config.ts')
   .option('-o, --output <path>', 'Write to file instead of stdout')
   .option('--project <name>', 'Select a named project from multi-project config')
-  .action(compileCommand)
+  .option('--all', 'Run across all config files in the workspace')
+  .action(withAll(compileCommand))
 
 program
   .command('codegen')
@@ -41,7 +63,8 @@ program
   )
   .option('-o, --output <path>', 'Output file path (used with --template)')
   .option('--project <name>', 'Select a named project from multi-project config')
-  .action(codegenCommand)
+  .option('--all', 'Run across all config files in the workspace')
+  .action(withAll(codegenCommand))
 
 program
   .command('validate')
@@ -49,7 +72,8 @@ program
   .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
   .option('-c, --config <path>', 'Path to sqldoc.config.ts')
   .option('--project <name>', 'Select a named project from multi-project config')
-  .action(validateCommand)
+  .option('--all', 'Run across all config files in the workspace')
+  .action(withAll(validateCommand))
 
 program
   .command('lint')
@@ -58,7 +82,8 @@ program
   .option('-c, --config <path>', 'Path to sqldoc.config.ts')
   .option('-v, --verbose', 'Show ignored rules')
   .option('--project <name>', 'Select a named project from multi-project config')
-  .action(lintCommand)
+  .option('--all', 'Run across all config files in the workspace')
+  .action(withAll(lintCommand))
 
 const schema = program.command('schema').description('Schema inspection and comparison')
 
@@ -92,7 +117,8 @@ program
   .option('--check', 'Exit non-zero if schema differs from migrations (CI mode)')
   .option('--name <name>', 'Custom migration name')
   .option('--force', 'Allow destructive changes (DROP TABLE, DROP COLUMN, etc.)')
-  .action(migrateCommand)
+  .option('--all', 'Run across all config files in the workspace')
+  .action(withAll(migrateCommand))
 
 program.command('doctor').description('Check project setup and report status').action(doctorCommand)
 
