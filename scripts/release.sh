@@ -23,23 +23,23 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # # -- 1. Bump version --
-# echo -e "${CYAN}Step 1: Bump version${NC}"
-# bash scripts/bump-version.sh
-# bun install
+echo -e "${CYAN}Step 1: Bump version${NC}"
+bash scripts/bump-version.sh
+bun install
 VERSION=$(bun -e "console.log(require('./package.json').version)")
 
 TAG="v${VERSION}"
 
 # # -- 2. Changelog --
-# echo -e "${CYAN}Step 2: Changelog${NC}"
-# bash scripts/changelog.sh
+echo -e "${CYAN}Step 2: Changelog${NC}"
+bash scripts/changelog.sh
 
-# if command -v code >/dev/null 2>&1; then
-#   code --wait CHANGELOG.md
-# else
-#   echo -e "${YELLOW}Edit CHANGELOG.md then press Enter...${NC}"
-#   read -r
-# fi
+if command -v code >/dev/null 2>&1; then
+  code --wait CHANGELOG.md
+else
+  echo -e "${YELLOW}Edit CHANGELOG.md then press Enter...${NC}"
+  read -r
+fi
 
 # -- 3. Commit + tag --
 # echo -e "${CYAN}Step 3: Commit + tag${NC}"
