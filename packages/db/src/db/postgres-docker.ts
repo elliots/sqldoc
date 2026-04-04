@@ -1,10 +1,10 @@
 import { startContainer, startContainerFromDockerfile } from './docker.ts'
-import { createPostgresAdapter } from './postgres.ts'
+import { resolveAdapterPlugin } from './plugin-resolver.ts'
 import type { DatabaseAdapter } from './types.ts'
 
 /**
  * Create a Docker-based DatabaseAdapter for Postgres.
- * Spins up an ephemeral container, connects via pg, cleans up on close().
+ * Spins up an ephemeral container, connects via the plugin system, cleans up on close().
  *
  * Supports:
  *   docker://postgres:16        — official or custom image
@@ -34,7 +34,10 @@ export async function createPostgresDockerAdapter(devUrl: string): Promise<Datab
   let pgAdapter: DatabaseAdapter | undefined
   for (let i = 0; i < 10; i++) {
     try {
-      pgAdapter = await createPostgresAdapter(connectionUri)
+      pgAdapter = await resolveAdapterPlugin({
+        devUrl: connectionUri,
+        context: { dialect: 'postgres', extensions: [] },
+      })
       break
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 1000))

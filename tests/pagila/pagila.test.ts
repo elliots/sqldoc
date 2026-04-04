@@ -2,7 +2,12 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { pgDump } from '@electric-sql/pglite-tools/pg_dump'
-import { createPgliteAdapter, createPostgresDockerAdapter, createRunner } from '@sqldoc/db'
+import neonTemporaryPlugin from '@sqldoc/db-neon-temporary'
+import pglitePlugin from '@sqldoc/db-pglite'
+import { createPostgresDockerAdapter, createRunner, registerBuiltin } from '@sqldoc/db'
+
+// Register neon-temporary so createRunner can find it without .sqldoc/
+if (process.env.TEST_NEON === 'true') registerBuiltin(neonTemporaryPlugin)
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import { prettyStatements } from '../../packages/cli/src/utils/pretty-sql.ts'
 
@@ -12,10 +17,13 @@ const pagilaSQL =
   `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN CREATE ROLE postgres SUPERUSER; END IF; END $$;\n` +
   rawPagilaSQL
 
-// loop through postgres versions and pglite
-;['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined].forEach((version) => {
+// loop through postgres versions, pglite, and optionally neon-temporary
+const versions: Array<string | undefined> = ['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined]
+if (process.env.TEST_NEON === 'true') versions.push('neon-temporary')
+
+versions.forEach((version) => {
   describe(`pagila schema - ${version ?? 'pglite'}`, { timeout: 120_000 }, () => {
-    const devUrl = version ? `docker://${version}` : undefined
+    const devUrl = version === 'neon-temporary' ? 'neon-temporary' : version ? `docker://${version}` : undefined
     const testTitle = version ?? 'pglite'
     let runner: ReturnType<typeof createRunner> extends Promise<infer T> ? T : never
 
@@ -54,7 +62,12 @@ const pagilaSQL =
     })
 
     it(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
-      const liveDb = devUrl ? await createPostgresDockerAdapter(devUrl) : await createPgliteAdapter()
+      const liveDb =
+        devUrl === 'neon-temporary'
+          ? await neonTemporaryPlugin.createAdapter('neon-temporary', { dialect: 'postgres', extensions: [] })
+          : devUrl
+            ? await createPostgresDockerAdapter(devUrl)
+            : await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
       try {
         await liveDb.exec(pagilaSQL) // execute original SQL directly
 

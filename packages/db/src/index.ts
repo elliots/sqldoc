@@ -4,23 +4,27 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createMysqlAdapter } from './db/mysql.ts'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
-import { createPgliteAdapter } from './db/pglite.ts'
-import { createPostgresAdapter } from './db/postgres.ts'
+import type { OnMissingPlugin } from './db/plugin-resolver.ts'
+import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
-import { createSqliteAdapter } from './db/sqlite.ts'
-import { validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
+import { validatePostgresExtensions } from './extensions.ts'
 import { createAtlasRunner } from './runner.ts'
 
-export { createMysqlAdapter } from './db/mysql.ts'
 export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
-export { createPgliteAdapter } from './db/pglite.ts'
-export { createPostgresAdapter } from './db/postgres.ts'
+export type { OnMissingPlugin } from './db/plugin-resolver.ts'
+export { extractScheme, registerBuiltin, resolveAdapterPlugin, schemeToPackage } from './db/plugin-resolver.ts'
 export { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 export { createSqliteAdapter } from './db/sqlite.ts'
-export type { DatabaseAdapter, ExecResult, QueryResult } from './db/types.ts'
-export { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from './extensions.ts'
+export type {
+  AdapterPluginContext,
+  DatabaseAdapter,
+  DatabaseAdapterPlugin,
+  ExecResult,
+  QueryResult,
+} from './db/types.ts'
+export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
+export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
 export type { AtlasRunner, AtlasRunnerOptions, DiffSource } from './runner.ts'
 export { createAtlasRunner } from './runner.ts'
 export * from './types.ts'
@@ -30,22 +34,22 @@ export interface CreateRunnerConfig {
   dialect: 'postgres' | 'mysql' | 'sqlite'
   /** Database connection URL. If omitted, uses dialect-specific default. */
   devUrl?: string
-  /** Postgres extensions to load. Validated against the dev database; loaded automatically in PGlite. */
+  /** Postgres extensions to load. Validated against the dev database. */
   extensions?: string[]
+  /** Path to .sqldoc/ directory for plugin package resolution */
+  sqldocDir?: string
+  /** Called when a plugin package is missing. CLI provides auto-install. */
+  onMissingPlugin?: OnMissingPlugin
 }
 
 /**
  * Resolve the atlas.wasm binary.
- * Binary mode: ATLAS_WASM_PATH env var set by binary entry point.
- * Dev mode: walk up from current directory to find atlas.wasm.
  */
 function resolveWasm(): string {
-  // Binary mode: WASM path set by binary entry point
   if (process.env.ATLAS_WASM_PATH) {
     return process.env.ATLAS_WASM_PATH
   }
 
-  // Dev mode: walk up from current directory to find atlas.wasm
   let dir = path.dirname(fileURLToPath(import.meta.url))
   while (true) {
     for (const candidate of [
@@ -65,7 +69,6 @@ function resolveWasm(): string {
   )
 }
 
-/** Return the default dev database URL for each dialect */
 function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
   switch (dialect) {
     case 'postgres':
@@ -79,43 +82,45 @@ function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
 
 /**
  * Create an Atlas runner with sensible defaults.
- * Resolves the wasm binary, detects extensions from SQL files,
- * validates them, and creates the appropriate DB adapter.
+ *
+ * All adapters go through the plugin resolver. Built-in plugins (Bun SQL,
+ * SQLite) are registered at import time. External plugins (@sqldoc/db-*)
+ * are loaded from .sqldoc/node_modules/ and auto-installed on first use.
+ *
+ * Docker is the only special case — it orchestrates a container, then
+ * delegates to the plugin system for the actual DB connection.
  */
 export async function createRunner(config: CreateRunnerConfig): Promise<import('./runner').AtlasRunner> {
   const wasmPath = resolveWasm()
   const dialect = config.dialect
   const devUrl = config.devUrl ?? defaultDevUrl(dialect)
-
   const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
+  const pluginOpts = {
+    context: { dialect, extensions },
+    sqldocDir: config.sqldocDir,
+    onMissingPlugin: config.onMissingPlugin,
+  }
 
   let db: import('./db/types').DatabaseAdapter
 
-  if (dialect === 'sqlite') {
-    db = await createSqliteAdapter(devUrl)
-  } else if (dialect === 'mysql') {
-    if (devUrl.startsWith('docker://')) {
+  if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
+    // Docker orchestration: spin up container, then the inner adapter
+    // handles Bun vs Node via the plugin system
+    if (dialect === 'mysql') {
       db = await createMysqlDockerAdapter(devUrl)
     } else {
-      db = await createMysqlAdapter(devUrl)
+      db = await createPostgresDockerAdapter(devUrl)
     }
   } else {
-    // postgres (existing logic preserved exactly)
-    if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
-      db = await createPostgresDockerAdapter(devUrl)
-      if (extensions.length > 0) {
-        await validatePostgresExtensions(extensions, (sql) => db.query(sql))
-      }
-    } else if (devUrl.startsWith('postgres://') || devUrl.startsWith('postgresql://')) {
-      db = await createPostgresAdapter(devUrl)
-      if (extensions.length > 0) {
-        await validatePostgresExtensions(extensions, (sql) => db.query(sql))
-      }
-    } else {
-      // pglite (in-memory embedded postgres)
-      const validExtensions = extensions.length > 0 ? await validatePgliteExtensions(extensions) : []
-      db = await createPgliteAdapter(validExtensions.length > 0 ? validExtensions : undefined)
-    }
+    // Everything else goes through plugin resolution
+    db = await resolveAdapterPlugin({ devUrl, ...pluginOpts })
+  }
+
+  // Validate postgres extensions against the live database
+  if (dialect === 'postgres' && extensions.length > 0) {
+    if (process.env.DEBUG) console.error(`[runner] validating extensions: ${extensions.join(', ')}`)
+    await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+    if (process.env.DEBUG) console.error('[runner] extensions validated')
   }
 
   return createAtlasRunner({ wasmPath, db, dialect })

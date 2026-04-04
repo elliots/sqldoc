@@ -1,20 +1,32 @@
-import { startContainer } from './docker.ts'
-import { createMysqlAdapter } from './mysql.ts'
+import { startContainer, startContainerFromDockerfile } from './docker.ts'
+import { resolveAdapterPlugin } from './plugin-resolver.ts'
 import type { DatabaseAdapter } from './types.ts'
 
 /**
  * Create a Docker-based MySQL DatabaseAdapter.
- * Supports: docker://mysql:8, docker://mysql:8.0, docker://mariadb:10, etc.
+ *
+ * Supports:
+ *   docker://mysql:8           — official or custom image
+ *   docker://mariadb:10        — MariaDB
+ *   dockerfile://path/to/file  — build from Dockerfile
  */
 export async function createMysqlDockerAdapter(devUrl: string): Promise<DatabaseAdapter> {
-  const imageName = devUrl.slice('docker://'.length)
+  const isDockerfile = devUrl.startsWith('dockerfile://')
+  const readyLog = /ready for connections.*port: 3306/
 
-  const container = startContainer({
-    image: imageName,
-    env: { MYSQL_ROOT_PASSWORD: 'sqldoc', MYSQL_DATABASE: 'sqldoc_dev' },
-    port: 3306,
-    readyLog: /ready for connections.*port: 3306/,
-  })
+  const container = isDockerfile
+    ? startContainerFromDockerfile({
+        dockerfilePath: devUrl.slice('dockerfile://'.length),
+        env: { MYSQL_ROOT_PASSWORD: 'sqldoc', MYSQL_DATABASE: 'sqldoc_dev' },
+        port: 3306,
+        readyLog,
+      })
+    : startContainer({
+        image: devUrl.slice('docker://'.length),
+        env: { MYSQL_ROOT_PASSWORD: 'sqldoc', MYSQL_DATABASE: 'sqldoc_dev' },
+        port: 3306,
+        readyLog,
+      })
 
   const connectionUri = `mysql://root:sqldoc@${container.host}:${container.port}/sqldoc_dev`
 
@@ -22,7 +34,10 @@ export async function createMysqlDockerAdapter(devUrl: string): Promise<Database
   let mysqlAdapter: DatabaseAdapter | undefined
   for (let i = 0; i < 10; i++) {
     try {
-      mysqlAdapter = await createMysqlAdapter(connectionUri)
+      mysqlAdapter = await resolveAdapterPlugin({
+        devUrl: connectionUri,
+        context: { dialect: 'mysql', extensions: [] },
+      })
       break
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 1000))

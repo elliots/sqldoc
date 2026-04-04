@@ -1,12 +1,12 @@
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
-import { createPgliteAdapter } from '../db/pglite.ts'
+import pglitePlugin from '@sqldoc/db-pglite'
 import type { DatabaseAdapter } from '../db/types.ts'
 
 describe('pglite adapter', () => {
   let adapter: DatabaseAdapter
 
   before(async () => {
-    adapter = await createPgliteAdapter()
+    adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
   })
 
   after(async () => {

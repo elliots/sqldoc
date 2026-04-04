@@ -25,17 +25,15 @@
     "codegen:schema": "echo 'Types hand-crafted from atlas/sql/schema/schema.go -- see src/types.ts. tygo cannot handle Go interfaces (Attr, Type, Expr). Re-read schema.go and update src/types.ts manually when the Go source changes.'"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.4.0",
     "picocolors": "catalog:"
   },
-  "optionalDependencies": {
-    "pg": "^8.13.0",
-    "mysql2": "^3.20.0"
-  },
   "devDependencies": {
+    "@sqldoc/db-pglite": "workspace:*",
+    "@sqldoc/db-postgres": "workspace:*",
+    "@sqldoc/db-mysql": "workspace:*",
+    "@sqldoc/test-utils": "workspace:*",
     "@types/pg": "^8.11.0",
     "tsx": "^4.21.0",
-    "@typescript/native-preview": "catalog:",
-    "@sqldoc/test-utils": "workspace:*"
+    "@typescript/native-preview": "catalog:"
   }
 }

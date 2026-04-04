@@ -28,6 +28,27 @@ export interface ExecResult {
 /** Whether we're running in Bun (vs Node.js) */
 export const isBun = typeof (globalThis as any).Bun !== 'undefined'
 
+// ── Adapter Plugin System ──────────────────────────────────────────
+
+/** Plugin interface for external database adapter packages. */
+export interface DatabaseAdapterPlugin {
+  apiVersion: 1
+  name: string
+  /** URL schemes this plugin handles (without '://') or keywords (e.g. 'pglite') */
+  schemes: string[]
+  /** SQL dialects this plugin supports */
+  dialects: Array<'postgres' | 'mysql' | 'sqlite'>
+  /** Runtime compatibility */
+  runtime: 'bun' | 'node' | 'any'
+  /** Create an adapter for the given devUrl */
+  createAdapter(devUrl: string, context: AdapterPluginContext): Promise<DatabaseAdapter>
+}
+
+export interface AdapterPluginContext {
+  dialect: 'postgres' | 'mysql' | 'sqlite'
+  extensions: string[]
+}
+
 /**
  * Normalize row values to types the Go database/sql driver can scan.
  * The WASI JSON protocol expects strings, numbers, booleans, and null.

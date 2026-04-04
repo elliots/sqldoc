@@ -27,9 +27,9 @@ describe('atlas runner (integration)', () => {
 
   before(async () => {
     const { createAtlasRunner } = await import('../runner.ts')
-    const { createPgliteAdapter } = await import('../db/pglite.ts')
+    const pglitePlugin = (await import('@sqldoc/db-pglite')).default
 
-    db = await createPgliteAdapter()
+    db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
     runner = await createAtlasRunner({
       wasmPath: WASM_PATH,
       db,

@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import type { ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasResult } from '@sqldoc/db'
-import { createRunner, extractExtensions } from '@sqldoc/db'
+import { createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
@@ -25,12 +25,9 @@ interface ResolvedSource {
 }
 
 async function resolveSource(source: string, config: ResolvedConfig, configRoot: string): Promise<ResolvedSource> {
-  if (
-    source.startsWith('postgres://') ||
-    source.startsWith('postgresql://') ||
-    source.startsWith('mysql://') ||
-    source.startsWith('sqlite://')
-  ) {
+  // Any URL with a scheme (foo://...) is treated as a database connection
+  const scheme = extractScheme(source)
+  if (scheme !== source && source.includes('://')) {
     return { type: 'database', value: source }
   }
 

@@ -13,6 +13,8 @@
     "@sqldoc/cli": "workspace:*",
     "@sqldoc/core": "workspace:*",
     "@sqldoc/db": "workspace:*",
+    "@sqldoc/db-neon-temporary": "workspace:*",
+    "@sqldoc/db-pglite": "workspace:*",
     "@sqldoc/test-utils": "workspace:*",
     "@sqldoc/ns-anon": "workspace:*",
     "@sqldoc/ns-audit": "workspace:*",

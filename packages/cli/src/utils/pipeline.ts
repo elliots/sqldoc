@@ -13,8 +13,9 @@ import {
 } from '@sqldoc/core'
 import type { AtlasRealm, AtlasSchema } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
+import { findSqldocDir } from '@sqldoc/core'
 import pc from 'picocolors'
-import { promptAndInstallMissing } from './auto-install.ts'
+import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
 import { discoverSqlFiles } from './discover.ts'
 import { formatDiagnostic } from './format.ts'
 
@@ -114,7 +115,19 @@ export async function runCompilePipeline(
   const allSqlContents = allRawContents.map(stripMigrationDown)
 
   const { extensions } = extractExtensions(allSqlContents)
-  const atlasRunner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
+  const sqldocDir = findSqldocDir() ?? undefined
+  const atlasRunner = await createRunner({
+    dialect,
+    devUrl: config.devUrl,
+    extensions,
+    sqldocDir,
+    onMissingPlugin: async (packageNameWithVersion: string) => {
+      if (await promptInstall([packageNameWithVersion])) {
+        return sqldocDir ? installPackages(sqldocDir, [packageNameWithVersion]) : false
+      }
+      return false
+    },
+  })
 
   const mergedOutputs: string[] = []
   const allOutputs: CompilerOutput[] = []

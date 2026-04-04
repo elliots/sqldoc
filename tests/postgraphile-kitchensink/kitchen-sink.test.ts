@@ -1,6 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { createPgliteAdapter, createPostgresDockerAdapter, createRunner, extractExtensions } from '@sqldoc/db'
+import neonTemporaryPlugin from '@sqldoc/db-neon-temporary'
+import pglitePlugin from '@sqldoc/db-pglite'
+import { createPostgresDockerAdapter, createRunner, extractExtensions, registerBuiltin } from '@sqldoc/db'
+
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import { prettyStatements } from '../../packages/cli/src/utils/pretty-sql.ts'
 
@@ -10,9 +13,21 @@ const extensions = extractExtensions([kitchenSinkSQL]).extensions
 
 // Kitchen sink uses multiple schemas (a, b, c, d, etc.), extensions (tablefunc, hstore, intarray),
 // and starts with DROP CASCADE.
-;['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined].forEach((version) => {
-  describe(`postgraphile kitchen-sink schema - ${version ?? 'pglite'}`, { timeout: 120_000 }, () => {
-    const devUrl = version ? `docker://${version}` : undefined
+const versions: Array<string | undefined> = ['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined]
+
+if (process.env.TEST_NEON_ONLY === 'true') {
+  versions.length = 0
+}
+
+if (process.env.TEST_NEON === 'true' || process.env.TEST_NEON_ONLY === 'true') {
+  versions.push('neon-temporary')
+  registerBuiltin(neonTemporaryPlugin)
+}
+
+versions.forEach((version) => {
+  const timeout = version === 'neon-temporary' ? 600_000 : 120_000
+  describe(`postgraphile kitchen-sink schema - ${version ?? 'pglite'}`, { timeout }, () => {
+    const devUrl = version === 'neon-temporary' ? 'neon-temporary' : version ? `docker://${version}` : undefined
     const testTitle = version ?? 'pglite'
     let runner: ReturnType<typeof createRunner> extends Promise<infer T> ? T : never
 
@@ -51,8 +66,13 @@ const extensions = extractExtensions([kitchenSinkSQL]).extensions
       expect(tables.length >= 40).toBeTruthy()
     })
 
-    it(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
-      const liveDb = devUrl ? await createPostgresDockerAdapter(devUrl) : await createPgliteAdapter(extensions)
+    // neon-temporary: runner's dev DB and live DB share the same Neon database,
+    // so a second createAdapter() deadlocks on the advisory lock.
+    const liveIt = devUrl === 'neon-temporary' ? it.skip : it
+    liveIt(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
+      const liveDb = devUrl
+        ? await createPostgresDockerAdapter(devUrl)
+        : await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions })
       try {
         await liveDb.exec(kitchenSinkSQL)
 

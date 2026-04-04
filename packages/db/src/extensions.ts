@@ -1,10 +1,9 @@
 /**
  * PostgreSQL extension detection and validation.
  *
- * Extracts CREATE EXTENSION names from SQL, validates against pglite
- * or real Postgres, and provides helpful error messages.
+ * Extracts CREATE EXTENSION names from SQL and validates against
+ * a real Postgres instance.
  */
-import { createRequire } from 'node:module'
 import pc from 'picocolors'
 
 /** Regex to extract extension names from CREATE EXTENSION statements */
@@ -39,48 +38,6 @@ export function extractExtensions(
     }
   }
   return { extensions: [...all], byFile }
-}
-
-/**
- * Validate extensions for pglite by attempting to import them.
- * Returns the list of extensions that are available.
- * Throws with a pretty error if any are not available.
- */
-export async function validatePgliteExtensions(requested: string[]): Promise<string[]> {
-  if (requested.length === 0) return []
-
-  // Resolve from this package's directory (pglite is a dep of @sqldoc/db)
-  const req = createRequire(import.meta.url)
-
-  const results: Array<{ name: string; available: boolean }> = []
-
-  for (const ext of requested) {
-    let found = false
-    try {
-      req.resolve(`@electric-sql/pglite/contrib/${ext}`)
-      found = true
-    } catch {}
-    if (!found)
-      try {
-        req.resolve(`@electric-sql/pglite/${ext}`)
-        found = true
-      } catch {}
-    results.push({ name: ext, available: found })
-  }
-
-  const unavailable = results.filter((r) => !r.available)
-  if (unavailable.length > 0) {
-    const lines = results.map((r) => (r.available ? pc.green(`  ✓ ${r.name}`) : pc.red(`  ✗ ${r.name}`)))
-
-    throw new Error(
-      `Some extensions are not available for the embedded postgres database:\n${lines.join('\n')}\n\n` +
-        `Use a Docker image with these extensions installed as devUrl:\n` +
-        `  ${pc.cyan('docker://<image>')}        — use an image that includes the extension\n` +
-        `  ${pc.cyan('dockerfile://path')}       — build a custom Dockerfile with the extension`,
-    )
-  }
-
-  return requested
 }
 
 /**

@@ -115,8 +115,8 @@ export async function doctorCommand(): Promise<void> {
   let pgliteOk = false
   let pgliteDetail: string | undefined
   try {
-    const { createPgliteAdapter } = await import('@sqldoc/db')
-    const adapter = await createPgliteAdapter()
+    const pglitePlugin = (await import('@sqldoc/db-pglite')).default
+    const adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
     const result = await adapter.query('SELECT 1 AS ok')
     pgliteOk = result.rows.length > 0
     await adapter.close()

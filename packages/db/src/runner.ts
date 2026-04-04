@@ -109,6 +109,7 @@ async function runCommand(
   const stdinData = JSON.stringify(command)
   const { workerPath, execArgv } = resolveWorkerPath()
 
+  if (process.env.DEBUG) console.error(`[bridge] === new worker: ${command.type} ===`)
   return new Promise<AtlasResult>((resolve, reject) => {
     const worker = new Worker(workerPath, {
       workerData: {
@@ -180,6 +181,7 @@ async function handleBridgeLoop(
     const signal = await bridgeWaitForSignal(buffers)
 
     if (signal === SIGNAL_DONE) {
+      if (process.env.DEBUG) console.error('[bridge] === DONE ===')
       break
     }
 
@@ -205,11 +207,18 @@ async function handleBridgeLoop(
           ? extraAdapters[req.connection]
           : db
 
+      if (process.env.DEBUG) {
+        const preview = req.sql.length > 120 ? `${req.sql.substring(0, 120)}...` : req.sql
+        console.error(`[bridge] ${req.type}: ${preview}`)
+      }
+
       if (req.type === 'query') {
         const result = await adapter.query(req.sql, req.args)
+        if (process.env.DEBUG) console.error(`[bridge] -> ${result.columns.length} cols, ${result.rows.length} rows`)
         response = { columns: result.columns, rows: result.rows }
       } else {
         const result = await adapter.exec(req.sql, req.args)
+        if (process.env.DEBUG) console.error(`[bridge] -> ${result.rowsAffected} affected`)
         response = { rows_affected: result.rowsAffected }
       }
     } catch (err: unknown) {

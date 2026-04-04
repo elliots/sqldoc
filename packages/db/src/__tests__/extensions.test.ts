@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@sqldoc/test-utils'
-import { createPgliteAdapter } from '../db/pglite.ts'
-import { extractExtensions, validatePgliteExtensions, validatePostgresExtensions } from '../extensions.ts'
+import pglitePlugin from '@sqldoc/db-pglite'
+import { extractExtensions, validatePostgresExtensions } from '../extensions.ts'
 import { createRunner } from '../index.ts'
 
 describe('extractExtensions', () => {
@@ -52,39 +52,12 @@ describe('extractExtensions', () => {
   })
 })
 
-describe('validatePgliteExtensions', () => {
-  it('returns empty for no extensions', async () => {
-    expect(await validatePgliteExtensions([])).toEqual([])
-  })
-
-  it('validates known pglite extension', async () => {
-    const result = await validatePgliteExtensions(['uuid_ossp'])
-    expect(result).toEqual(['uuid_ossp'])
-  })
-
-  it('throws for unknown extension with pretty output', async () => {
-    await expect(validatePgliteExtensions(['nonexistent_ext'])).rejects.toThrow(/not available/)
-  })
-
-  it('throws listing all extensions with status', async () => {
-    try {
-      await validatePgliteExtensions(['uuid_ossp', 'nonexistent_ext'])
-      throw new Error('should have thrown')
-    } catch (e: any) {
-      expect(e.message).toContain('uuid_ossp')
-      expect(e.message).toContain('nonexistent_ext')
-      expect(e.message).toContain('docker://')
-    }
-  })
-})
-
 describe('validatePostgresExtensions', () => {
   it('passes when all extensions available', async () => {
     const mockQuery = async () => ({
       rows: [['pg_trgm'], ['uuid_ossp']],
     })
     await validatePostgresExtensions(['pg_trgm', 'uuid_ossp'], mockQuery)
-    // If it didn't throw, it passed
   })
 
   it('throws when extension missing', async () => {
@@ -101,13 +74,12 @@ describe('validatePostgresExtensions', () => {
       throw new Error('should not be called')
     }
     await validatePostgresExtensions([], mockQuery as any)
-    // If it didn't throw, it passed
   })
 })
 
 describe('pglite extension loading (integration)', () => {
   it('loads uuid-ossp and generates UUIDs', async () => {
-    const adapter = await createPgliteAdapter(['uuid_ossp'])
+    const adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: ['uuid_ossp'] })
     try {
       await adapter.exec('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
       const result = await adapter.query('SELECT uuid_generate_v4() as id')
@@ -120,7 +92,7 @@ describe('pglite extension loading (integration)', () => {
   })
 
   it('loads citext and does case-insensitive comparison', async () => {
-    const adapter = await createPgliteAdapter(['citext'])
+    const adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: ['citext'] })
     try {
       await adapter.exec('CREATE EXTENSION IF NOT EXISTS citext')
       await adapter.exec('CREATE TABLE test_ci (email citext PRIMARY KEY)')
