@@ -1,7 +1,8 @@
 import { describe, expect, it } from '@sqldoc/test-utils'
+import { detectTarget } from '../blocks.ts'
 import { parse } from '../parser.ts'
 import type { TagDef, TagNamespace } from '../types.ts'
-import { detectTargetFallback, validate } from '../validator.ts'
+import { validate } from '../validator.ts'
 
 // -- Test namespace fixtures --
 
@@ -173,38 +174,38 @@ describe('validate', () => {
   })
 })
 
-// -- detectTargetFallback() tests --
+// -- detectTarget() tests --
 
-describe('detectTargetFallback', () => {
+describe('detectTarget', () => {
   it('detects CREATE TABLE', () => {
-    expect(detectTargetFallback(['CREATE TABLE users ('])).toBe('table')
+    expect(detectTarget(['CREATE TABLE users ('])).toBe('table')
   })
 
   it('detects CREATE OR REPLACE FUNCTION', () => {
-    expect(detectTargetFallback(['CREATE OR REPLACE FUNCTION foo()'])).toBe('function')
+    expect(detectTarget(['CREATE OR REPLACE FUNCTION foo()'])).toBe('function')
   })
 
   it('detects CREATE VIEW', () => {
-    expect(detectTargetFallback(['CREATE VIEW v AS'])).toBe('view')
+    expect(detectTarget(['CREATE VIEW v AS'])).toBe('view')
   })
 
   it('detects CREATE UNIQUE INDEX', () => {
-    expect(detectTargetFallback(['CREATE UNIQUE INDEX idx ON t (c)'])).toBe('index')
+    expect(detectTarget(['CREATE UNIQUE INDEX idx ON t (c)'])).toBe('index')
   })
 
   it('detects CREATE TYPE', () => {
-    expect(detectTargetFallback(['CREATE TYPE mood AS ENUM'])).toBe('type')
+    expect(detectTarget(['CREATE TYPE mood AS ENUM'])).toBe('type')
   })
 
   it('detects CREATE TRIGGER', () => {
-    expect(detectTargetFallback(['CREATE TRIGGER t AFTER INSERT'])).toBe('trigger')
+    expect(detectTarget(['CREATE TRIGGER t AFTER INSERT'])).toBe('trigger')
   })
 
   it('detects column from indented non-CREATE line', () => {
-    expect(detectTargetFallback(['  email TEXT NOT NULL'])).toBe('column')
+    expect(detectTarget(['  email TEXT NOT NULL'])).toBe('column')
   })
 
   it('returns unknown for empty array', () => {
-    expect(detectTargetFallback([])).toBe('unknown')
+    expect(detectTarget([])).toBe('unknown')
   })
 })

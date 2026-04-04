@@ -5,7 +5,7 @@
 
 import type { SqlStatement } from './ast/types.ts'
 import type { AstInfo } from './blocks.ts'
-import { buildBlocks, detectTarget, detectTargetFallback } from './blocks.ts'
+import { buildBlocks, detectTarget } from './blocks.ts'
 import { debug } from './debug.ts'
 import type { ParsedTag } from './parser.ts'
 import { parseArgs } from './parser.ts'
@@ -23,7 +23,7 @@ export interface Diagnostic {
 
 // Re-export for consumers
 export type { AstInfo }
-export { detectTarget, detectTargetFallback }
+export { detectTarget }
 
 // ── Main validate ───────────────────────────────────────────────────
 

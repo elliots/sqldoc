@@ -25,12 +25,12 @@ export interface TagBlock {
   ast: AstInfo
 }
 
-// Re-export for consumers that used to import from validator
+/**
+ * Simple text-based target detection for use where AST is unavailable.
+ * Used by the VSCode extension's completion provider to filter suggestions
+ * by target type (table, column, etc.) without requiring Atlas.
+ */
 export function detectTarget(sqlLines: string[]): SqlTarget {
-  return detectTargetFallback(sqlLines)
-}
-
-export function detectTargetFallback(sqlLines: string[]): SqlTarget {
   if (sqlLines.length === 0) return 'unknown'
   const first = sqlLines[0]
   const TARGET_PATTERNS: [RegExp, SqlTarget][] = [
@@ -160,15 +160,16 @@ function finalizeBlock(tags: ParsedTag[], docLines: string[], stmts: SqlStatemen
  *    - Hit a column → related to that column
  *    - Hit a CREATE statement → related to that statement
  *    - Hit end-of-table (no more columns, past last column) → related to the table
+ * 3. If no match found, return target 'unknown' — no regex guessing.
  */
 function resolveAstByLine(
   _firstTagLine: number, // 1-based
   lastTagLine: number, // 1-based
   stmts: SqlStatement[],
-  sqlLines: string[],
+  _sqlLines: string[],
 ): AstInfo {
   if (stmts.length === 0) {
-    return { target: detectTargetFallback(sqlLines) }
+    return { target: 'unknown' }
   }
 
   // Build a flat list of all AST nodes (statements + columns) sorted by line
@@ -221,7 +222,7 @@ function resolveAstByLine(
     }
   }
 
-  return { target: detectTargetFallback(sqlLines) }
+  return { target: 'unknown' }
 }
 
 function astInfoFromNode(

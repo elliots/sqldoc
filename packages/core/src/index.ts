@@ -98,4 +98,4 @@ export type {
 export { findSqldocDir, unwrapDefault } from './utils.ts'
 export type { AstInfo, Diagnostic } from './validator.ts'
 // Validator
-export { detectTarget, detectTargetFallback, validate } from './validator.ts'
+export { detectTarget, validate } from './validator.ts'
