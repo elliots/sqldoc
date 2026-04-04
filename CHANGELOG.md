@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.9 (2026-04-04)
+ - feat: move bundle-require from core to vscode extension
+ - feat: replace fast-glob with built-in fs.globSync
+
 ## v0.0.8 (2026-04-04)
  - feat: --all flag to run commands across all workspace configs
  - feat: replace testcontainers with direct docker cli

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/core",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Core engine for sqldoc -- parser, loader, validator, types",
   "exports": {
     ".": {

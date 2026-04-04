@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/templates",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Code generation templates for sqldoc -- 18 templates across 6 languages plus tagged template syntax helpers",
   "exports": {
     ".": {
