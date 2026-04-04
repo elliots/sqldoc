@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { createPgliteAdapter, createPostgresDockerAdapter, createRunner, extractExtensions } from '@sqldoc/db'
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
+import { prettyStatements } from '../../packages/cli/src/utils/pretty-sql.ts'
 
 const kitchenSinkSQL = fs.readFileSync(path.join(import.meta.dirname, 'kitchen-sink-schema.sql'), 'utf-8')
 
@@ -78,6 +79,21 @@ const extensions = extractExtensions([kitchenSinkSQL]).extensions
       const stmts = result.statements ?? []
       if (stmts.length > 0) console.log('Migration round-trip statements:', stmts)
       expect(stmts).toHaveLength(0)
+    })
+
+    it(`${testTitle}: pretty-formatted migration round-trips correctly`, async () => {
+      const migrationResult = await runner.diff([], [kitchenSinkSQL])
+      expect(migrationResult.error).toBe(undefined)
+      const stmts = migrationResult.statements!
+      expect(stmts.length > 0).toBeTruthy()
+
+      const prettySQL = prettyStatements(stmts, true)
+
+      const result = await runner.diff([prettySQL], [kitchenSinkSQL])
+      expect(result.error).toBe(undefined)
+      const diffStmts = result.statements ?? []
+      if (diffStmts.length > 0) console.log('Pretty round-trip diff statements:', diffStmts)
+      expect(diffStmts).toHaveLength(0)
     })
 
     it(`${testTitle}: detects schema alteration correctly`, async () => {

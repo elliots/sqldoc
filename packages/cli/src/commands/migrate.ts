@@ -5,13 +5,13 @@ import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
-import { format as formatSql } from '@sqltools/formatter'
 import pc from 'picocolors'
 import { debug, resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
 import { detectDestructiveChanges } from '../utils/destructive.ts'
 import { concatUpScripts, readMigrations, writeMigration } from '../utils/migration-formats.ts'
 import { runCompilePipeline } from '../utils/pipeline.ts'
+import { prettyStatements } from '../utils/pretty-sql.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
 
 /**
@@ -397,27 +397,4 @@ async function aiMigrationName(statements: string[], currentSql: string, desired
     // claude-code not available or failed — fall back silently
   }
   return 'migration'
-}
-
-/** Regex matching statements whose bodies are compared by Atlas as raw strings —
- *  pretty-formatting these would alter the body text PG stores, causing phantom diffs. */
-const BODY_DIFFED_RE = /^\s*CREATE\s+(OR\s+REPLACE\s+)?(FUNCTION|PROCEDURE|TRIGGER)\b/i
-
-/**
- * Join statements into SQL text, optionally pretty-formatting statements
- * that are safe to reformat (i.e. not functions/procedures whose bodies
- * are stored verbatim by PostgreSQL).
- */
-function prettyStatements(stmts: string[], pretty?: boolean): string {
-  if (!pretty) {
-    return stmts.map((s) => `${s};`).join('\n\n')
-  }
-  const fmtOpts = { language: 'sql' as const, indent: '  ', linesBetweenQueries: 'preserve' as const }
-  return stmts
-    .map((s) => {
-      const sql = `${s};`
-      if (BODY_DIFFED_RE.test(sql)) return sql
-      return formatSql(sql, fmtOpts)
-    })
-    .join('\n\n')
 }
