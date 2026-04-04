@@ -203,12 +203,12 @@ export async function runCompilePipeline(
       // Cast TagNamespace to NamespacePlugin (plugins extend TagNamespace)
       const plugins = new Map<string, NamespacePlugin>([...namespaces].map(([k, v]) => [k, v as NamespacePlugin]))
 
-      // Parse SQL AST
+      // Parse SQL AST (supplementary — Atlas is the real schema source)
       let statements: SqlStatement[] = []
       try {
         statements = adapter.parseStatements(source)
-      } catch {
-        // AST parse failure is non-fatal
+      } catch (err: any) {
+        console.error(pc.yellow(`AST parse warning in ${rel}: ${err?.message ?? String(err)}`))
       }
 
       // Validate before compiling
