@@ -55,16 +55,32 @@ function buildGeneratedSet(outputs: CompilerOutput[]): Map<string, string> {
   const generated = new Map<string, string>()
   for (const output of outputs) {
     for (const sqlOut of output.sqlOutputs) {
-      // Match CREATE TABLE "name" patterns in generated SQL
-      const match = sqlOut.sql.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?(\w+)"?/i)
-      if (match) {
-        const tableName = normalizeName(match[1])
-        const ns = sqlOut.sourceTag?.match(/@(\w+)/)?.[1] ?? 'unknown'
-        generated.set(tableName, ns)
+      const tableName = extractCreateTableName(sqlOut.sql)
+      if (tableName) {
+        const ns = extractNamespace(sqlOut.sourceTag)
+        generated.set(normalizeName(tableName), ns)
       }
     }
   }
   return generated
+}
+
+/**
+ * Extract the table name from a CREATE TABLE statement.
+ * Handles: CREATE TABLE name, CREATE TABLE "name", CREATE TABLE `name`,
+ * CREATE TABLE IF NOT EXISTS name, CREATE TABLE schema.name,
+ * CREATE TABLE "schema"."name"
+ */
+function extractCreateTableName(sql: string): string | undefined {
+  const match = sql.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(?:["'`]?\w+["'`]?)\.)?["'`]?(\w+)["'`]?/i)
+  return match?.[1]
+}
+
+/** Extract namespace from a sourceTag like "@audit.track(args)" */
+function extractNamespace(sourceTag: string | undefined): string {
+  if (!sourceTag) return 'unknown'
+  const match = sourceTag.match(/^@(\w+)/)
+  return match?.[1] ?? 'unknown'
 }
 
 /** Build tag lookup: normalized objectName -> entries with target and tags */
