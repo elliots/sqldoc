@@ -694,15 +694,10 @@ function splitTagName(name: string): { namespace: string; tag: string | null } {
  * Mirrors isTag from @sqldoc/db without importing.
  */
 function isAtlasTag(attr: InternalAtlasAttr): attr is { Name: string; Args: string } {
-  return (
-    typeof attr === 'object' &&
-    attr !== null &&
-    'Name' in attr &&
-    typeof (attr as any).Name === 'string' &&
-    'Args' in attr &&
-    typeof (attr as any).Args === 'string' &&
-    !('Expr' in attr)
-  )
+  if (typeof attr !== 'object' || attr === null) return false
+  if (!('Name' in attr) || !('Args' in attr) || 'Expr' in attr) return false
+  const record = attr as Record<string, unknown>
+  return typeof record.Name === 'string' && typeof record.Args === 'string'
 }
 
 /** Extract all tag attrs from a mixed Attrs array */

@@ -160,7 +160,7 @@ function finalizeBlock(tags: ParsedTag[], docLines: string[], stmts: SqlStatemen
  *    - Hit a column → related to that column
  *    - Hit a CREATE statement → related to that statement
  *    - Hit end-of-table (no more columns, past last column) → related to the table
- * 3. If no match found, return target 'unknown' — no regex guessing.
+ * 3. If no match found, return target 'unknown'.
  */
 function resolveAstByLine(
   _firstTagLine: number, // 1-based
