@@ -1,132 +1,67 @@
+import type { AtlasChange } from '@sqldoc/db'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { detectDestructiveChanges } from '../utils/destructive.ts'
 
 describe('detectDestructiveChanges', () => {
-  it('returns empty array for non-destructive statements', () => {
-    const statements = [
-      'CREATE TABLE users (id INT)',
-      'ALTER TABLE users ADD COLUMN email TEXT',
-      'CREATE INDEX idx_users_email ON users (email)',
+  it('returns empty for non-destructive changes', () => {
+    const changes: AtlasChange[] = [
+      { type: 'add_table', table: 'users' },
+      { type: 'add_column', table: 'users', name: 'email' },
+      { type: 'add_index', table: 'users', name: 'idx_email' },
+      { type: 'modify_column', table: 'users', name: 'email' },
     ]
-    const result = detectDestructiveChanges(statements)
-    expect(result).toEqual([])
+    expect(detectDestructiveChanges(changes)).toEqual([])
   })
 
-  it('detects DROP TABLE', () => {
-    const statements = ['DROP TABLE audit_log']
-    const result = detectDestructiveChanges(statements)
+  it('detects drop_table', () => {
+    const changes: AtlasChange[] = [{ type: 'drop_table', table: 'audit_log' }]
+    const result = detectDestructiveChanges(changes)
     expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP TABLE audit_log')
+    expect(result[0]).toEqual({ type: 'drop_table', table: 'audit_log' })
   })
 
-  it('detects DROP TABLE IF EXISTS', () => {
-    const statements = ['DROP TABLE IF EXISTS audit_log']
-    const result = detectDestructiveChanges(statements)
+  it('detects drop_column', () => {
+    const changes: AtlasChange[] = [{ type: 'drop_column', table: 'users', name: 'legacy_id' }]
+    const result = detectDestructiveChanges(changes)
     expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP TABLE audit_log')
+    expect(result[0].type).toBe('drop_column')
   })
 
-  it('detects DROP TABLE with quoted name', () => {
-    const statements = ['DROP TABLE "audit_log"']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP TABLE audit_log')
+  it('does not flag drop_index as destructive', () => {
+    const changes: AtlasChange[] = [{ type: 'drop_index', table: 'users', name: 'idx_old' }]
+    expect(detectDestructiveChanges(changes)).toEqual([])
   })
 
-  it('detects ALTER TABLE DROP COLUMN', () => {
-    const statements = ['ALTER TABLE users DROP COLUMN legacy_id']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('ALTER TABLE users DROP COLUMN legacy_id')
+  it('does not flag drop_view as destructive', () => {
+    const changes: AtlasChange[] = [{ type: 'drop_view', table: 'active_users' }]
+    expect(detectDestructiveChanges(changes)).toEqual([])
   })
 
-  it('detects ALTER TABLE DROP COLUMN IF EXISTS', () => {
-    const statements = ['ALTER TABLE users DROP COLUMN IF EXISTS legacy_id']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('ALTER TABLE users DROP COLUMN legacy_id')
+  it('does not flag drop_function as destructive', () => {
+    const changes: AtlasChange[] = [{ type: 'drop_function', table: 'calculate_total' }]
+    expect(detectDestructiveChanges(changes)).toEqual([])
   })
 
-  it('detects ALTER TABLE ONLY ... DROP COLUMN', () => {
-    const statements = ['ALTER TABLE ONLY users DROP COLUMN legacy_id']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('ALTER TABLE users DROP COLUMN legacy_id')
-  })
-
-  it('detects DROP INDEX', () => {
-    const statements = ['DROP INDEX idx_users_email']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP INDEX idx_users_email')
-  })
-
-  it('detects DROP INDEX CONCURRENTLY IF EXISTS', () => {
-    const statements = ['DROP INDEX CONCURRENTLY IF EXISTS idx_users_email']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP INDEX idx_users_email')
-  })
-
-  it('detects DROP VIEW', () => {
-    const statements = ['DROP VIEW active_users']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP VIEW active_users')
-  })
-
-  it('detects DROP FUNCTION', () => {
-    const statements = ['DROP FUNCTION calculate_total']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('DROP FUNCTION calculate_total')
-  })
-
-  it('detects TRUNCATE', () => {
-    const statements = ['TRUNCATE TABLE sessions']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('TRUNCATE sessions')
-  })
-
-  it('detects TRUNCATE without TABLE keyword', () => {
-    const statements = ['TRUNCATE sessions']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('TRUNCATE sessions')
-  })
-
-  it('detects multiple destructive changes', () => {
-    const statements = [
-      'CREATE TABLE new_users (id INT)',
-      'DROP TABLE audit_log',
-      'ALTER TABLE users DROP COLUMN legacy_id',
-      'CREATE INDEX idx ON new_users (id)',
-      'DROP INDEX idx_old',
+  it('does not flag modify_view or modify_function', () => {
+    const changes: AtlasChange[] = [
+      { type: 'modify_view', table: 'active_users' },
+      { type: 'modify_function', table: 'calculate_total' },
     ]
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(3)
-    expect(result[0].description).toBe('DROP TABLE audit_log')
-    expect(result[1].description).toBe('ALTER TABLE users DROP COLUMN legacy_id')
-    expect(result[2].description).toBe('DROP INDEX idx_old')
+    expect(detectDestructiveChanges(changes)).toEqual([])
   })
 
-  it('is case-insensitive', () => {
-    const statements = ['drop table USERS', 'alter table Orders drop column old_col']
-    const result = detectDestructiveChanges(statements)
+  it('filters only destructive from mixed changes', () => {
+    const changes: AtlasChange[] = [
+      { type: 'add_table', table: 'new_users' },
+      { type: 'drop_table', table: 'audit_log' },
+      { type: 'drop_column', table: 'users', name: 'legacy_id' },
+      { type: 'drop_index', table: 'users', name: 'idx_old' },
+      { type: 'drop_view', table: 'old_view' },
+      { type: 'drop_function', table: 'old_func' },
+      { type: 'modify_function', table: 'my_func' },
+    ]
+    const result = detectDestructiveChanges(changes)
     expect(result).toHaveLength(2)
-  })
-
-  it('handles multiline statements (whitespace normalization)', () => {
-    const statements = ['ALTER TABLE\n  users\n  DROP COLUMN\n  legacy_id']
-    const result = detectDestructiveChanges(statements)
-    expect(result).toHaveLength(1)
-    expect(result[0].description).toBe('ALTER TABLE users DROP COLUMN legacy_id')
-  })
-
-  it('preserves the original statement in the result', () => {
-    const stmt = 'DROP TABLE "my_table"'
-    const result = detectDestructiveChanges([stmt])
-    expect(result[0].statement).toBe(stmt)
+    expect(result.map((c) => c.type)).toEqual(['drop_table', 'drop_column'])
   })
 })
