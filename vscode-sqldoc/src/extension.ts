@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
@@ -16,6 +17,25 @@ import {
   validate,
 } from '@sqldoc/core'
 import * as vscode from 'vscode'
+
+/** Load .ts modules using bundle-require (esbuild-wasm) — needed for VSCode's Node runtime */
+async function esbuildLoader(specifier: string, fromDir?: string): Promise<any> {
+  let abs: string
+  if (path.isAbsolute(specifier)) {
+    abs = specifier
+  } else if (specifier.startsWith('.')) {
+    abs = path.resolve(specifier)
+  } else {
+    const base = fromDir || process.cwd()
+    const req = createRequire(path.join(base, 'noop.js'))
+    abs = req.resolve(specifier)
+  }
+  if (abs.endsWith('.ts') || abs.endsWith('.mts') || abs.endsWith('.cts')) {
+    const { bundleRequire } = await import('bundle-require')
+    return (await bundleRequire({ filepath: abs })).mod
+  }
+  return import(abs)
+}
 
 const DIAGNOSTIC_SOURCE = 'sqldoc'
 const SQL_SELECTORS = ['sql', 'pgsql', 'plpgsql', 'postgres']
@@ -93,7 +113,7 @@ async function validateDocument(doc: vscode.TextDocument) {
   let namespaces = new Map<string, TagNamespace>()
   let importErrors: Array<{ importPath: string; message: string }> = []
   try {
-    const result = await loadImports(importPaths, doc.uri.fsPath)
+    const result = await loadImports(importPaths, doc.uri.fsPath, esbuildLoader)
     namespaces = result.namespaces
     importErrors = result.errors
   } catch (err: any) {

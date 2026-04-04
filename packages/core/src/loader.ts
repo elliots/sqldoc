@@ -4,7 +4,7 @@
  */
 
 import * as path from 'node:path'
-import { tsImport } from './ts-import.ts'
+import { tsImport as defaultLoader } from './ts-import.ts'
 import type { TagNamespace } from './types.ts'
 import { findSqldocDir, unwrapDefault } from './utils.ts'
 
@@ -31,7 +31,11 @@ export interface ImportError {
  * - Relative paths (./foo.ts): resolved from the SQL file's directory
  * - Package names (@sqldoc/ns-audit): resolved from .sqldoc/node_modules/
  */
-export async function loadImports(importPaths: string[], sqlFilePath: string | undefined): Promise<LoadResult> {
+export async function loadImports(
+  importPaths: string[],
+  sqlFilePath: string | undefined,
+  loader?: (specifier: string, fromDir?: string) => Promise<any>,
+): Promise<LoadResult> {
   const namespaces = new Map<string, TagNamespace>()
   const errors: ImportError[] = []
 
@@ -71,7 +75,8 @@ export async function loadImports(importPaths: string[], sqlFilePath: string | u
       }
 
       log(`loadImports: importing '${importPath}' resolved='${resolved}' resolveDir='${resolveDir}'`)
-      let mod = (await tsImport(resolved, resolveDir)) as any
+      const load = loader ?? defaultLoader
+      let mod = (await load(resolved, resolveDir)) as any
       log(`loadImports: loaded '${importPath}' ok`)
       // Unwrap ESM default exports (CJS compat can double-wrap: { default: { default: plugin } })
       mod = unwrapDefault(mod, (m: any) => !!m.name)
