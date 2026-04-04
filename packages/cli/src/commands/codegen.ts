@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { DocsMeta, ProjectContext, ResolvedConfig } from '@sqldoc/core'
+import type { DocsMeta, ProjectContext } from '@sqldoc/core'
 import { loadConfig, loadImports, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasRealm } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
@@ -67,7 +67,7 @@ export async function codegenCommand(
 
     // Auto-load codegen plugin when config declares it but no SQL file imported it
     if (config.namespaces?.codegen && !plugins.has('codegen')) {
-      const firstSqlFile = outputs[0]?.filePath
+      const firstSqlFile = outputs[0]?.sourceFile
       const { namespaces } = await loadImports(
         ['@sqldoc/ns-codegen'],
         firstSqlFile ?? path.join(configRoot, 'dummy.sql'),

@@ -26,13 +26,13 @@ export function generateMermaidERD(realm: AtlasRealm): string {
         }
       }
 
-      for (const col of table.columns ?? []) {
+      for (const col of (table.columns ?? []).filter((c) => c.name != null)) {
         const typeName = col.type?.raw ?? col.type?.T ?? 'unknown'
         const constraints: string[] = []
-        if (pkCols.has(col.name)) constraints.push('PK')
-        if (fkCols.has(col.name)) constraints.push('FK')
+        if (pkCols.has(col.name!)) constraints.push('PK')
+        if (fkCols.has(col.name!)) constraints.push('FK')
         const constraintStr = constraints.length > 0 ? ` ${constraints.join(',')}` : ''
-        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name)}${constraintStr}`)
+        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name!)}${constraintStr}`)
       }
       lines.push('    }')
     }
@@ -40,9 +40,9 @@ export function generateMermaidERD(realm: AtlasRealm): string {
     // Views (entity name with columns)
     for (const view of schema.views ?? []) {
       lines.push(`    ${escapeMermaid(view.name)} {`)
-      for (const col of view.columns ?? []) {
+      for (const col of (view.columns ?? []).filter((c) => c.name != null)) {
         const typeName = col.type?.raw ?? col.type?.T ?? 'unknown'
-        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name)}`)
+        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name!)}`)
       }
       lines.push('    }')
     }

@@ -1,5 +1,4 @@
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import type { Diagnostic, ResolvedConfig, SqlStatement } from '@sqldoc/core'
 import {
   loadConfig,
@@ -38,7 +37,7 @@ export async function validateCommand(
 async function validateProject(
   inputPath: string | undefined,
   config: ResolvedConfig,
-  configRoot: string,
+  _configRoot: string,
 ): Promise<void> {
   // Resolve input path: explicit arg > config.schema > error
   const resolvedInput = inputPath ?? config.schema

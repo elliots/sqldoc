@@ -282,10 +282,10 @@ function stripMigrationDown(sql: string): string {
  * Uses JSON.stringify on sorted column arrays for deep equality.
  */
 function normalizeColumns(
-  columns: Array<{ name: string; type?: { T?: string; raw?: string; null?: boolean } }> | undefined,
+  columns: Array<{ name?: string; type?: { T?: string; raw?: string; null?: boolean } }> | undefined,
 ): string {
   if (!columns || columns.length === 0) return '[]'
-  const sorted = [...columns].sort((a, b) => a.name.localeCompare(b.name))
+  const sorted = [...columns].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
   return JSON.stringify(sorted.map((c) => ({ name: c.name, type: c.type?.T ?? c.type?.raw, null: c.type?.null })))
 }
 

@@ -11,8 +11,8 @@ import { CliError, formatPipelineError } from '../errors.ts'
 import { detectDestructiveChanges } from '../utils/destructive.ts'
 import { concatUpScripts, readMigrations, writeMigration } from '../utils/migration-formats.ts'
 import { runCompilePipeline } from '../utils/pipeline.ts'
-import { prettyStatements } from '../utils/pretty-sql.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
+import { prettyStatements } from '../utils/pretty-sql.ts'
 
 /**
  * migrate command: generate migration files or check for schema drift.

@@ -4,10 +4,10 @@
  */
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
-import { User } from './users.entity.ts'
-import { ContentPost } from './posts.entity.ts'
 import { Comment } from './comments.entity.ts'
 import { PostTag } from './post-tags.entity.ts'
+import { ContentPost } from './posts.entity.ts'
+import { User } from './users.entity.ts'
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {

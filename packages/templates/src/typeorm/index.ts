@@ -1,5 +1,5 @@
 import { defineTemplate } from '@sqldoc/ns-codegen'
-import { activeTables, enrichRealm, type EnrichedColumn, type EnrichedTable } from '../helpers/enrich.ts'
+import { activeTables, type EnrichedTable, enrichRealm } from '../helpers/enrich.ts'
 import { singularizeLast, toCamelCase, toPascalCase } from '../helpers/naming.ts'
 import { pgToTs } from '../types/pg-to-ts.ts'
 
@@ -244,7 +244,7 @@ export default defineTemplate({
               opts.push(`default: () => '${col.defaultValue}'`)
             } else if (col.defaultValue === 'true' || col.defaultValue === 'false') {
               opts.push(`default: ${col.defaultValue}`)
-            } else if (!isNaN(Number(col.defaultValue))) {
+            } else if (!Number.isNaN(Number(col.defaultValue))) {
               opts.push(`default: ${col.defaultValue}`)
             } else {
               opts.push(`default: ${JSON.stringify(col.defaultValue)}`)

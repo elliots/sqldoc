@@ -10,6 +10,7 @@
     "test-docs": "./scripts/test-docs.sh",
     "format": "biome format --write .",
     "check": "biome check --fix . && bun run --filter '*' typecheck",
+    "check:fix": "biome check --fix --unsafe .",
     "check:licenses": "bun pm ls --production 2>&1 | node -e \"const d=require('fs').readFileSync('/dev/stdin','utf8');const bad=d.match(/GPL|AGPL|EUPL|SSPL|BSL-1|CPAL|OSL-3/gi);if(bad){console.error('Copyleft licenses found:',bad);process.exit(1)}else console.log('All licenses OK')\""
   },
   "catalog": {

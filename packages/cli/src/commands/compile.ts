@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'

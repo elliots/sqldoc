@@ -45,7 +45,11 @@ export interface AtlasRunner {
 
   /** Compare two schema states. Each side can be SQL or a live database.
    * Live databases are only inspected, never written to. */
-  diff(from: DiffSource, to: DiffSource, options?: { schema?: string; renames?: AtlasRename[] }): Promise<AtlasResult>
+  diff(
+    from: DiffSource,
+    to: DiffSource,
+    options?: { schema?: string; defaultSchema?: string; renames?: AtlasRename[] },
+  ): Promise<AtlasResult>
 
   /** Clean up resources */
   close(): Promise<void>

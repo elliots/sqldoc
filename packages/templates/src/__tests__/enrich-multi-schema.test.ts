@@ -2,9 +2,10 @@
  * Multi-schema enrichment tests — validates schema-aware naming, clash
  * detection, FK schema resolution, and stripSchemaFromName behavior.
  */
-import { describe, expect, it } from '@sqldoc/test-utils'
+
 import type { AtlasRealm } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { enrichRealm } from '../helpers/enrich.ts'
 
 // ── Fixtures ────────────────────────────────────────────────────────

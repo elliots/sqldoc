@@ -19,11 +19,13 @@ export function realmToDocsSchema(realm: AtlasRealm): AtlasSchema {
       name: s.name,
       tables: (s.tables ?? []).map((t) => ({
         name: t.name,
-        columns: (t.columns ?? []).map((c) => ({
-          name: c.name,
-          type: c.type?.raw ?? c.type?.T ?? 'unknown',
-          null: c.type?.null,
-        })),
+        columns: (t.columns ?? [])
+          .filter((c) => c.name != null)
+          .map((c) => ({
+            name: c.name!,
+            type: c.type?.raw ?? c.type?.T ?? 'unknown',
+            null: c.type?.null,
+          })),
         indexes: (t.indexes ?? []).map((idx) => ({
           name: idx.name ?? '',
           unique: idx.unique,
@@ -45,11 +47,13 @@ export function realmToDocsSchema(realm: AtlasRealm): AtlasSchema {
       })),
       views: (s.views ?? []).map((v) => ({
         name: v.name,
-        columns: (v.columns ?? []).map((c) => ({
-          name: c.name,
-          type: c.type?.raw ?? c.type?.T ?? 'unknown',
-          null: c.type?.null,
-        })),
+        columns: (v.columns ?? [])
+          .filter((c) => c.name != null)
+          .map((c) => ({
+            name: c.name!,
+            type: c.type?.raw ?? c.type?.T ?? 'unknown',
+            null: c.type?.null,
+          })),
       })),
     })),
   }
