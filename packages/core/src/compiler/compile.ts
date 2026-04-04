@@ -13,6 +13,7 @@ import type { SqlAstAdapter } from '../ast/adapter.ts'
 import type { SqlCommentOn, SqlStatement } from '../ast/types.ts'
 import type { TagBlock } from '../blocks.ts'
 import { buildBlocks } from '../blocks.ts'
+import { debug } from '../debug.ts'
 import { parse, parseArgs } from '../parser.ts'
 import type { Dialect } from '../sql-emitter.ts'
 import { escapeString, escapeStringWithNewlines } from '../sql-emitter.ts'
@@ -98,6 +99,10 @@ export interface CompileOptions {
 
 export function compile(options: CompileOptions): CompilerOutput {
   const { source, filePath, plugins, statements, config, adapter, atlasRealm } = options
+  debug(
+    'compile',
+    `file=${filePath}, tier=${atlasRealm ? 2 : 1}, plugins=[${[...plugins.keys()].join(', ')}], dialect=${config.dialect}`,
+  )
 
   // Tier 2: Atlas realm provided — use Atlas tag-to-object matching
   if (atlasRealm) {
@@ -144,12 +149,14 @@ function compileTier1(
   // 1. Parse source to extract tags
   const { tags } = parse(source)
   if (tags.length === 0) {
+    debug('compile', `tier1: no tags in ${filePath}`)
     return { sourceFile: filePath, mergedSql: source, sqlOutputs, codeOutputs, errors, docsMeta, fileTags: [] }
   }
 
   // 2. Build tag blocks (group consecutive comment-line tags, resolve to SQL object)
   const docLines = source.split('\n')
   const blocks = buildBlocks(tags, source, docLines, statements)
+  debug('compile', `tier1: ${tags.length} tags -> ${blocks.length} blocks`)
 
   // 3. Build file-level tag summary (all tags across file grouped by object)
   const fileTags = buildFileTags(blocks)
@@ -220,6 +227,10 @@ function compileTier1(
 
   // 5. Build merged SQL: original source + generated SQL appended
   const mergedSql = buildMergedOutput(source, sqlOutputs, adapter, config.dialect)
+  debug(
+    'compile',
+    `tier1: done, ${sqlOutputs.length} sql output(s), ${codeOutputs.length} code output(s), ${errors.length} error(s)`,
+  )
 
   return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
 }
@@ -248,6 +259,10 @@ function compileAtlas(
     tag: string | null
     args: Record<string, unknown> | unknown[]
   }> = []
+
+  const tableCount = realm.schemas.reduce((n, s) => n + (s.tables?.length ?? 0), 0)
+  const viewCount = realm.schemas.reduce((n, s) => n + (s.views?.length ?? 0), 0)
+  debug('compile', `tier2: ${realm.schemas.length} schema(s), ${tableCount} table(s), ${viewCount} view(s)`)
 
   const skippedPlugins = new Set<string>()
   for (const schema of realm.schemas) {
@@ -510,15 +525,16 @@ function invokePlugin(
   docsMeta: DocsMeta[],
   errors: Array<{ namespace: string; message: string }>,
 ): void {
+  const tagLabel = tag.tag
+    ? `@${tag.namespace}.${tag.tag}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`
+    : `@${tag.namespace}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`
+
   // Call onTag (or legacy generateSQL)
   if (tagHandler) {
     try {
+      debug('compile', `invokePlugin: ${plugin.name}.onTag ${tagLabel} on ${ctx.objectName}`)
       const result = tagHandler(ctx)
       if (result) {
-        const tagLabel = tag.tag
-          ? `@${tag.namespace}.${tag.tag}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`
-          : `@${tag.namespace}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`
-
         // Support both SqlOutput[] and TagOutput return types
         const sqlResults = Array.isArray(result) ? result : result.sql
         if (sqlResults && sqlResults.length > 0) {
@@ -532,10 +548,9 @@ function invokePlugin(
         }
       }
     } catch (err: any) {
-      errors.push({
-        namespace: tag.namespace,
-        message: err?.message ?? String(err),
-      })
+      const msg = `Plugin '${plugin.name}' onTag error for ${tagLabel}: ${err?.message ?? String(err)}`
+      debug('compile', msg)
+      errors.push({ namespace: tag.namespace, message: msg })
     }
   }
 
@@ -544,13 +559,13 @@ function invokePlugin(
     try {
       const result = plugin.generateCode(ctx)
       if (result && result.length > 0) {
+        debug('compile', `invokePlugin: ${plugin.name}.generateCode produced ${result.length} file(s)`)
         codeOutputs.push(...result)
       }
     } catch (err: any) {
-      errors.push({
-        namespace: tag.namespace,
-        message: err?.message ?? String(err),
-      })
+      const msg = `Plugin '${plugin.name}' generateCode error for ${tagLabel}: ${err?.message ?? String(err)}`
+      debug('compile', msg)
+      errors.push({ namespace: tag.namespace, message: msg })
     }
   }
 }

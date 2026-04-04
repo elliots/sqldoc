@@ -6,6 +6,7 @@
 import type { SqlStatement } from './ast/types.ts'
 import type { AstInfo } from './blocks.ts'
 import { buildBlocks, detectTarget, detectTargetFallback } from './blocks.ts'
+import { debug } from './debug.ts'
 import type { ParsedTag } from './parser.ts'
 import { parseArgs } from './parser.ts'
 import type { ArgType, TagDef, TagNamespace, ValidationContext } from './types.ts'
@@ -35,6 +36,7 @@ export function validate(
   const diagnostics: Diagnostic[] = []
   const docLines = docText.split('\n')
   const blocks = buildBlocks(tags, docText, docLines, stmts ?? [])
+  debug('validate', `${tags.length} tag(s), ${blocks.length} block(s), ${namespaces.size} namespace(s)`)
 
   for (const block of blocks) {
     for (const tag of block.tags) {

@@ -8,6 +8,7 @@
 
 import { createRequire } from 'node:module'
 import * as path from 'node:path'
+import { debug } from './debug.ts'
 
 const TS_EXTENSIONS = new Set(['.ts', '.mts', '.cts'])
 
@@ -17,6 +18,7 @@ const TS_EXTENSIONS = new Set(['.ts', '.mts', '.cts'])
  */
 export async function tsImport(specifier: string, fromDir?: string): Promise<any> {
   const abs = resolveSpecifier(specifier, fromDir)
+  debug('ts-import', `specifier=${specifier}, resolved=${abs}`)
 
   if (TS_EXTENSIONS.has(path.extname(abs))) {
     const isNodeModules = abs.includes('/node_modules/') || abs.includes('\\node_modules\\')

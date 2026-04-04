@@ -5,6 +5,7 @@
  */
 
 import type { SqlColumn, SqlStatement } from './ast/types.ts'
+import { debug } from './debug.ts'
 import type { ParsedTag } from './parser.ts'
 import type { SqlTarget } from './types.ts'
 
@@ -68,6 +69,7 @@ export function buildBlocks(
   stmts: SqlStatement[],
 ): TagBlock[] {
   if (tags.length === 0) return []
+  debug('blocks', `buildBlocks: ${tags.length} tag(s), ${stmts.length} statement(s)`)
 
   const blocks: TagBlock[] = []
   let currentTags: ParsedTag[] = []

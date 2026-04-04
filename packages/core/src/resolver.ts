@@ -8,6 +8,7 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { debug } from './debug.ts'
 import type { FileProvenance } from './directives.ts'
 import { parseDirectives } from './directives.ts'
 
@@ -46,6 +47,8 @@ export async function resolveDirectives(
   const provenanceMap = new Map<string, FileProvenance>()
   const visited = new Set<string>()
 
+  debug('resolver', `resolveDirectives: ${projectFiles.length} project file(s)`)
+
   // Mark all project files
   for (const f of projectFiles) {
     provenanceMap.set(f, 'project')
@@ -66,6 +69,7 @@ export async function resolveDirectives(
     else if (provenance === 'include') includeFiles.push(filePath)
   }
 
+  debug('resolver', `resolved: ${externalFiles.length} external, ${includeFiles.length} include`)
   return {
     externalFiles: externalFiles.sort(),
     includeFiles: includeFiles.sort(),
@@ -83,7 +87,10 @@ async function processFile(
   provenanceMap: Map<string, FileProvenance>,
   visited: Set<string>,
 ): Promise<void> {
-  if (visited.has(filePath)) return // cycle detection
+  if (visited.has(filePath)) {
+    debug('resolver', `cycle detected: ${filePath}`)
+    return
+  }
   visited.add(filePath)
 
   const directives = parseDirectives(content)
@@ -98,9 +105,10 @@ async function processFile(
       // Set provenance: external takes precedence over include
       const existing = provenanceMap.get(resolved)
       if (!existing) {
+        debug('resolver', `${directive.type}: ${resolved}`)
         provenanceMap.set(resolved, provenance)
       } else if (provenance === 'external' && existing === 'include') {
-        // Upgrade include to external
+        debug('resolver', `provenance upgrade include->external: ${resolved}`)
         provenanceMap.set(resolved, 'external')
       }
       // If already external or project, keep as-is

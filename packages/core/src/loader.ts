@@ -4,14 +4,18 @@
  */
 
 import * as path from 'node:path'
+import { debug } from './debug.ts'
 import { tsImport as defaultLoader } from './ts-import.ts'
 import type { TagNamespace } from './types.ts'
 import { findSqldocDir, unwrapDefault } from './utils.ts'
 
-/** Pluggable logger — extension sets this to OutputChannel, CLI can set to console */
-let log: (msg: string) => void = () => {}
-export function setImportLogger(logger: (msg: string) => void) {
-  log = logger
+/** @deprecated Use setDebugLogger() from @sqldoc/core instead */
+export function setImportLogger(_logger: (msg: string) => void) {
+  // No-op — loader now uses the shared debug() from debug.ts
+}
+
+function log(msg: string) {
+  debug('loader', msg)
 }
 
 export interface LoadResult {

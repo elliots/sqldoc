@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
 import {
   compile,
+  debug,
   loadImports,
   parse,
   parseDirectives,
@@ -50,6 +51,7 @@ export async function runCompilePipeline(
   config: ResolvedConfig,
   _configRoot: string,
 ): Promise<PipelineResult> {
+  debug('pipeline', `runCompilePipeline: input=${inputPath}, dialect=${config.dialect}`)
   // Discover SQL files
   const sqlFiles = await discoverSqlFiles(inputPath, config.include)
   if (sqlFiles.length === 0) {
@@ -71,6 +73,7 @@ export async function runCompilePipeline(
   // ── Resolve @external and @include directives ──────────────────────
   const resolved = await resolveDirectives(sqlFiles, (f) => fs.readFileSync(f, 'utf-8'))
   const hasExternals = resolved.externalFiles.length > 0
+  debug('pipeline', `directives: ${resolved.externalFiles.length} external, ${resolved.includeFiles.length} include`)
 
   // Build merged content: inline @include content into each project file at the end.
   // This ensures included tables can FK-reference parent tables (they appear after).
@@ -154,6 +157,7 @@ export async function runCompilePipeline(
       console.error(pc.yellow(inspectResult.error))
     }
     atlasRealm = inspectResult.schema
+    debug('pipeline', 'atlas inspect complete')
 
     // Validate external object immutability (D-18)
     if (hasExternals && externalRealm) {

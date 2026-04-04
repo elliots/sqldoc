@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { debug } from '../debug.ts'
 import { tsImport } from '../ts-import.ts'
 import { unwrapDefault } from '../utils.ts'
 import type { ProjectConfig, ResolvedConfig, SqldocConfig } from './types.ts'
@@ -14,11 +15,13 @@ const CONFIG_FILENAMES = ['sqldoc.config.ts', 'sqldoc.config.js', 'sqldoc.config
 export function findConfigRoot(startDir: string = process.cwd()): { configRoot: string; configFile: string } | null {
   const projectRoot = process.env.SQLDOC_PROJECT_ROOT
   let current = path.resolve(startDir)
+  debug('config', `findConfigRoot: startDir=${startDir}`)
 
   while (true) {
     for (const filename of CONFIG_FILENAMES) {
       const candidate = path.join(current, filename)
       if (fs.existsSync(candidate)) {
+        debug('config', `findConfigRoot: found ${candidate}`)
         return { configRoot: current, configFile: candidate }
       }
     }
@@ -31,6 +34,7 @@ export function findConfigRoot(startDir: string = process.cwd()): { configRoot: 
     current = parent
   }
 
+  debug('config', 'findConfigRoot: no config found')
   return null
 }
 
@@ -97,11 +101,17 @@ export function resolveAllProjects(config: SqldocConfig): ProjectConfig[] {
  */
 async function loadConfigFile(configPath: string): Promise<ConfigResult> {
   const abs = path.resolve(configPath)
+  debug('config', `loadConfigFile: loading ${abs}`)
   let mod = (await tsImport(abs)) as any
   // Unwrap ESM default exports (CJS compat can double-wrap)
   // Detect both single config (has namespaces/dialect/schema) and arrays
   mod = unwrapDefault(mod, (m: any) => !!m.namespaces || !!m.dialect || !!m.schema || Array.isArray(m))
   const config: SqldocConfig = mod ?? { dialect: 'postgres' }
+  const isMulti = Array.isArray(config)
+  debug(
+    'config',
+    `loadConfigFile: loaded (${isMulti ? `${config.length} projects` : `dialect=${(config as ProjectConfig).dialect}`})`,
+  )
   return { config, configPath: abs }
 }
 
@@ -112,6 +122,7 @@ async function loadConfigFile(configPath: string): Promise<ConfigResult> {
  * Returns default config if no config file found.
  */
 export async function loadConfig(projectRoot: string, configFile?: string): Promise<ConfigResult> {
+  debug('config', `loadConfig: projectRoot=${projectRoot}, configFile=${configFile ?? 'auto'}`)
   if (configFile) {
     const resolved = path.resolve(configFile)
     if (!fs.existsSync(resolved)) {
@@ -126,5 +137,6 @@ export async function loadConfig(projectRoot: string, configFile?: string): Prom
     return loadConfigFile(configPath)
   }
 
+  debug('config', 'loadConfig: no config file found, using defaults')
   return { config: { dialect: 'postgres' } as ProjectConfig, configPath: null }
 }

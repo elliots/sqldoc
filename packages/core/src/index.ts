@@ -42,6 +42,8 @@ export {
   resolveAllProjects,
   resolveProject,
 } from './compiler/index.ts'
+// Debug
+export { debug, setDebugLogger } from './debug.ts'
 // Directives
 export type { FileDirective, FileProvenance } from './directives.ts'
 export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'

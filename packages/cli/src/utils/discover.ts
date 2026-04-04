@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { debug } from '@sqldoc/core'
 
 const IGNORE_DIRS = new Set(['node_modules', '__tests__', 'test', 'dist', '.sqldoc'])
 
@@ -25,12 +26,14 @@ export async function discoverSqlFiles(inputPath: string, includePatterns?: stri
   }
 
   const patterns = includePatterns ?? ['**/*.sql']
+  debug('discover', `patterns=${JSON.stringify(patterns)}, cwd=${resolved}`)
   const matches = fs.globSync(patterns, {
     cwd: resolved,
     exclude: (name) => IGNORE_DIRS.has(name),
   })
 
   const files = matches.map((f) => path.resolve(resolved, f)).filter((f) => fs.statSync(f).isFile())
+  debug('discover', `found ${files.length} SQL file(s)`)
 
   return files.sort()
 }

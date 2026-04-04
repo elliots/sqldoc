@@ -1,7 +1,12 @@
 import path from 'node:path'
-import { findConfigRoot } from '@sqldoc/core'
+import { findConfigRoot, setDebugLogger } from '@sqldoc/core'
 
 const enabled = !!process.env.DEBUG
+
+// Wire core's debug logger to stderr when DEBUG is set
+if (enabled) {
+  setDebugLogger((msg) => console.error(msg))
+}
 
 export function debug(label: string, ...args: any[]) {
   if (!enabled) return

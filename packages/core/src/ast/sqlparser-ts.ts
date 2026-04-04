@@ -1,4 +1,5 @@
 import * as sp from '@sqldoc/sqlparser-ts'
+import { debug } from '../debug.ts'
 import type { SqlAstAdapter } from './adapter.ts'
 import type { SqlColumn, SqlCommentOn, SqlStatement } from './types.ts'
 
@@ -30,8 +31,9 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
     let ast: any[]
     try {
       ast = this.parseFn(sql, this.dialect)
-    } catch {
+    } catch (err: any) {
       // Full parse failed — try statement by statement
+      debug('ast', `full parse failed (${this.dialect}): ${err?.message ?? String(err)}, trying statement-by-statement`)
       return this.parseStatementByStatement(sql)
     }
 
@@ -40,6 +42,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
       const mapped = mapStatement(stmt)
       if (mapped) results.push(mapped)
     }
+    debug('ast', `parsed ${results.length} statement(s) (${this.dialect})`)
     return results
   }
 
@@ -71,8 +74,8 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
             results.push(mapped)
           }
         }
-      } catch {
-        // Skip unparseable statements
+      } catch (err: any) {
+        debug('ast', `skipping unparseable statement at line ${lineOffset + 1}: ${err?.message ?? String(err)}`)
       }
       charOffset += chunk.length + 1
     }
