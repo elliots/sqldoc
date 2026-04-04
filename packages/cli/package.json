@@ -27,7 +27,8 @@
   "dependencies": {
     "@sqldoc/core": "workspace:*",
     "@sqldoc/db": "workspace:*",
-    "commander": "^14.0.3",
+    "@sqltools/formatter": "1.2.5",
+    "commander": "14.0.3",
     "picocolors": "catalog:"
   },
   "devDependencies": {
