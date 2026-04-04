@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
-import { loadConfig, resolveProject } from '@sqldoc/core'
+import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import { format as formatSql } from '@sqltools/formatter'
@@ -40,7 +40,18 @@ export async function migrateCommand(options: {
   const { config: rawConfig, configPath } = await loadConfig(configRoot, options.config)
   debug('migrate', 'configPath:', configPath)
   debug('migrate', 'rawConfig:', JSON.stringify(rawConfig, null, 2)?.slice(0, 500))
-  const config: ResolvedConfig = resolveProject(rawConfig, options.project)
+  const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
+
+  for (const config of projects) {
+    await migrateProject(config, configRoot, options)
+  }
+}
+
+async function migrateProject(
+  config: ResolvedConfig,
+  configRoot: string,
+  options: { check?: boolean; name?: string; force?: boolean },
+): Promise<void> {
   debug('migrate', 'resolved schema:', config.schema)
 
   if (!config.schema) {
@@ -200,12 +211,13 @@ export async function migrateCommand(options: {
   }
 
   // ── Step 7a: Destructive change detection ──────────────────────────
-  const destructiveChanges = detectDestructiveChanges(upStatements)
+  const destructiveChanges = upChanges ? detectDestructiveChanges(upChanges) : []
 
   if (destructiveChanges.length > 0 && !options.force) {
     console.error(pc.red(pc.bold('Error: Migration contains destructive changes:')))
     for (const change of destructiveChanges) {
-      console.error(pc.red(`  - ${change.description}`))
+      const label = change.name ? `${change.type}: ${change.table}.${change.name}` : `${change.type}: ${change.table}`
+      console.error(pc.red(`  - ${label}`))
     }
     console.error('')
     console.error('Use --force to generate the migration anyway.')
@@ -228,15 +240,13 @@ export async function migrateCommand(options: {
     migrationName = 'migration'
   }
 
-  // Build up/down SQL content
-  let upSql = upStatements.map((s) => `${s};`).join('\n\n')
-  let downSql: string | undefined =
-    downStatements.length > 0 ? downStatements.map((s) => `${s};`).join('\n\n') : undefined
-
-  if (config.migrations?.pretty) {
-    upSql = formatSql(upSql, { language: 'sql', indent: '  ', linesBetweenQueries: 'preserve' })
-    if (downSql) downSql = formatSql(downSql, { language: 'sql', indent: '  ', linesBetweenQueries: 'preserve' })
-  }
+  // Build up/down SQL content.
+  // When pretty-formatting, skip statements that contain function/procedure bodies
+  // because pg_get_functiondef() preserves the original body formatting verbatim —
+  // reformatting would create a permanent diff on every subsequent migrate run.
+  const upSql = prettyStatements(upStatements, config.migrations?.pretty)
+  const downSql: string | undefined =
+    downStatements.length > 0 ? prettyStatements(downStatements, config.migrations?.pretty) : undefined
 
   const writtenFiles = writeMigration({
     dir: migrationsDir,
@@ -387,4 +397,27 @@ async function aiMigrationName(statements: string[], currentSql: string, desired
     // claude-code not available or failed — fall back silently
   }
   return 'migration'
+}
+
+/** Regex matching statements whose bodies are compared by Atlas as raw strings —
+ *  pretty-formatting these would alter the body text PG stores, causing phantom diffs. */
+const BODY_DIFFED_RE = /^\s*CREATE\s+(OR\s+REPLACE\s+)?(FUNCTION|PROCEDURE|TRIGGER)\b/i
+
+/**
+ * Join statements into SQL text, optionally pretty-formatting statements
+ * that are safe to reformat (i.e. not functions/procedures whose bodies
+ * are stored verbatim by PostgreSQL).
+ */
+function prettyStatements(stmts: string[], pretty?: boolean): string {
+  if (!pretty) {
+    return stmts.map((s) => `${s};`).join('\n\n')
+  }
+  const fmtOpts = { language: 'sql' as const, indent: '  ', linesBetweenQueries: 'preserve' as const }
+  return stmts
+    .map((s) => {
+      const sql = `${s};`
+      if (BODY_DIFFED_RE.test(sql)) return sql
+      return formatSql(sql, fmtOpts)
+    })
+    .join('\n\n')
 }

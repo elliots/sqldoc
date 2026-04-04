@@ -81,7 +81,7 @@ export function resolveProject(config: SqldocConfig, projectName?: string): Reso
     return config[0]
   }
 
-  throw new Error(`Multiple projects configured. Use --project <name> or --all.\nAvailable: ${names.join(', ')}`)
+  throw new Error(`Multiple projects configured. Use --project <name> to select one.\nAvailable: ${names.join(', ')}`)
 }
 
 /**

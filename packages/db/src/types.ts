@@ -57,8 +57,10 @@ export interface AtlasChange {
     | 'drop_index'
     | 'add_view'
     | 'drop_view'
+    | 'modify_view'
     | 'add_function'
     | 'drop_function'
+    | 'modify_function'
   table: string
   name?: string
   detail?: string

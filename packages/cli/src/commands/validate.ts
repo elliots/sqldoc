@@ -1,7 +1,15 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { Diagnostic, ResolvedConfig, SqlStatement } from '@sqldoc/core'
-import { loadConfig, loadImports, parse, resolveProject, SqlparserTsAdapter, validate } from '@sqldoc/core'
+import {
+  loadConfig,
+  loadImports,
+  parse,
+  resolveAllProjects,
+  resolveProject,
+  SqlparserTsAdapter,
+  validate,
+} from '@sqldoc/core'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
@@ -20,8 +28,18 @@ export async function validateCommand(
   // Load project config
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
-  const config: ResolvedConfig = resolveProject(rawConfig, options.project)
+  const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
 
+  for (const config of projects) {
+    await validateProject(inputPath, config, configRoot)
+  }
+}
+
+async function validateProject(
+  inputPath: string | undefined,
+  config: ResolvedConfig,
+  configRoot: string,
+): Promise<void> {
   // Resolve input path: explicit arg > config.schema > error
   const resolvedInput = inputPath ?? config.schema
   if (!resolvedInput) {

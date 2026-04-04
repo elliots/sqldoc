@@ -1,6 +1,6 @@
 import * as path from 'node:path'
 import type { LintResult, ResolvedConfig } from '@sqldoc/core'
-import { lint, loadConfig, resolveProject } from '@sqldoc/core'
+import { lint, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
@@ -16,8 +16,19 @@ export async function lintCommand(
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
-  const config: ResolvedConfig = resolveProject(rawConfig, options.project)
+  const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
 
+  for (const config of projects) {
+    await lintProject(inputPath, config, configRoot, options.verbose)
+  }
+}
+
+async function lintProject(
+  inputPath: string | undefined,
+  config: ResolvedConfig,
+  configRoot: string,
+  verbose?: boolean,
+): Promise<void> {
   // Resolve input path: explicit arg > config.schema > error
   const resolvedInput = inputPath ?? config.schema
   if (!resolvedInput) {
@@ -53,7 +64,7 @@ export async function lintCommand(
   for (const r of results) {
     if (r.severity === 'skip') {
       skipCount++
-      if (options.verbose) console.log(formatLintResult(r))
+      if (verbose) console.log(formatLintResult(r))
     } else {
       console.log(formatLintResult(r))
       if (r.severity === 'error') errorCount++

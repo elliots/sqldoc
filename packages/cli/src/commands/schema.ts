@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ResolvedConfig } from '@sqldoc/core'
-import { loadConfig, resolveProject } from '@sqldoc/core'
+import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasResult } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
@@ -68,43 +68,46 @@ export async function schemaInspectCommand(
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
-  const config = resolveProject(rawConfig, options.project)
-  if (options.devUrl) config.devUrl = options.devUrl
+  const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
 
-  // Resolve source: explicit arg > config.schema > error
-  const resolvedSource = source ?? config.schema
-  if (!resolvedSource) {
-    throw new CliError('No source provided. Specify a path argument or set "schema" in sqldoc.config.ts')
-  }
-  const dialect = config.dialect
-  const format = (options.format ?? 'sql') as Format
+  for (const config of projects) {
+    if (options.devUrl) config.devUrl = options.devUrl
 
-  try {
-    const resolved = await resolveSource(resolvedSource, config, configRoot)
-
-    if (resolved.type === 'database') {
-      // Live database — inspect directly, no compilation needed
-      const runner = await createRunner({ dialect, devUrl: resolved.value })
-      try {
-        const result = await runner.inspect([], {
-          schema: dialect === 'postgres' ? 'public' : undefined,
-        })
-        if (result.error) {
-          throw new CliError(`Inspect error: ${result.error}`)
-        }
-        outputInspect(result, format)
-      } finally {
-        await runner.close()
-      }
-    } else if (resolved.atlasRealm) {
-      // Pipeline already inspected — reuse the realm
-      outputInspect({ schema: resolved.atlasRealm } as AtlasResult, format)
-    } else {
-      throw new CliError('No schema available')
+    // Resolve source: explicit arg > config.schema > error
+    const resolvedSource = source ?? config.schema
+    if (!resolvedSource) {
+      throw new CliError('No source provided. Specify a path argument or set "schema" in sqldoc.config.ts')
     }
-  } catch (err: any) {
-    if (err instanceof CliError) throw err
-    throw new CliError(friendlyError(err, config))
+    const dialect = config.dialect
+    const format = (options.format ?? 'sql') as Format
+
+    try {
+      const resolved = await resolveSource(resolvedSource, config, configRoot)
+
+      if (resolved.type === 'database') {
+        // Live database — inspect directly, no compilation needed
+        const runner = await createRunner({ dialect, devUrl: resolved.value })
+        try {
+          const result = await runner.inspect([], {
+            schema: dialect === 'postgres' ? 'public' : undefined,
+          })
+          if (result.error) {
+            throw new CliError(`Inspect error: ${result.error}`)
+          }
+          outputInspect(result, format)
+        } finally {
+          await runner.close()
+        }
+      } else if (resolved.atlasRealm) {
+        // Pipeline already inspected — reuse the realm
+        outputInspect({ schema: resolved.atlasRealm } as AtlasResult, format)
+      } else {
+        throw new CliError('No schema available')
+      }
+    } catch (err: any) {
+      if (err instanceof CliError) throw err
+      throw new CliError(friendlyError(err, config))
+    }
   }
 }
 
@@ -133,68 +136,71 @@ export async function schemaDiffCommand(options: {
 }): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
-  const config = resolveProject(rawConfig, options.project)
-  if (options.devUrl) config.devUrl = options.devUrl
-  const dialect = config.dialect
-  const format = (options.format ?? 'sql') as Format
+  const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
 
-  // Default --to to config.schema, --from to config.migrations.dir when both omitted
-  let toSource = options.to
-  let fromSource = options.from
+  for (const config of projects) {
+    if (options.devUrl) config.devUrl = options.devUrl
+    const dialect = config.dialect
+    const format = (options.format ?? 'sql') as Format
 
-  if (!toSource && !fromSource && config.schema && config.migrations?.dir) {
-    // Smart default: diff migrations -> schema
-    fromSource = path.resolve(configRoot, config.migrations.dir)
-    toSource = config.schema
-  } else {
-    toSource = toSource ?? config.schema
-  }
+    // Default --to to config.schema, --from to config.migrations.dir when both omitted
+    let toSource = options.to
+    let fromSource = options.from
 
-  if (!toSource) {
-    throw new CliError('--to is required. Usage: sqldoc schema diff --to <source> [--from <source>]')
-  }
-
-  try {
-    const toResolved = await resolveSource(toSource, config, configRoot)
-    const fromResolved = fromSource
-      ? await resolveSource(fromSource, config, configRoot)
-      : { type: 'file' as const, value: '' } // empty = no existing schema
-
-    if (fromResolved.type === 'database' || toResolved.type === 'database') {
-      await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false)
-      return
+    if (!toSource && !fromSource && config.schema && config.migrations?.dir) {
+      // Smart default: diff migrations -> schema
+      fromSource = path.resolve(configRoot, config.migrations.dir)
+      toSource = config.schema
+    } else {
+      toSource = toSource ?? config.schema
     }
 
-    let fromSql: string[] = [fromResolved.value]
-    let toSql: string[] = [toResolved.value]
-
-    // External cancellation: if "to" has externals, add them to "from" too (D-09)
-    if (toResolved.externalSql && fromSql[0]) {
-      fromSql = [[toResolved.externalSql, fromSql[0]].join('\n')]
-    } else if (toResolved.externalSql) {
-      fromSql = [toResolved.externalSql]
-    }
-    // Vice versa if "from" has externals
-    if (fromResolved.externalSql && toSql[0]) {
-      toSql = [[fromResolved.externalSql, toSql[0]].join('\n')]
-    } else if (fromResolved.externalSql) {
-      toSql = [fromResolved.externalSql]
+    if (!toSource) {
+      throw new CliError('--to is required. Usage: sqldoc schema diff --to <source> [--from <source>]')
     }
 
-    const allSql = [...fromSql, ...toSql].filter(Boolean)
-    const { extensions } = extractExtensions(allSql)
-    const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
     try {
-      const result = await runner.diff(fromSql, toSql, {
-        schema: dialect === 'postgres' ? 'public' : undefined,
-      })
-      outputDiff(result, format, options.check ?? false)
-    } finally {
-      await runner.close()
+      const toResolved = await resolveSource(toSource, config, configRoot)
+      const fromResolved = fromSource
+        ? await resolveSource(fromSource, config, configRoot)
+        : { type: 'file' as const, value: '' } // empty = no existing schema
+
+      if (fromResolved.type === 'database' || toResolved.type === 'database') {
+        await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false)
+        return
+      }
+
+      let fromSql: string[] = [fromResolved.value]
+      let toSql: string[] = [toResolved.value]
+
+      // External cancellation: if "to" has externals, add them to "from" too (D-09)
+      if (toResolved.externalSql && fromSql[0]) {
+        fromSql = [[toResolved.externalSql, fromSql[0]].join('\n')]
+      } else if (toResolved.externalSql) {
+        fromSql = [toResolved.externalSql]
+      }
+      // Vice versa if "from" has externals
+      if (fromResolved.externalSql && toSql[0]) {
+        toSql = [[fromResolved.externalSql, toSql[0]].join('\n')]
+      } else if (fromResolved.externalSql) {
+        toSql = [fromResolved.externalSql]
+      }
+
+      const allSql = [...fromSql, ...toSql].filter(Boolean)
+      const { extensions } = extractExtensions(allSql)
+      const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
+      try {
+        const result = await runner.diff(fromSql, toSql, {
+          schema: dialect === 'postgres' ? 'public' : undefined,
+        })
+        outputDiff(result, format, options.check ?? false)
+      } finally {
+        await runner.close()
+      }
+    } catch (err: any) {
+      if (err instanceof CliError) throw err
+      throw new CliError(friendlyError(err, config))
     }
-  } catch (err: any) {
-    if (err instanceof CliError) throw err
-    throw new CliError(friendlyError(err, config))
   }
 }
 
