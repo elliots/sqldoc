@@ -208,14 +208,27 @@ const plugin: NamespacePlugin = {
       default: 'warn',
       check(ctx) {
         const diagnostics = []
+
+        // Use Atlas realm for PK detection (accurate, no regex)
+        const realm = ctx.atlasRealm as AtlasRealm | undefined
+        if (!realm) return diagnostics
+
+        const tablesWithPk = new Set<string>()
+        for (const schema of realm.schemas) {
+          for (const table of schema.tables ?? []) {
+            if (table.primary_key) {
+              tablesWithPk.add(table.name.toLowerCase())
+            }
+          }
+        }
+
         for (const output of ctx.outputs) {
           for (const obj of output.fileTags) {
             if (obj.target !== 'table') continue
             // Skip objects that look like column-level tags (table.column)
             if (obj.objectName.includes('.')) continue
 
-            const hasPk = checkTableHasPk(output, obj.objectName)
-            if (!hasPk) {
+            if (!tablesWithPk.has(obj.objectName.toLowerCase())) {
               diagnostics.push({
                 objectName: obj.objectName,
                 sourceFile: output.sourceFile,
@@ -230,17 +243,14 @@ const plugin: NamespacePlugin = {
   ],
 }
 
-/** Check if a table has a primary key by inspecting the source SQL */
-function checkTableHasPk(output: import('@sqldoc/core').CompilerOutput, tableName: string): boolean {
-  const sql = output.mergedSql.toLowerCase()
-  // Look for PRIMARY KEY in the CREATE TABLE statement for this table
-  const tableRegex = new RegExp(
-    `create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?(?:"${tableName.toLowerCase()}"|${tableName.toLowerCase()})\\s*\\(([^;]*?)\\)`,
-    'is',
-  )
-  const match = sql.match(tableRegex)
-  if (!match) return true // If we can't find the table, don't flag it
-  return match[1].includes('primary key')
+/** Atlas realm type (mirrors @sqldoc/db without importing) */
+interface AtlasRealm {
+  schemas: Array<{
+    tables?: Array<{
+      name: string
+      primary_key?: { parts: Array<{ column: string }> }
+    }>
+  }>
 }
 
 export default plugin

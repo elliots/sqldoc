@@ -29,6 +29,7 @@ export function lint(
   outputs: CompilerOutput[],
   plugins: Map<string, NamespacePlugin>,
   config: ResolvedConfig,
+  atlasRealm?: unknown,
 ): LintResult[] {
   const results: LintResult[] = []
   const lintConfig = config.lint ?? {}
@@ -41,7 +42,7 @@ export function lint(
   const ignores = collectIgnores(outputs)
 
   // 3. Build lint context
-  const ctx: LintContext = { outputs, plugins, config }
+  const ctx: LintContext = { outputs, plugins, config, atlasRealm }
 
   // 4. Run each rule
   for (const rule of allRules) {

@@ -278,6 +278,8 @@ export interface LintContext {
   plugins: Map<string, NamespacePlugin>
   /** Project config (resolved single project) */
   config: ResolvedConfig
+  /** Atlas realm from schema inspection (Tier 2 only, undefined in VSCode) */
+  atlasRealm?: unknown
 }
 
 /** A single lint diagnostic produced by a rule */

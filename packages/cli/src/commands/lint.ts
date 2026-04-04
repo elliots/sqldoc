@@ -42,14 +42,14 @@ async function lintProject(
     throw formatPipelineError(err, config)
   }
 
-  const { outputs, plugins, totalErrors } = result
+  const { outputs, plugins, totalErrors, atlasRealm } = result
 
   if (totalErrors > 0) {
     throw new CliError(`${totalErrors} compilation error(s) — fix before linting`)
   }
 
   // Run the lint engine
-  const results = lint(outputs, plugins, config)
+  const results = lint(outputs, plugins, config, atlasRealm)
 
   if (results.length === 0) {
     console.log(pc.green('No lint issues found'))
