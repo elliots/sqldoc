@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@sqldoc/test-utils'
+import { SqlparserTsAdapter } from '../ast/sqlparser-ts.ts'
 import { detectTarget } from '../blocks.ts'
 import { parse } from '../parser.ts'
 import type { TagDef, TagNamespace } from '../types.ts'
@@ -44,129 +45,138 @@ function makeNamespaces(...entries: TagNamespace[]): Map<string, TagNamespace> {
   return map
 }
 
-// -- Helper: parse and validate in one call --
+// -- Shared adapter --
 
-function parseAndValidate(docText: string, namespaces: Map<string, TagNamespace>) {
+let adapter: SqlparserTsAdapter
+
+// -- Helper: parse and validate in one call, using real AST --
+
+async function parseAndValidate(docText: string, namespaces: Map<string, TagNamespace>) {
+  if (!adapter) {
+    adapter = new SqlparserTsAdapter('postgres')
+    await adapter.init()
+  }
   const { tags } = parse(docText)
-  return validate(tags, namespaces, docText)
+  const stmts = adapter.parseStatements(docText)
+  return validate(tags, namespaces, docText, stmts)
 }
 
 // -- validate() tests --
 
 describe('validate', () => {
-  it('reports unknown namespace for unregistered namespace', () => {
+  it('reports unknown namespace for unregistered namespace', async () => {
     const doc = `-- @bogus.tag\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces())
+    const diags = await parseAndValidate(doc, makeNamespaces())
     expect(diags).toHaveLength(1)
     expect(diags[0].message).toContain("Unknown namespace '@bogus'")
     expect(diags[0].severity).toBe('error')
   })
 
-  it('reports unknown tag for tag not in namespace definition', () => {
+  it('reports unknown tag for tag not in namespace definition', async () => {
     const doc = `-- @anon.bogus\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(anonNamespace))
     expect(diags).toHaveLength(1)
     expect(diags[0].message).toContain("Unknown tag 'bogus' in namespace 'anon'")
     expect(diags[0].severity).toBe('error')
   })
 
-  it('reports error when standalone tag used without $self defined', () => {
+  it('reports error when standalone tag used without $self defined', async () => {
     const doc = `-- @anon\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(anonNamespace))
     expect(diags).toHaveLength(1)
     expect(diags[0].message).toContain('cannot be used as a standalone tag')
   })
 
-  it('produces no diagnostic when standalone tag has $self defined', () => {
+  it('produces no diagnostic when standalone tag has $self defined', async () => {
     const doc = `-- @searchable\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(searchableNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(searchableNamespace))
     expect(diags).toHaveLength(0)
   })
 
-  it('reports target mismatch when tag is used on wrong SQL target', () => {
+  it('reports target mismatch when tag is used on wrong SQL target', async () => {
     // mask targets=['column'] but placed above CREATE FUNCTION
     const doc = `-- @anon.mask(type: email)\nCREATE OR REPLACE FUNCTION foo() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;`
-    const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(anonNamespace))
     expect(diags.length >= 1).toBeTruthy()
     const targetDiag = diags.find((d) => d.message.includes('cannot be used on a function'))
     expect(targetDiag).not.toBe(undefined)
     expect(targetDiag!.severity).toBe('error')
   })
 
-  it('produces no diagnostics for valid usage', () => {
+  it('produces no diagnostics for valid usage', async () => {
     const doc = `-- @anon.mask(type: email)\n  email TEXT NOT NULL`
-    const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(anonNamespace))
     expect(diags).toHaveLength(0)
   })
 
-  it('reports missing required named argument', () => {
+  it('reports missing required named argument', async () => {
     // mask requires 'type' arg
     const doc = `-- @anon.mask\n  email TEXT NOT NULL`
-    const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(anonNamespace))
     expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('Missing required argument'))
     expect(argDiag).not.toBe(undefined)
   })
 
-  it('reports error when tag does not accept arguments but args provided', () => {
+  it('reports error when tag does not accept arguments but args provided', async () => {
     // searchable.$self has no args defined
     const noArgsNs: TagNamespace = {
       name: 'noargs',
       tags: { simple: { description: 'No args tag' } },
     }
     const doc = `-- @noargs.simple(foo: bar)\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(noArgsNs))
+    const diags = await parseAndValidate(doc, makeNamespaces(noArgsNs))
     expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('does not accept arguments'))
     expect(argDiag).not.toBe(undefined)
   })
 
-  it('reports error when named args given but positional expected', () => {
+  it('reports error when named args given but positional expected', async () => {
     const posNs: TagNamespace = {
       name: 'pos',
       tags: { order: { description: 'Order', args: [{ type: 'string' }] } },
     }
     const doc = `-- @pos.order(dir: asc)\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(posNs))
+    const diags = await parseAndValidate(doc, makeNamespaces(posNs))
     expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('expects positional arguments, not named'))
     expect(argDiag).not.toBe(undefined)
   })
 
-  it('reports too many positional arguments', () => {
+  it('reports too many positional arguments', async () => {
     const posNs: TagNamespace = {
       name: 'pos',
       tags: { order: { description: 'Order', args: [{ type: 'string' }] } },
     }
     const doc = `-- @pos.order(asc, desc, extra)\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(posNs))
+    const diags = await parseAndValidate(doc, makeNamespaces(posNs))
     expect(diags.length >= 1).toBeTruthy()
     const argDiag = diags.find((d) => d.message.includes('Too many arguments'))
     expect(argDiag).not.toBe(undefined)
   })
 
-  it('reports wrong arg type when tag expects number but gets string', () => {
+  it('reports wrong arg type when tag expects number but gets string', async () => {
     const numNs: TagNamespace = {
       name: 'num',
       tags: { limit: { description: 'Limit', args: { count: { type: 'number', required: true } } } },
     }
     const doc = `-- @num.limit(count: abc)\nCREATE TABLE t (id INT);`
-    const diags = parseAndValidate(doc, makeNamespaces(numNs))
+    const diags = await parseAndValidate(doc, makeNamespaces(numNs))
     expect(diags.length >= 1).toBeTruthy()
     const typeDiag = diags.find((d) => d.message.includes('expected number'))
     expect(typeDiag).not.toBe(undefined)
   })
 
-  it('sets correct line numbers on diagnostics', () => {
+  it('sets correct line numbers on diagnostics', async () => {
     const doc = `CREATE TABLE t (\n  -- @bogus.tag\n  id INT\n);`
-    const diags = parseAndValidate(doc, makeNamespaces())
+    const diags = await parseAndValidate(doc, makeNamespaces())
     expect(diags).toHaveLength(1)
     expect(diags[0].line).toBe(1) // zero-indexed, second line
   })
 
-  it('validates multiple tags in same block independently', () => {
+  it('validates multiple tags in same block independently', async () => {
     const doc = `-- @anon.mask(type: email)\n-- @anon.bogus\n  email TEXT NOT NULL`
-    const diags = parseAndValidate(doc, makeNamespaces(anonNamespace))
+    const diags = await parseAndValidate(doc, makeNamespaces(anonNamespace))
     // mask is valid on column, but bogus is unknown
     expect(diags.length >= 1).toBeTruthy()
     const unknownDiag = diags.find((d) => d.message.includes("Unknown tag 'bogus'"))

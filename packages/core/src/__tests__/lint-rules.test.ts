@@ -150,10 +150,6 @@ describe('built-in lint rules', () => {
       plugins.set('validate', validatePlugin)
 
       const output = makeOutput({
-        mergedSql: `CREATE TABLE users (
-  name TEXT NOT NULL,
-  email TEXT
-);`,
         fileTags: [
           {
             objectName: 'users',
@@ -163,7 +159,12 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      // Atlas realm with no primary_key on users
+      const atlasRealm = {
+        schemas: [{ name: 'public', tables: [{ name: 'users', columns: [] }] }],
+      }
+
+      const results = lint([output], plugins, { dialect: 'postgres' }, atlasRealm)
       expect(results).toHaveLength(1)
       expect(results[0].ruleName).toBe('validate.require-pk')
       expect(results[0].message).toContain('users')
@@ -174,10 +175,6 @@ describe('built-in lint rules', () => {
       plugins.set('validate', validatePlugin)
 
       const output = makeOutput({
-        mergedSql: `CREATE TABLE users (
-  id BIGSERIAL PRIMARY KEY,
-  name TEXT NOT NULL
-);`,
         fileTags: [
           {
             objectName: 'users',
@@ -187,7 +184,17 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      // Atlas realm with primary_key on users
+      const atlasRealm = {
+        schemas: [
+          {
+            name: 'public',
+            tables: [{ name: 'users', columns: [], primary_key: { parts: [{ column: 'id' }] } }],
+          },
+        ],
+      }
+
+      const results = lint([output], plugins, { dialect: 'postgres' }, atlasRealm)
       expect(results).toHaveLength(0)
     })
   })
