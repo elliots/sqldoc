@@ -5,8 +5,10 @@ import pc from 'picocolors'
 import { detectPM } from '../detect-pm.ts'
 import { generateConfigTypes } from '../generate-config-types.ts'
 
+const isBun = typeof (globalThis as any).Bun !== 'undefined'
+
 function isCompiledBinary(): boolean {
-  return typeof process.versions?.bun === 'string' && !process.execPath.match(/\/(bun|node)(\.exe)?$/)
+  return isBun && !process.execPath.match(/\/(bun|node)(\.exe)?$/)
 }
 
 function findLocalPackages(repoPath: string): Array<{ name: string; path: string }> {
@@ -167,7 +169,12 @@ export async function initCommand(targetDir: string = process.cwd(), devPath?: s
       `${JSON.stringify({ name: 'sqldoc-local', private: true, workspaces: [] }, null, 2)}\n`,
     )
 
-    if (!installPackages(sqldocDir, targetDir, ['@sqldoc/cli', '@sqldoc/ns-docs'])) {
+    const packages = ['@sqldoc/cli', '@sqldoc/ns-docs']
+    // On Node, install database drivers (Bun has built-in drivers via bun:sql)
+    if (!isBun) {
+      packages.push('pg', 'mysql2')
+    }
+    if (!installPackages(sqldocDir, targetDir, packages)) {
       console.error(pc.red('Failed to install packages'))
       process.exit(1)
     }

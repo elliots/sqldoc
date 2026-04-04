@@ -24,7 +24,7 @@ import {
   SIGNAL_DONE,
   SIGNAL_REQUEST,
 } from './bridge.ts'
-import type { DatabaseAdapter } from './db/types.ts'
+import { type DatabaseAdapter, isBun } from './db/types.ts'
 import type { AtlasCommand, AtlasRename, AtlasResult } from './types.ts'
 
 export interface AtlasRunnerOptions {
@@ -68,8 +68,6 @@ function resolveWorkerPath(): { workerPath: string; execArgv: string[] } {
     path.resolve(thisDir, '../dist/worker.js'), // src/../dist/worker.js (legacy)
     path.resolve(thisDir, 'worker.ts'), // src/worker.ts (raw .ts dev)
   ]
-
-  const isBun = typeof (globalThis as any).Bun !== 'undefined'
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
