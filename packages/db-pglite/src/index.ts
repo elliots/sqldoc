@@ -3,13 +3,15 @@ import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, Exec
 import { normalizeValue } from '@sqldoc/db'
 
 async function loadExtension(name: string): Promise<any | null> {
+  // PGlite module names use underscores (e.g. uuid_ossp) while SQL uses hyphens (uuid-ossp)
+  const moduleName = name.replace(/-/g, '_')
   try {
-    const mod = await import(`@electric-sql/pglite/contrib/${name}`)
-    return mod.default ?? mod[name] ?? mod
+    const mod = await import(`@electric-sql/pglite/contrib/${moduleName}`)
+    return mod.default ?? mod[moduleName] ?? mod
   } catch {}
   try {
-    const mod = await import(`@electric-sql/pglite/${name}`)
-    return mod.default ?? mod[name] ?? mod
+    const mod = await import(`@electric-sql/pglite/${moduleName}`)
+    return mod.default ?? mod[moduleName] ?? mod
   } catch {}
   return null
 }
@@ -25,7 +27,7 @@ const plugin: DatabaseAdapterPlugin = {
     const extModules: Record<string, any> = {}
     for (const ext of context.extensions) {
       const mod = await loadExtension(ext)
-      if (mod) extModules[ext] = mod
+      if (mod) extModules[ext.replace(/-/g, '_')] = mod
     }
 
     const db = await PGlite.create({
