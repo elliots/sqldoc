@@ -130,7 +130,14 @@ async function createNeonDatabase(): Promise<CachedDb> {
   const dataRes = await fetch(`${NEON_API}/${dbId}`, {
     headers: { 'Content-Type': 'application/json' },
   })
-  const { connection_string } = (await dataRes.json()) as { connection_string: string }
+  if (!dataRes.ok) {
+    throw new Error(`Failed to fetch Neon database info: ${dataRes.status} ${dataRes.statusText}`)
+  }
+  const payload = (await dataRes.json()) as { connection_string?: string }
+  if (!payload.connection_string) {
+    throw new Error('Neon API response missing connection_string')
+  }
+  const { connection_string } = payload
 
   const claimUrl = `${NEON_CLAIM}/${dbId}`
   log(`database created, claim: ${claimUrl}`)
@@ -211,7 +218,7 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
         "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')",
       )
       for (const row of schemas.rows) {
-        const name = row[0] as string
+        const name = (row[0] as string).replace(/"/g, '""')
         await adapter.exec(`DROP SCHEMA "${name}" CASCADE`)
       }
       await adapter.exec('CREATE SCHEMA public')

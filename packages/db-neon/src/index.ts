@@ -35,8 +35,8 @@ const plugin: DatabaseAdapterPlugin = {
           rows: result.rows.map((row: Record<string, unknown>) => columns.map((c) => normalizeValue(row[c]))),
         }
       },
-      async exec(queryText: string): Promise<ExecResult> {
-        const result = await sql(queryText)
+      async exec(queryText: string, args?: unknown[]): Promise<ExecResult> {
+        const result = args && args.length > 0 ? await sql(queryText, args) : await sql(queryText)
         return { rowsAffected: result.rowCount ?? 0 }
       },
       async close(): Promise<void> {

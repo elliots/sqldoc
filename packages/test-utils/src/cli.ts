@@ -17,8 +17,9 @@ export function runCli(
   cwd: string,
   opts: { expectFail?: boolean; env?: Record<string, string> } = {},
 ): { stdout: string; stderr: string; exitCode: number } {
+  const { SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE: _, ...parentEnv } = process.env
   const env = {
-    ...process.env,
+    ...parentEnv,
     SQLDOC_PROJECT_ROOT: cwd,
     NODE_PATH: path.join(cwd, '.sqldoc', 'node_modules'),
     NODE_NO_WARNINGS: '1',

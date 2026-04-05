@@ -42,9 +42,9 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
   const db = new DatabaseSync(filename)
 
   return {
-    async query(sql: string, args?: SQLInputValue[]): Promise<QueryResult> {
+    async query(sql: string, args?: unknown[]): Promise<QueryResult> {
       const stmt = db.prepare(sql)
-      const rows = args ? stmt.all(...args) : stmt.all()
+      const rows = args ? stmt.all(...(args as SQLInputValue[])) : stmt.all()
       const columns =
         rows.length > 0 ? Object.keys(rows[0]) : ((stmt as any).columns?.()?.map((c: any) => c.name) ?? [])
       return {
@@ -52,9 +52,9 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
         rows: rows.map((row: Record<string, unknown>) => columns.map((c: string) => normalizeValue(row[c]))),
       }
     },
-    async exec(sql: string, args?: SQLInputValue[]): Promise<ExecResult> {
+    async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
       if (args && args.length > 0) {
-        const result = db.prepare(sql).run(...args)
+        const result = db.prepare(sql).run(...(args as SQLInputValue[]))
         return { rowsAffected: Number(result.changes) }
       }
       db.exec(sql)

@@ -274,7 +274,11 @@ function compileAtlas(
   const viewCount = realm.schemas.reduce((n, s) => n + (s.views?.length ?? 0), 0)
   debug('compile', `tier2: ${realm.schemas.length} schema(s), ${tableCount} table(s), ${viewCount} view(s)`)
 
+  // Parse source to find which namespaces THIS file uses (not other files in the realm)
+  const fileNamespaces = new Set(parse(source).tags.map((t) => t.namespace))
+
   const skippedPlugins = new Set<string>()
+  const missingNamespaces = new Set<string>()
   for (const schema of realm.schemas) {
     // Process tables
     if (schema.tables) {
@@ -294,6 +298,8 @@ function compileAtlas(
           errors,
           allTagOccurrences,
           skippedPlugins,
+          missingNamespaces,
+          fileNamespaces,
         )
       }
     }
@@ -316,6 +322,8 @@ function compileAtlas(
           errors,
           allTagOccurrences,
           skippedPlugins,
+          missingNamespaces,
+          fileNamespaces,
         )
       }
     }
@@ -352,6 +360,8 @@ function processAtlasObject(
     args: Record<string, unknown> | unknown[]
   }>,
   skippedPlugins: Set<string>,
+  missingNamespaces: Set<string>,
+  fileNamespaces: Set<string>,
 ): void {
   // Extract tags from object-level attrs
   const objectTags = findAtlasTags(obj.attrs)
@@ -377,7 +387,16 @@ function processAtlasObject(
   for (const atag of objectTags) {
     const { namespace, tag: tagName } = splitTagName(atag.Name)
     const plugin = plugins.get(namespace)
-    if (!plugin) continue
+    if (!plugin) {
+      if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
+        missingNamespaces.add(namespace)
+        errors.push({
+          namespace,
+          message: `No plugin loaded for namespace '${namespace}'. Is '@sqldoc/ns-${namespace}' imported?`,
+        })
+      }
+      continue
+    }
 
     // Check plugin compatibility with target dialect
     const dialect = config.dialect
@@ -447,7 +466,16 @@ function processAtlasObject(
       for (const atag of colTags) {
         const { namespace, tag: tagName } = splitTagName(atag.Name)
         const plugin = plugins.get(namespace)
-        if (!plugin) continue
+        if (!plugin) {
+          if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
+            missingNamespaces.add(namespace)
+            errors.push({
+              namespace,
+              message: `No plugin loaded for namespace '${namespace}'. Is '@sqldoc/ns-${namespace}' imported?`,
+            })
+          }
+          continue
+        }
 
         // Check plugin compatibility with target dialect
         const dialect = config.dialect

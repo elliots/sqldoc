@@ -62,7 +62,7 @@ const plugin: NamespacePlugin = {
           if (process.env.SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE === 'true') {
             resolveDir = ctx.projectRoot
           } else {
-            const sqldocDir = findSqldocDir()
+            const sqldocDir = findSqldocDir(ctx.projectRoot)
             resolveDir = sqldocDir ? path.join(sqldocDir, 'node_modules') : null
           }
           if (!resolveDir) {

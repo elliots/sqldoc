@@ -106,7 +106,7 @@ export default {
 ```
 
 On each run, sqldoc:
-1. Loads or creates the database (cached for 24h)
+1. Loads or creates the database (cached for 72 hours)
 2. Acquires an advisory lock (blocks if another sqldoc process is using it)
 3. Wipes all objects (clean slate)
 4. Compiles your schema

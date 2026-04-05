@@ -42,7 +42,11 @@ const plugin: DatabaseAdapterPlugin = {
           rows: (result.rows as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
         }
       },
-      async exec(sql: string): Promise<ExecResult> {
+      async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
+        if (args && args.length > 0) {
+          const result = await db.query(sql, args)
+          return { rowsAffected: result.affectedRows ?? 0 }
+        }
         const result = await db.exec(sql)
         const last = result[result.length - 1]
         return { rowsAffected: last?.affectedRows ?? 0 }
