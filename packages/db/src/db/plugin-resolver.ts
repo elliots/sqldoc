@@ -180,13 +180,19 @@ export async function resolveAdapterPlugin(options: ResolvePluginOptions): Promi
 
 // ── Helpers ────────────────────────────────────────────────────────
 
+function isModuleNotFound(err: any): boolean {
+  return err?.code === 'MODULE_NOT_FOUND' || err?.code === 'ERR_MODULE_NOT_FOUND'
+}
+
 async function tryImportPlugin(packageName: string, sqldocDir?: string): Promise<any | null> {
   if (sqldocDir) {
     try {
       const req = createRequire(path.join(sqldocDir, 'node_modules', '.placeholder'))
       const resolved = req.resolve(packageName)
       return await import(resolved)
-    } catch {}
+    } catch (err: any) {
+      if (!isModuleNotFound(err)) throw err
+    }
   }
 
   for (const base of [import.meta.url, path.join(process.cwd(), '.placeholder')]) {
@@ -194,7 +200,9 @@ async function tryImportPlugin(packageName: string, sqldocDir?: string): Promise
       const req = createRequire(base)
       const resolved = req.resolve(packageName)
       return await import(resolved)
-    } catch {}
+    } catch (err: any) {
+      if (!isModuleNotFound(err)) throw err
+    }
   }
   return null
 }
