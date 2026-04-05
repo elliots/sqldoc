@@ -80,15 +80,19 @@ function saveCache(data: CachedDb): void {
 // ── Neon API ───────────────────────────────────────────────────────
 
 function toPooler(connString: string): string {
-  if (connString.includes('pooler')) return connString
-  const [start, ...end] = connString.split('.')
-  return `${start}-pooler.${end.join('.')}`
+  const url = new URL(connString)
+  if (url.hostname.includes('pooler')) return connString
+  const [first, ...rest] = url.hostname.split('.')
+  url.hostname = [`${first}-pooler`, ...rest].join('.')
+  return url.href
 }
 
 function toDirect(connString: string): string {
-  if (!connString.includes('pooler')) return connString
-  const [first, ...rest] = connString.split('.')
-  return [first.replace('-pooler', ''), ...rest].join('.')
+  const url = new URL(connString)
+  if (!url.hostname.includes('pooler')) return connString
+  const [first, ...rest] = url.hostname.split('.')
+  url.hostname = [first.replace('-pooler', ''), ...rest].join('.')
+  return url.href
 }
 
 async function createNeonDatabase(): Promise<CachedDb> {
