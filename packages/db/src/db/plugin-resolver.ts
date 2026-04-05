@@ -104,6 +104,31 @@ export interface ResolvePluginOptions {
  * Resolve and load a database adapter plugin for the given devUrl.
  * Checks built-in registry first, then external packages.
  */
+function validatePlugin(
+  plugin: DatabaseAdapterPlugin,
+  label: string,
+  scheme: string,
+  context: AdapterPluginContext,
+): void {
+  if (plugin.apiVersion !== 1) {
+    throw new Error(`${label} has unsupported apiVersion ${plugin.apiVersion} (expected 1).`)
+  }
+  if (!plugin.schemes.includes(scheme)) {
+    throw new Error(`${label} does not handle scheme '${scheme}'. It handles: ${plugin.schemes.join(', ')}`)
+  }
+  if (!plugin.dialects.includes(context.dialect)) {
+    throw new Error(
+      `${label} does not support dialect '${context.dialect}'. It supports: ${plugin.dialects.join(', ')}`,
+    )
+  }
+  if (plugin.runtime !== 'any') {
+    const currentRuntime = isBun ? 'bun' : 'node'
+    if (plugin.runtime !== currentRuntime) {
+      throw new Error(`${label} requires '${plugin.runtime}' but running on '${currentRuntime}'.`)
+    }
+  }
+}
+
 export async function resolveAdapterPlugin(options: ResolvePluginOptions): Promise<DatabaseAdapter> {
   const { devUrl, context, sqldocDir, onMissingPlugin } = options
   const scheme = extractScheme(devUrl)
@@ -112,6 +137,7 @@ export async function resolveAdapterPlugin(options: ResolvePluginOptions): Promi
   const builtin = builtinPlugins.get(scheme)
   if (builtin) {
     log(`using built-in '${builtin.name}' for scheme '${scheme}'`)
+    validatePlugin(builtin, `built-in '${builtin.name}'`, scheme, context)
     return builtin.createAdapter(devUrl, context)
   }
 
@@ -147,25 +173,7 @@ export async function resolveAdapterPlugin(options: ResolvePluginOptions): Promi
   // Unwrap default export
   const plugin: DatabaseAdapterPlugin = mod.default ?? mod
   log(`loaded ${plugin.name} (api=${plugin.apiVersion}, runtime=${plugin.runtime})`)
-
-  // Validate
-  if (plugin.apiVersion !== 1) {
-    throw new Error(`${packageName} has unsupported apiVersion ${plugin.apiVersion} (expected 1).`)
-  }
-  if (!plugin.schemes.includes(scheme)) {
-    throw new Error(`${packageName} does not handle scheme '${scheme}'. It handles: ${plugin.schemes.join(', ')}`)
-  }
-  if (!plugin.dialects.includes(context.dialect)) {
-    throw new Error(
-      `${packageName} does not support dialect '${context.dialect}'. It supports: ${plugin.dialects.join(', ')}`,
-    )
-  }
-  if (plugin.runtime !== 'any') {
-    const currentRuntime = isBun ? 'bun' : 'node'
-    if (plugin.runtime !== currentRuntime) {
-      throw new Error(`${packageName} requires '${plugin.runtime}' but running on '${currentRuntime}'.`)
-    }
-  }
+  validatePlugin(plugin, packageName, scheme, context)
 
   return plugin.createAdapter(devUrl, context)
 }
