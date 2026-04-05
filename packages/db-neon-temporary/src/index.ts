@@ -151,7 +151,9 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
   async createAdapter(_devUrl: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
     const { directUrl } = await getOrCreateDatabase(plugin.forceReuse)
 
-    log(`connecting to ${directUrl.replace(/:[^@]+@/, ':***@')}`)
+    const maskedUrl = new URL(directUrl)
+    maskedUrl.password = '***'
+    log(`connecting to ${maskedUrl.href}`)
     const client = new Client(directUrl)
     await client.connect()
 

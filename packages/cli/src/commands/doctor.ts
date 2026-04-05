@@ -25,7 +25,7 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: '.sqldoc/ directory exists',
     ok: sqldocDir !== null,
-    detail: sqldocDir ? sqldocDir : 'Not found. Run: sqldoc init',
+    detail: sqldocDir || 'Not found. Run: sqldoc init',
   })
 
   // 2. package.json has @sqldoc/cli dependency
@@ -45,13 +45,13 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: 'package.json has @sqldoc/cli dependency',
     ok: hasCliDep,
-    detail: !sqldocDir
-      ? 'No .sqldoc/ directory'
-      : !hasPkgJson
-        ? 'No package.json in .sqldoc/'
-        : hasCliDep
+    detail: sqldocDir
+      ? hasPkgJson
+        ? hasCliDep
           ? undefined
-          : '@sqldoc/cli not listed in dependencies',
+          : '@sqldoc/cli not listed in dependencies'
+        : 'No package.json in .sqldoc/'
+      : 'No .sqldoc/ directory',
   })
 
   // 3. node_modules exists and has @sqldoc/cli
@@ -67,13 +67,13 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: 'node_modules/ has @sqldoc/cli installed',
     ok: hasCliInstalled,
-    detail: !sqldocDir
-      ? 'No .sqldoc/ directory'
-      : !hasNodeModules
-        ? 'node_modules/ missing. Run install in .sqldoc/'
-        : hasCliInstalled
+    detail: sqldocDir
+      ? hasNodeModules
+        ? hasCliInstalled
           ? undefined
-          : '@sqldoc/cli not found in node_modules/',
+          : '@sqldoc/cli not found in node_modules/'
+        : 'node_modules/ missing. Run install in .sqldoc/'
+      : 'No .sqldoc/ directory',
   })
 
   // 4. atlas.wasm is findable
@@ -110,24 +110,6 @@ export async function doctorCommand(): Promise<void> {
     ok: wasmFound,
     detail: wasmFound ? wasmPath : 'atlas.wasm not found. Set ATLAS_WASM_PATH or check installation.',
   })
-
-  // // 5. pglite loads successfully
-  // let pgliteOk = false
-  // let pgliteDetail: string | undefined
-  // try {
-  //   const pglitePlugin = (await import('@sqldoc/db-pglite')).default
-  //   const adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-  //   const result = await adapter.query('SELECT 1 AS ok')
-  //   pgliteOk = result.rows.length > 0
-  //   await adapter.close()
-  // } catch (err: any) {
-  //   pgliteDetail = err?.message ?? String(err)
-  // }
-  // results.push({
-  //   label: 'pglite loads successfully',
-  //   ok: pgliteOk,
-  //   detail: pgliteOk ? undefined : pgliteDetail,
-  // })
 
   // 6. Config file exists and is parseable
   let configOk = false
