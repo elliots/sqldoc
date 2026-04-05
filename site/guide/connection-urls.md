@@ -41,7 +41,7 @@ These are separate packages that sqldoc installs automatically on first use. The
 | `postgres://user:pass@host:5432/db` | `@sqldoc/db-postgres` | postgres | Connect to an external PostgreSQL database. |
 | `mysql://user:pass@host:3306/db` | `@sqldoc/db-mysql` | mysql | Connect to an external MySQL database. |
 | `neon://user:pass@ep-xxx.region.aws.neon.tech/db` | `@sqldoc/db-neon` | postgres | Connect to a Neon serverless PostgreSQL database. Uses `@neondatabase/serverless` for HTTP/WebSocket transport. |
-| `neon-temporary` | `@sqldoc/db-neon-temporary` | postgres | Creates a temporary Neon database automatically. No URL or API key needed. Reuses the same database for 24 hours. Safe for parallel development (advisory lock). |
+| `neon-temporary` | `@sqldoc/db-neon-temporary` | postgres | Creates a temporary Neon database automatically. No URL or API key needed. Reuses the same database for 72 hours. Safe for parallel development (advisory lock). |
 
 ::: tip Bun built-in drivers
 When running on Bun, `postgres://` and `mysql://` URLs use Bun's built-in SQL driver instead of the npm packages. No adapter package is installed.
@@ -96,7 +96,7 @@ sqldoc schema diff --from neon://user:pass@ep-xxx.us-east-2.aws.neon.tech/prod -
 
 ### Ephemeral dev database (`neon-temporary`)
 
-Creates a temporary Neon PostgreSQL database automatically -- no URL, API key, or account needed. The database is created via [neon-new](https://github.com/neondatabase/neon-pkgs/tree/main/packages/neon-new) on first use and reused for 24 hours (cached in `.sqldoc/neon-temporary.json`).
+Creates a temporary Neon PostgreSQL database automatically -- no URL, API key, or account needed. The database is created via [neon-new](https://github.com/neondatabase/neon-pkgs/tree/main/packages/neon-new) on first use and reused for 72 hours (cached in `.sqldoc/neon-temporary.json`).
 
 ```typescript
 export default {

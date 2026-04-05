@@ -64,14 +64,14 @@ export async function loadImports(
         // Relative path — resolve from the SQL file's directory
         resolved = path.resolve(sqlDir, importPath)
         resolveDir = sqlDir
+      } else if (process.env.SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE === 'true') {
+        // Monorepo/development — resolve from the SQL file's directory (workspace packages)
+        resolved = importPath
+        resolveDir = sqlDir
       } else if (sqldocDir) {
         // Package name — resolve from .sqldoc/node_modules/
         resolved = importPath
         resolveDir = path.join(sqldocDir, 'node_modules')
-      } else if (process.env.SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE === 'true') {
-        // Explicit fallback — resolve from the SQL file's directory (monorepo/development)
-        resolved = importPath
-        resolveDir = sqlDir
       } else {
         throw new Error(
           `Cannot resolve '${importPath}': no .sqldoc/node_modules/ found. Run 'sqldoc init' first, or set SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true for monorepo development.`,

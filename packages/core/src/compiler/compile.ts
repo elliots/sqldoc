@@ -163,13 +163,23 @@ function compileTier1(
 
   // 4. Process each block
   const skippedPlugins = new Set<string>()
+  const missingNamespaces = new Set<string>()
   for (const block of blocks) {
     const { objectName, target, columnName, columnType, astNode } = block.ast
 
     // Group tags by namespace within this block
     for (const tag of block.tags) {
       const plugin = plugins.get(tag.namespace)
-      if (!plugin) continue
+      if (!plugin) {
+        if (!missingNamespaces.has(tag.namespace)) {
+          missingNamespaces.add(tag.namespace)
+          errors.push({
+            namespace: tag.namespace,
+            message: `No plugin loaded for namespace '${tag.namespace}'. Is '@sqldoc/ns-${tag.namespace}' imported?`,
+          })
+        }
+        continue
+      }
 
       // Check plugin compatibility with target dialect
       const dialect = config.dialect
