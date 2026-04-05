@@ -10,6 +10,7 @@
 import * as fs from 'node:fs'
 import { createRequire } from 'node:module'
 import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin } from './types.ts'
 import { createBunSqlAdapter, isBun } from './types.ts'
 
@@ -198,7 +199,7 @@ function getOwnVersion(): string {
     return pkg.version
   } catch {
     try {
-      const pkgPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../package.json')
+      const pkgPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json')
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
       return pkg.version
     } catch {
