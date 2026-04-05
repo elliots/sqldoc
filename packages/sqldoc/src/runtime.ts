@@ -5,9 +5,11 @@
 
 import { execSync } from 'node:child_process'
 
+declare const COMPILED_SQLDOC: boolean | undefined
+
 /** Whether we're running as a Bun-compiled binary */
 export function isCompiledBinary(): boolean {
-  return process.execPath.includes('sqldoc') && typeof (globalThis as any).Bun !== 'undefined'
+  return typeof COMPILED_SQLDOC !== 'undefined' && COMPILED_SQLDOC === true
 }
 
 /**

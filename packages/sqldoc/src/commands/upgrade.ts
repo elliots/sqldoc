@@ -2,10 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { dirname } from 'node:path'
 import pc from 'picocolors'
 import { detectPM } from '../detect-pm.ts'
-
-function isCompiledBinary(): boolean {
-  return typeof process.versions?.bun === 'string' && !process.execPath.match(/\/(bun|node)(\.exe)?$/)
-}
+import { isCompiledBinary } from '../runtime.ts'
 
 /**
  * Upgrade all packages in .sqldoc/node_modules.

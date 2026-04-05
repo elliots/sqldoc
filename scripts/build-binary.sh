@@ -16,7 +16,7 @@ TARGET="${1:-}"
 ENTRY="packages/sqldoc/src/index.ts"
 OUT="sqldoc"
 
-CMD=(bun build "$ENTRY" --compile --minify)
+CMD=(bun build "$ENTRY" --compile --minify --define COMPILED_SQLDOC=true)
 
 if [ -n "$TARGET" ]; then
   CMD+=(--target "$TARGET")

@@ -3,10 +3,7 @@ import { dirname } from 'node:path'
 import pc from 'picocolors'
 import { detectPM } from '../detect-pm.ts'
 import { generateConfigTypes } from '../generate-config-types.ts'
-
-function isCompiledBinary(): boolean {
-  return typeof process.versions?.bun === 'string' && !process.execPath.match(/\/(bun|node)(\.exe)?$/)
-}
+import { isCompiledBinary } from '../runtime.ts'
 
 /**
  * Install packages into .sqldoc/node_modules.
