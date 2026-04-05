@@ -1,16 +1,30 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ResolvedConfig } from '@sqldoc/core'
-import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
+import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasResult } from '@sqldoc/db'
 import { createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
+import { installPackages, promptInstall } from '../utils/auto-install.ts'
 import { runCompilePipeline } from '../utils/pipeline.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
 
 type Format = 'sql' | 'json' | 'pretty'
+
+function pluginInstallConfig() {
+  const sqldocDir = findSqldocDir() ?? undefined
+  return {
+    sqldocDir,
+    onMissingPlugin: async (packageNameWithVersion: string) => {
+      if (await promptInstall([packageNameWithVersion])) {
+        return sqldocDir ? installPackages(sqldocDir, [packageNameWithVersion]) : false
+      }
+      return false
+    },
+  }
+}
 
 // ── Source resolution ────────────────────────────────────────────────
 
@@ -83,7 +97,7 @@ export async function schemaInspectCommand(
 
       if (resolved.type === 'database') {
         // Live database — inspect directly, no compilation needed
-        const runner = await createRunner({ dialect, devUrl: resolved.value })
+        const runner = await createRunner({ dialect, devUrl: resolved.value, ...pluginInstallConfig() })
         try {
           const result = await runner.inspect([], {
             schema: dialect === 'postgres' ? 'public' : undefined,
@@ -185,7 +199,7 @@ export async function schemaDiffCommand(options: {
 
       const allSql = [...fromSql, ...toSql].filter(Boolean)
       const { extensions } = extractExtensions(allSql)
-      const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
+      const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions, ...pluginInstallConfig() })
       try {
         const result = await runner.diff(fromSql, toSql, {
           schema: dialect === 'postgres' ? 'public' : undefined,
@@ -214,7 +228,7 @@ async function diffWithLiveDb(
   const liveSource = from.type === 'database' ? from : to
   const sqlSource = from.type === 'database' ? to : from
 
-  const liveRunner = await createRunner({ dialect, devUrl: liveSource.value })
+  const liveRunner = await createRunner({ dialect, devUrl: liveSource.value, ...pluginInstallConfig() })
   let liveRealm
   try {
     const liveResult = await liveRunner.inspect([], { schema: schemaOpt })
@@ -228,6 +242,7 @@ async function diffWithLiveDb(
     dialect,
     devUrl: config.devUrl,
     extensions: extractExtensions([sqlSource.value]).extensions,
+    ...pluginInstallConfig(),
   })
   let sqlRealm
   try {
@@ -243,6 +258,7 @@ async function diffWithLiveDb(
     dialect,
     devUrl: config.devUrl,
     extensions: extractExtensions(diffSql).extensions,
+    ...pluginInstallConfig(),
   })
   try {
     const fromSql = from.type === 'database' ? [] : [from.value]
