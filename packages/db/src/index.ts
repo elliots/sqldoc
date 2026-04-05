@@ -119,7 +119,12 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
   // Validate postgres extensions against the live database
   if (dialect === 'postgres' && extensions.length > 0) {
     if (process.env.DEBUG) console.error(`[runner] validating extensions: ${extensions.join(', ')}`)
-    await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+    try {
+      await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+    } catch (err) {
+      await db.close()
+      throw err
+    }
     if (process.env.DEBUG) console.error('[runner] extensions validated')
   }
 
