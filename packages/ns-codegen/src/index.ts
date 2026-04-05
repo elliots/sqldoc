@@ -58,10 +58,12 @@ const plugin: NamespacePlugin = {
         if (isAbsolute) {
           mod = await import(entry.template)
         } else {
-          const sqldocDir = findSqldocDir()
-          let resolveDir = sqldocDir ? path.join(sqldocDir, 'node_modules') : null
-          if (!resolveDir && process.env.SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE === 'true') {
+          let resolveDir: string | null = null
+          if (process.env.SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE === 'true') {
             resolveDir = ctx.projectRoot
+          } else {
+            const sqldocDir = findSqldocDir()
+            resolveDir = sqldocDir ? path.join(sqldocDir, 'node_modules') : null
           }
           if (!resolveDir) {
             throw new Error(
