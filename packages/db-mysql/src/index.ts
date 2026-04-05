@@ -17,7 +17,7 @@ const plugin: DatabaseAdapterPlugin = {
         const [rows, fields] = await connection.query({ sql, values: args, rowsAsArray: true })
         return {
           columns: (fields as Array<{ name: string }>).map((f) => f.name),
-          rows: (rows as unknown[][]).map((row) => (row as unknown[]).map(normalizeValue)),
+          rows: (rows as unknown[][]).map((row) => (row as unknown[]).map((v) => normalizeValue(v))),
         }
       },
       async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
