@@ -4,6 +4,7 @@ import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, S
 import {
   compile,
   debug,
+  findSqldocDir,
   loadImports,
   parse,
   parseDirectives,
@@ -13,7 +14,6 @@ import {
 } from '@sqldoc/core'
 import type { AtlasRealm, AtlasSchema } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
-import { findSqldocDir } from '@sqldoc/core'
 import pc from 'picocolors'
 import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
 import { discoverSqlFiles } from './discover.ts'

@@ -37,7 +37,7 @@ const plugin: DatabaseAdapterPlugin = {
         const result = await db.query(sql, args, { rowMode: 'array' })
         return {
           columns: result.fields.map((f: { name: string }) => f.name),
-          rows: (result.rows as unknown[][]).map((row) => row.map(normalizeValue)),
+          rows: (result.rows as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
         }
       },
       async exec(sql: string): Promise<ExecResult> {

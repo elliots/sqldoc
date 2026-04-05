@@ -19,7 +19,7 @@ async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter
       const rows = args ? stmt.values(...args) : stmt.values()
       return {
         columns,
-        rows: (rows as unknown[][]).map((row) => row.map(normalizeValue)),
+        rows: (rows as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
       }
     },
     async exec(sql: string, args?: unknown[]): Promise<ExecResult> {

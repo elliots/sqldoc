@@ -1,8 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { createPostgresDockerAdapter, createRunner, extractExtensions, registerBuiltin } from '@sqldoc/db'
 import neonTemporaryPlugin from '@sqldoc/db-neon-temporary'
 import pglitePlugin from '@sqldoc/db-pglite'
-import { createPostgresDockerAdapter, createRunner, extractExtensions, registerBuiltin } from '@sqldoc/db'
 
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import { prettyStatements } from '../../packages/cli/src/utils/pretty-sql.ts'

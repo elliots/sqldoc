@@ -1,5 +1,5 @@
-import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import pglitePlugin from '@sqldoc/db-pglite'
+import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import type { DatabaseAdapter } from '../db/types.ts'
 
 describe('pglite adapter', () => {

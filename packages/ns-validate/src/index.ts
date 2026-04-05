@@ -1,4 +1,4 @@
-import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
+import type { LintDiagnostic, NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
 import { quoteIdentifier } from '@sqldoc/core'
 
 function isTextType(type: string | undefined): boolean {
@@ -207,7 +207,7 @@ const plugin: NamespacePlugin = {
       description: 'Tables should have a primary key',
       default: 'warn',
       check(ctx) {
-        const diagnostics = []
+        const diagnostics = [] as LintDiagnostic[]
 
         // Use Atlas realm for PK detection (accurate, no regex)
         const realm = ctx.atlasRealm as AtlasRealm | undefined

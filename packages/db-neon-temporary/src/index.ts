@@ -160,7 +160,7 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
         const result = await client.query({ text: sql, values: args, rowMode: 'array' })
         return {
           columns: result.fields.map((f) => f.name),
-          rows: (result.rows as unknown[][]).map((row) => row.map(normalizeValue)),
+          rows: (result.rows as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
         }
       },
       async exec(sql: string): Promise<ExecResult> {

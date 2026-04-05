@@ -87,7 +87,7 @@ export async function createBunSqlAdapter(connectionString: string, connectionTi
       const columns = Array.from({ length: colCount }, (_, i) => `col${i}`)
       return {
         columns,
-        rows: (valRows as unknown[][]).map((row) => row.map(normalizeValue)),
+        rows: (valRows as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
       }
     },
     async exec(sql: string, args?: unknown[]): Promise<ExecResult> {

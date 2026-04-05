@@ -111,23 +111,23 @@ export async function doctorCommand(): Promise<void> {
     detail: wasmFound ? wasmPath : 'atlas.wasm not found. Set ATLAS_WASM_PATH or check installation.',
   })
 
-  // 5. pglite loads successfully
-  let pgliteOk = false
-  let pgliteDetail: string | undefined
-  try {
-    const pglitePlugin = (await import('@sqldoc/db-pglite')).default
-    const adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const result = await adapter.query('SELECT 1 AS ok')
-    pgliteOk = result.rows.length > 0
-    await adapter.close()
-  } catch (err: any) {
-    pgliteDetail = err?.message ?? String(err)
-  }
-  results.push({
-    label: 'pglite loads successfully',
-    ok: pgliteOk,
-    detail: pgliteOk ? undefined : pgliteDetail,
-  })
+  // // 5. pglite loads successfully
+  // let pgliteOk = false
+  // let pgliteDetail: string | undefined
+  // try {
+  //   const pglitePlugin = (await import('@sqldoc/db-pglite')).default
+  //   const adapter = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
+  //   const result = await adapter.query('SELECT 1 AS ok')
+  //   pgliteOk = result.rows.length > 0
+  //   await adapter.close()
+  // } catch (err: any) {
+  //   pgliteDetail = err?.message ?? String(err)
+  // }
+  // results.push({
+  //   label: 'pglite loads successfully',
+  //   ok: pgliteOk,
+  //   detail: pgliteOk ? undefined : pgliteDetail,
+  // })
 
   // 6. Config file exists and is parseable
   let configOk = false

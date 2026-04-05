@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@sqldoc/test-utils'
 import pglitePlugin from '@sqldoc/db-pglite'
+import { describe, expect, it } from '@sqldoc/test-utils'
 import { extractExtensions, validatePostgresExtensions } from '../extensions.ts'
 import { createRunner } from '../index.ts'
 

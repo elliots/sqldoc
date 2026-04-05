@@ -2,12 +2,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { pgDump } from '@electric-sql/pglite-tools/pg_dump'
+import { createPostgresDockerAdapter, createRunner, registerBuiltin } from '@sqldoc/db'
 import neonTemporaryPlugin from '@sqldoc/db-neon-temporary'
 import pglitePlugin from '@sqldoc/db-pglite'
-import { createPostgresDockerAdapter, createRunner, registerBuiltin } from '@sqldoc/db'
 
 // Register neon-temporary so createRunner can find it without .sqldoc/
 if (process.env.TEST_NEON === 'true') registerBuiltin(neonTemporaryPlugin)
+
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 import { prettyStatements } from '../../packages/cli/src/utils/pretty-sql.ts'
 
