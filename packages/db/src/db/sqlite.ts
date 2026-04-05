@@ -45,13 +45,11 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
     async query(sql: string, args?: SQLInputValue[]): Promise<QueryResult> {
       const stmt = db.prepare(sql)
       const rows = args ? stmt.all(...args) : stmt.all()
-      if (rows.length === 0) {
-        return { columns: [], rows: [] }
-      }
-      const columns = Object.keys(rows[0])
+      const columns =
+        rows.length > 0 ? Object.keys(rows[0]) : ((stmt as any).columns?.()?.map((c: any) => c.name) ?? [])
       return {
         columns,
-        rows: rows.map((row: Record<string, unknown>) => columns.map((c) => normalizeValue(row[c]))),
+        rows: rows.map((row: Record<string, unknown>) => columns.map((c: string) => normalizeValue(row[c]))),
       }
     },
     async exec(sql: string, args?: SQLInputValue[]): Promise<ExecResult> {
