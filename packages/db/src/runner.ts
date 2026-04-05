@@ -256,9 +256,14 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     throw new Error(`Atlas WASM binary not found: ${wasmPath}`)
   }
 
-  /** If Atlas reports a restore failure, reset the adapter to get a clean dev DB. */
-  async function resetIfRestoreFailed(result: AtlasResult): Promise<void> {
-    if (autoReset && result.error?.includes('restore:') && db.reset) {
+  /** If Atlas reports an error indicating a dirty dev DB, reset the adapter. */
+  async function resetIfDirty(result: AtlasResult): Promise<void> {
+    if (!autoReset || !db.reset || !result.error) return
+    if (
+      result.error.includes('already exists') ||
+      result.error.includes('not clean') ||
+      result.error.includes('restore:')
+    ) {
       await db.reset()
     }
   }
@@ -273,7 +278,7 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
         schema: opts?.schema,
       }
       const result = await runCommand(wasmPath, db, command)
-      await resetIfRestoreFailed(result)
+      await resetIfDirty(result)
       return result
     },
 
@@ -299,7 +304,7 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
       if (fromIsDb) extraAdapters.from = from as DatabaseAdapter
       if (toIsDb) extraAdapters.to = to as DatabaseAdapter
       const result = await runCommand(wasmPath, db, command, extraAdapters)
-      await resetIfRestoreFailed(result)
+      await resetIfDirty(result)
       return result
     },
 
