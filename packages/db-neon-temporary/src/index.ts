@@ -57,8 +57,23 @@ function loadCache(): CachedDb | null {
   const cachePath = getCachePath()
   if (!cachePath || !fs.existsSync(cachePath)) return null
   try {
-    const data: CachedDb = JSON.parse(fs.readFileSync(cachePath, 'utf-8'))
-    const age = Date.now() - new Date(data.createdAt).getTime()
+    const raw = JSON.parse(fs.readFileSync(cachePath, 'utf-8'))
+    if (
+      typeof raw?.directUrl !== 'string' ||
+      typeof raw?.poolerUrl !== 'string' ||
+      typeof raw?.claimUrl !== 'string' ||
+      typeof raw?.createdAt !== 'string'
+    ) {
+      log('cache invalid: missing required fields')
+      return null
+    }
+    const data: CachedDb = raw
+    const createdAtMs = new Date(data.createdAt).getTime()
+    if (Number.isNaN(createdAtMs)) {
+      log('cache invalid: bad createdAt timestamp')
+      return null
+    }
+    const age = Date.now() - createdAtMs
     if (age > MAX_AGE_MS) {
       log(`cache expired (${Math.round(age / 3600000)}h old)`)
       return null
