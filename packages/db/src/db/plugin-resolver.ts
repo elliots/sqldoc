@@ -33,7 +33,7 @@ registerBuiltin({
   schemes: ['sqlite', ':memory:'],
   dialects: ['sqlite'],
   runtime: 'any',
-  async createAdapter(devUrl: string): Promise<DatabaseAdapter> {
+  async createAdapter(devUrl: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
     const { createSqliteAdapter } = await import('./sqlite.ts')
     return createSqliteAdapter(devUrl === ':memory:' ? ':memory:' : devUrl.replace(/^sqlite:\/\//, ''))
   },
@@ -47,7 +47,7 @@ if (isBun) {
     schemes: ['postgres', 'postgresql'],
     dialects: ['postgres'],
     runtime: 'bun',
-    async createAdapter(connectionString: string): Promise<DatabaseAdapter> {
+    async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
       return createBunSqlAdapter(connectionString)
     },
   })
@@ -58,7 +58,7 @@ if (isBun) {
     schemes: ['mysql'],
     dialects: ['mysql'],
     runtime: 'bun',
-    async createAdapter(connectionString: string): Promise<DatabaseAdapter> {
+    async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
       return createBunSqlAdapter(connectionString)
     },
   })

@@ -1,4 +1,4 @@
-import type { DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
+import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
 import { normalizeValue } from '@sqldoc/db'
 
 const plugin: DatabaseAdapterPlugin = {
@@ -8,7 +8,7 @@ const plugin: DatabaseAdapterPlugin = {
   dialects: ['postgres'],
   runtime: 'node',
 
-  async createAdapter(connectionString: string): Promise<DatabaseAdapter> {
+  async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
     const { Client } = await import('pg')
     const client = new Client({ connectionString })
     await client.connect()

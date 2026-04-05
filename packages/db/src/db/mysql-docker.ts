@@ -1,4 +1,5 @@
 import { startContainer, startContainerFromDockerfile } from './docker.ts'
+import type { ResolvePluginOptions } from './plugin-resolver.ts'
 import { resolveAdapterPlugin } from './plugin-resolver.ts'
 import type { DatabaseAdapter } from './types.ts'
 
@@ -10,7 +11,10 @@ import type { DatabaseAdapter } from './types.ts'
  *   docker://mariadb:10        — MariaDB
  *   dockerfile://path/to/file  — build from Dockerfile
  */
-export async function createMysqlDockerAdapter(devUrl: string): Promise<DatabaseAdapter> {
+export async function createMysqlDockerAdapter(
+  devUrl: string,
+  pluginOpts?: Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingPlugin'>,
+): Promise<DatabaseAdapter> {
   const isDockerfile = devUrl.startsWith('dockerfile://')
   const readyLog = /ready for connections.*port: 3306/
 
@@ -37,6 +41,7 @@ export async function createMysqlDockerAdapter(devUrl: string): Promise<Database
       mysqlAdapter = await resolveAdapterPlugin({
         devUrl: connectionUri,
         context: { dialect: 'mysql', extensions: [] },
+        ...pluginOpts,
       })
       break
     } catch {

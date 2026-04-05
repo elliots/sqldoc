@@ -1,4 +1,5 @@
 import { startContainer, startContainerFromDockerfile } from './docker.ts'
+import type { ResolvePluginOptions } from './plugin-resolver.ts'
 import { resolveAdapterPlugin } from './plugin-resolver.ts'
 import type { DatabaseAdapter } from './types.ts'
 
@@ -10,7 +11,10 @@ import type { DatabaseAdapter } from './types.ts'
  *   docker://postgres:16        — official or custom image
  *   dockerfile://path/to/file   — build from Dockerfile
  */
-export async function createPostgresDockerAdapter(devUrl: string): Promise<DatabaseAdapter> {
+export async function createPostgresDockerAdapter(
+  devUrl: string,
+  pluginOpts?: Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingPlugin'>,
+): Promise<DatabaseAdapter> {
   const isDockerfile = devUrl.startsWith('dockerfile://')
   const readyLog = 'database system is ready to accept connections'
 
@@ -37,6 +41,7 @@ export async function createPostgresDockerAdapter(devUrl: string): Promise<Datab
       pgAdapter = await resolveAdapterPlugin({
         devUrl: connectionUri,
         context: { dialect: 'postgres', extensions: [] },
+        ...pluginOpts,
       })
       break
     } catch {

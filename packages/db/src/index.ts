@@ -107,9 +107,9 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
     // Docker orchestration: spin up container, then the inner adapter
     // handles Bun vs Node via the plugin system
     if (dialect === 'mysql') {
-      db = await createMysqlDockerAdapter(devUrl)
+      db = await createMysqlDockerAdapter(devUrl, pluginOpts)
     } else {
-      db = await createPostgresDockerAdapter(devUrl)
+      db = await createPostgresDockerAdapter(devUrl, pluginOpts)
     }
   } else {
     // Everything else goes through plugin resolution

@@ -1,4 +1,4 @@
-import type { DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
+import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
 import { normalizeValue } from '@sqldoc/db'
 
 const plugin: DatabaseAdapterPlugin = {
@@ -8,7 +8,7 @@ const plugin: DatabaseAdapterPlugin = {
   dialects: ['mysql'],
   runtime: 'node',
 
-  async createAdapter(connectionString: string): Promise<DatabaseAdapter> {
+  async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
     const mysql = await import('mysql2/promise')
     const connection = await mysql.default.createConnection(connectionString)
 

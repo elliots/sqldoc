@@ -8,7 +8,7 @@
  * devUrl format: neon://ep-xxx.us-east-2.aws.neon.tech/dbname
  */
 import { neon } from '@neondatabase/serverless'
-import type { DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
+import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
 import { normalizeValue } from '@sqldoc/db'
 
 const plugin: DatabaseAdapterPlugin = {
@@ -18,7 +18,7 @@ const plugin: DatabaseAdapterPlugin = {
   dialects: ['postgres'],
   runtime: 'any',
 
-  async createAdapter(devUrl: string): Promise<DatabaseAdapter> {
+  async createAdapter(devUrl: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
     // Transform neon:// → postgres:// for the serverless driver
     const connectionString = devUrl.replace(/^neon:\/\//, 'postgres://')
     const sql = neon(connectionString, { fullResults: true })
