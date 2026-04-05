@@ -6,6 +6,9 @@ export interface DatabaseAdapter {
   query(sql: string, args?: unknown[]): Promise<QueryResult>
   exec(sql: string, args?: unknown[]): Promise<ExecResult>
   close(): Promise<void>
+  /** Reset the adapter to a clean state (e.g. recreate container, new pglite instance).
+   *  Only implemented by disposable dev databases — not production connections. */
+  reset?(): Promise<void>
 }
 
 /**

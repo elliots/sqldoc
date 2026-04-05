@@ -17,49 +17,52 @@ export async function createMysqlDockerAdapter(
 ): Promise<DatabaseAdapter> {
   const isDockerfile = devUrl.startsWith('dockerfile://')
   const readyLog = /ready for connections.*port: 3306/
-
-  const container = isDockerfile
-    ? startContainerFromDockerfile({
-        dockerfilePath: devUrl.slice('dockerfile://'.length),
-        env: { MYSQL_ROOT_PASSWORD: 'sqldoc', MYSQL_DATABASE: 'sqldoc_dev' },
-        port: 3306,
-        readyLog,
-      })
-    : startContainer({
-        image: devUrl.slice('docker://'.length),
-        env: { MYSQL_ROOT_PASSWORD: 'sqldoc', MYSQL_DATABASE: 'sqldoc_dev' },
-        port: 3306,
-        readyLog,
-      })
-
-  const connectionUri = `mysql://root:sqldoc@${container.host}:${container.port}/sqldoc_dev`
-
-  // Retry connection — container may need a moment after port is mapped
-  let mysqlAdapter: DatabaseAdapter | undefined
-  for (let i = 0; i < 10; i++) {
-    try {
-      mysqlAdapter = await resolveAdapterPlugin({
-        devUrl: connectionUri,
-        context: { dialect: 'mysql', extensions: [] },
-        ...pluginOpts,
-      })
-      break
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-    }
+  const dockerfileImage = devUrl.slice('dockerfile://'.length)
+  const containerImage = devUrl.slice('docker://'.length)
+  const containerOpts = {
+    env: { MYSQL_ROOT_PASSWORD: 'sqldoc', MYSQL_DATABASE: 'sqldoc_dev' },
+    port: 3306,
+    readyLog,
   }
 
-  if (!mysqlAdapter) {
-    container.stop()
+  function startNewContainer() {
+    return isDockerfile
+      ? startContainerFromDockerfile({ dockerfilePath: dockerfileImage, ...containerOpts })
+      : startContainer({ image: containerImage, ...containerOpts })
+  }
+
+  async function connectToContainer(cont: ReturnType<typeof startContainer>): Promise<DatabaseAdapter> {
+    const connectionUri = `mysql://root:sqldoc@${cont.host}:${cont.port}/sqldoc_dev`
+    for (let i = 0; i < 10; i++) {
+      try {
+        return await resolveAdapterPlugin({
+          devUrl: connectionUri,
+          context: { dialect: 'mysql', extensions: [] },
+          ...pluginOpts,
+        })
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    }
+    cont.stop()
     throw new Error(`Failed to connect to Docker MySQL at ${connectionUri}`)
   }
 
+  let container = startNewContainer()
+  let inner = await connectToContainer(container)
+
   return {
-    query: mysqlAdapter.query,
-    exec: mysqlAdapter.exec,
+    query: (...args) => inner.query(...args),
+    exec: (...args) => inner.exec(...args),
     async close() {
-      await mysqlAdapter.close()
+      await inner.close()
       container.stop()
+    },
+    async reset() {
+      await inner.close()
+      container.stop()
+      container = startNewContainer()
+      inner = await connectToContainer(container)
     },
   }
 }

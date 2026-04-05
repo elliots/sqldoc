@@ -29,10 +29,9 @@ const plugin: DatabaseAdapterPlugin = {
       const mod = await loadExtension(ext)
       if (mod) extModules[ext.replace(/-/g, '_')] = mod
     }
+    const extOpts = Object.keys(extModules).length > 0 ? extModules : undefined
 
-    const db = await PGlite.create({
-      extensions: Object.keys(extModules).length > 0 ? extModules : undefined,
-    })
+    let db = await PGlite.create({ extensions: extOpts })
 
     return {
       async query(sql: string, args?: unknown[]): Promise<QueryResult> {
@@ -53,6 +52,10 @@ const plugin: DatabaseAdapterPlugin = {
       },
       async close(): Promise<void> {
         await db.close()
+      },
+      async reset(): Promise<void> {
+        await db.close()
+        db = await PGlite.create({ extensions: extOpts })
       },
     }
   },

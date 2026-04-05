@@ -17,49 +17,52 @@ export async function createPostgresDockerAdapter(
 ): Promise<DatabaseAdapter> {
   const isDockerfile = devUrl.startsWith('dockerfile://')
   const readyLog = 'database system is ready to accept connections'
-
-  const container = isDockerfile
-    ? startContainerFromDockerfile({
-        dockerfilePath: devUrl.slice('dockerfile://'.length),
-        env: { POSTGRES_DB: 'sqldoc_dev', POSTGRES_USER: 'sqldoc', POSTGRES_PASSWORD: 'sqldoc' },
-        port: 5432,
-        readyLog,
-      })
-    : startContainer({
-        image: devUrl.slice('docker://'.length),
-        env: { POSTGRES_DB: 'sqldoc_dev', POSTGRES_USER: 'sqldoc', POSTGRES_PASSWORD: 'sqldoc' },
-        port: 5432,
-        readyLog,
-      })
-
-  const connectionUri = `postgres://sqldoc:sqldoc@${container.host}:${container.port}/sqldoc_dev`
-
-  // Retry connection — container may need a moment after port is mapped
-  let pgAdapter: DatabaseAdapter | undefined
-  for (let i = 0; i < 10; i++) {
-    try {
-      pgAdapter = await resolveAdapterPlugin({
-        devUrl: connectionUri,
-        context: { dialect: 'postgres', extensions: [] },
-        ...pluginOpts,
-      })
-      break
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-    }
+  const dockerfileImage = devUrl.slice('dockerfile://'.length)
+  const containerImage = devUrl.slice('docker://'.length)
+  const containerOpts = {
+    env: { POSTGRES_DB: 'sqldoc_dev', POSTGRES_USER: 'sqldoc', POSTGRES_PASSWORD: 'sqldoc' },
+    port: 5432,
+    readyLog,
   }
 
-  if (!pgAdapter) {
-    container.stop()
+  function startNewContainer() {
+    return isDockerfile
+      ? startContainerFromDockerfile({ dockerfilePath: dockerfileImage, ...containerOpts })
+      : startContainer({ image: containerImage, ...containerOpts })
+  }
+
+  async function connectToContainer(cont: ReturnType<typeof startContainer>): Promise<DatabaseAdapter> {
+    const connectionUri = `postgres://sqldoc:sqldoc@${cont.host}:${cont.port}/sqldoc_dev`
+    for (let i = 0; i < 10; i++) {
+      try {
+        return await resolveAdapterPlugin({
+          devUrl: connectionUri,
+          context: { dialect: 'postgres', extensions: [] },
+          ...pluginOpts,
+        })
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    }
+    cont.stop()
     throw new Error(`Failed to connect to Docker Postgres at ${connectionUri}`)
   }
 
+  let container = startNewContainer()
+  let inner = await connectToContainer(container)
+
   return {
-    query: pgAdapter.query,
-    exec: pgAdapter.exec,
+    query: (...args) => inner.query(...args),
+    exec: (...args) => inner.exec(...args),
     async close() {
-      await pgAdapter.close()
+      await inner.close()
       container.stop()
+    },
+    async reset() {
+      await inner.close()
+      container.stop()
+      container = startNewContainer()
+      inner = await connectToContainer(container)
     },
   }
 }

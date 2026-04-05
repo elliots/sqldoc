@@ -34,6 +34,9 @@ export interface AtlasRunnerOptions {
   db: DatabaseAdapter
   /** SQL dialect */
   dialect: 'postgres' | 'mysql' | 'sqlite'
+  /** When true, auto-reset the adapter if Atlas's restore cleanup fails.
+   *  Use in tests where the runner is reused across multiple operations. */
+  autoReset?: boolean
 }
 
 /** A diff source: SQL file contents (string[]) or a live database (DatabaseAdapter). */
@@ -246,11 +249,18 @@ async function handleBridgeLoop(
  * Each inspect/diff call spawns a worker thread that reuses the cached module.
  */
 export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<AtlasRunner> {
-  const { wasmPath, db, dialect } = options
+  const { wasmPath, db, dialect, autoReset } = options
 
   // Verify wasm file exists
   if (!fs.existsSync(wasmPath)) {
     throw new Error(`Atlas WASM binary not found: ${wasmPath}`)
+  }
+
+  /** If Atlas reports a restore failure, reset the adapter to get a clean dev DB. */
+  async function resetIfRestoreFailed(result: AtlasResult): Promise<void> {
+    if (autoReset && result.error?.includes('restore:') && db.reset) {
+      await db.reset()
+    }
   }
 
   return {
@@ -262,7 +272,9 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
         fileNames: opts?.fileNames,
         schema: opts?.schema,
       }
-      return runCommand(wasmPath, db, command)
+      const result = await runCommand(wasmPath, db, command)
+      await resetIfRestoreFailed(result)
+      return result
     },
 
     async diff(
@@ -286,7 +298,9 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
       const extraAdapters: Record<string, DatabaseAdapter> = {}
       if (fromIsDb) extraAdapters.from = from as DatabaseAdapter
       if (toIsDb) extraAdapters.to = to as DatabaseAdapter
-      return runCommand(wasmPath, db, command, extraAdapters)
+      const result = await runCommand(wasmPath, db, command, extraAdapters)
+      await resetIfRestoreFailed(result)
+      return result
     },
 
     async close(): Promise<void> {

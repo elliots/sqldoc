@@ -36,6 +36,7 @@ versions.forEach((version) => {
         dialect: 'postgres',
         devUrl,
         extensions,
+        autoReset: true,
       })
     })
 

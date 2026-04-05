@@ -10,7 +10,7 @@ import { isBun, normalizeValue } from './types.ts'
 async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter> {
   // @ts-expect-error -- bun:sqlite only exists in the Bun runtime
   const { Database } = await import('bun:sqlite')
-  const db = new Database(filename)
+  let db = new Database(filename)
 
   return {
     async query(sql: string, args?: unknown[]): Promise<QueryResult> {
@@ -34,12 +34,16 @@ async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter
     async close(): Promise<void> {
       db.close()
     },
+    async reset(): Promise<void> {
+      db.close()
+      db = new Database(filename)
+    },
   }
 }
 
 async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapter> {
   const { DatabaseSync } = await import('node:sqlite')
-  const db = new DatabaseSync(filename)
+  let db = new DatabaseSync(filename)
 
   return {
     async query(sql: string, args?: unknown[]): Promise<QueryResult> {
@@ -62,6 +66,10 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
     },
     async close(): Promise<void> {
       db.close()
+    },
+    async reset(): Promise<void> {
+      db.close()
+      db = new DatabaseSync(filename)
     },
   }
 }

@@ -32,6 +32,7 @@ versions.forEach((version) => {
       runner = await createRunner({
         dialect: 'postgres',
         devUrl,
+        autoReset: true,
       })
     })
 

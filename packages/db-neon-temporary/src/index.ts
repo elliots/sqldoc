@@ -207,13 +207,7 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
       },
     }
 
-    try {
-      log('acquiring advisory lock...')
-      await adapter.exec(`SET lock_timeout = '${plugin.lockTimeoutMs}ms'`)
-      await adapter.exec(`SELECT pg_advisory_lock(${LOCK_KEY})`)
-      log('lock acquired, wiping schemas...')
-
-      // Drop ALL user schemas — previous runs may have created extras (e.g. kitchen-sink creates a, b, c, d)
+    async function wipeSchemas(): Promise<void> {
       const schemas = await adapter.query(
         "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')",
       )
@@ -222,10 +216,24 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
         await adapter.exec(`DROP SCHEMA "${name}" CASCADE`)
       }
       await adapter.exec('CREATE SCHEMA public')
+    }
+
+    try {
+      log('acquiring advisory lock...')
+      await adapter.exec(`SET lock_timeout = '${plugin.lockTimeoutMs}ms'`)
+      await adapter.exec(`SELECT pg_advisory_lock(${LOCK_KEY})`)
+      log('lock acquired, wiping schemas...')
+      await wipeSchemas()
       log('ready')
     } catch (err) {
       await adapter.close()
       throw err
+    }
+
+    adapter.reset = async () => {
+      log('resetting (wiping schemas)...')
+      await wipeSchemas()
+      log('reset complete')
     }
 
     return adapter

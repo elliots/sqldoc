@@ -11,7 +11,7 @@ describe('Atlas WASI dialect validation', () => {
     })
 
     it('inspect produces valid schema for SQLite SQL', async () => {
-      runner = await createRunner({ dialect: 'sqlite' })
+      runner = await createRunner({ dialect: 'sqlite', autoReset: true })
 
       const sql = `
         CREATE TABLE users (
@@ -158,7 +158,7 @@ describe('Atlas WASI dialect validation', () => {
     })
 
     it('inspect produces valid schema for MySQL SQL', async () => {
-      runner = await createRunner({ dialect: 'mysql' })
+      runner = await createRunner({ dialect: 'mysql', autoReset: true })
 
       const sql = `
         CREATE TABLE users (
