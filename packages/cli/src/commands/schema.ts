@@ -13,8 +13,8 @@ import { printChanges } from '../utils/pretty-changes.ts'
 
 type Format = 'sql' | 'json' | 'pretty'
 
-function pluginInstallConfig() {
-  const sqldocDir = findSqldocDir() ?? undefined
+function pluginInstallConfig(configRoot: string) {
+  const sqldocDir = findSqldocDir(configRoot) ?? undefined
   return {
     sqldocDir,
     onMissingPlugin: async (packageNameWithVersion: string) => {
@@ -97,7 +97,7 @@ export async function schemaInspectCommand(
 
       if (resolved.type === 'database') {
         // Live database — inspect directly, no compilation needed
-        const runner = await createRunner({ dialect, devUrl: resolved.value, ...pluginInstallConfig() })
+        const runner = await createRunner({ dialect, devUrl: resolved.value, ...pluginInstallConfig(configRoot) })
         try {
           const result = await runner.inspect([], {
             schema: dialect === 'postgres' ? 'public' : undefined,
@@ -177,7 +177,7 @@ export async function schemaDiffCommand(options: {
         : { type: 'file' as const, value: '' } // empty = no existing schema
 
       if (fromResolved.type === 'database' || toResolved.type === 'database') {
-        await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false)
+        await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false, configRoot)
         return
       }
 
@@ -199,7 +199,12 @@ export async function schemaDiffCommand(options: {
 
       const allSql = [...fromSql, ...toSql].filter(Boolean)
       const { extensions } = extractExtensions(allSql)
-      const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions, ...pluginInstallConfig() })
+      const runner = await createRunner({
+        dialect,
+        devUrl: config.devUrl,
+        extensions,
+        ...pluginInstallConfig(configRoot),
+      })
       try {
         const result = await runner.diff(fromSql, toSql, {
           schema: dialect === 'postgres' ? 'public' : undefined,
@@ -222,13 +227,14 @@ async function diffWithLiveDb(
   dialect: 'postgres' | 'mysql' | 'sqlite',
   format: Format,
   check: boolean,
+  configRoot: string,
 ): Promise<void> {
   const schemaOpt = dialect === 'postgres' ? 'public' : undefined
 
   const liveSource = from.type === 'database' ? from : to
   const sqlSource = from.type === 'database' ? to : from
 
-  const liveRunner = await createRunner({ dialect, devUrl: liveSource.value, ...pluginInstallConfig() })
+  const liveRunner = await createRunner({ dialect, devUrl: liveSource.value, ...pluginInstallConfig(configRoot) })
   let liveRealm
   try {
     const liveResult = await liveRunner.inspect([], { schema: schemaOpt })
@@ -242,7 +248,7 @@ async function diffWithLiveDb(
     dialect,
     devUrl: config.devUrl,
     extensions: extractExtensions([sqlSource.value]).extensions,
-    ...pluginInstallConfig(),
+    ...pluginInstallConfig(configRoot),
   })
   let sqlRealm
   try {
@@ -258,7 +264,7 @@ async function diffWithLiveDb(
     dialect,
     devUrl: config.devUrl,
     extensions: extractExtensions(diffSql).extensions,
-    ...pluginInstallConfig(),
+    ...pluginInstallConfig(configRoot),
   })
   try {
     const fromSql = from.type === 'database' ? [] : [from.value]

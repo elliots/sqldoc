@@ -50,7 +50,7 @@ export interface PipelineResult {
 export async function runCompilePipeline(
   inputPath: string,
   config: ResolvedConfig,
-  _configRoot: string,
+  configRoot: string,
 ): Promise<PipelineResult> {
   debug('pipeline', `runCompilePipeline: input=${inputPath}, dialect=${config.dialect}`)
   // Discover SQL files
@@ -115,7 +115,7 @@ export async function runCompilePipeline(
   const allSqlContents = allRawContents.map(stripMigrationDown)
 
   const { extensions } = extractExtensions(allSqlContents)
-  const sqldocDir = findSqldocDir() ?? undefined
+  const sqldocDir = findSqldocDir(configRoot) ?? undefined
   const atlasRunner = await createRunner({
     dialect,
     devUrl: config.devUrl,
