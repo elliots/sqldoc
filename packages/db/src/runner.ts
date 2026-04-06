@@ -100,7 +100,10 @@ async function runCommand(
         dataBuffer: buffers.data,
         stdinData,
       },
-      execArgv: [...process.execArgv, ...execArgv],
+      execArgv: [
+        ...process.execArgv.filter((arg) => arg === '--no-warnings' || arg.startsWith('--import')),
+        ...execArgv,
+      ],
     })
 
     let settled = false
