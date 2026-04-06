@@ -17,7 +17,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { after, before, describe, it } from '@sqldoc/test-utils'
-import pg from 'pg'
+import postgres from 'postgres'
 
 const thisDir = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = resolve(thisDir, '../..')
@@ -58,22 +58,22 @@ describe('docker template tests', () => {
     )
 
     // Wait for postgres to accept connections via the host port mapping
-    let client!: pg.Client
+    let sql!: postgres.Sql
     for (let i = 0; i < 30; i++) {
       try {
-        client = new pg.Client({
+        sql = postgres({
           host: '127.0.0.1',
           port: PG_PORT,
           database: 'postgres',
           user: 'postgres',
           password: 'postgres',
-          connectionTimeoutMillis: 5_000,
+          connect_timeout: 5,
         })
-        await client.connect()
+        await sql`SELECT 1`
         break
       } catch {
         try {
-          await client.end()
+          await sql.end()
         } catch {}
         await new Promise((r) => setTimeout(r, 1000))
       }
@@ -82,9 +82,9 @@ describe('docker template tests', () => {
       .split('\n')
       .filter((line) => !line.trim().startsWith('-- @import'))
       .join('\n')
-    await client.query(schemaSql)
-    await client.query(readFileSync(join(TEST_DIR, 'fixture-seed.sql'), 'utf-8'))
-    await client.end()
+    await sql.unsafe(schemaSql)
+    await sql.unsafe(readFileSync(join(TEST_DIR, 'fixture-seed.sql'), 'utf-8'))
+    await sql.end()
     console.log('Database seeded.')
 
     // Run codegen — outputs directly into each src/<template>/test/ directory

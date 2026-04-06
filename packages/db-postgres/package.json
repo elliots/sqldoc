@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@sqldoc/db-postgres",
   "version": "0.0.9",
-  "description": "PostgreSQL adapter for sqldoc (Node.js, uses pg)",
+  "description": "PostgreSQL adapter for sqldoc (Node.js, uses postgres.js)",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -17,10 +17,9 @@
     "package.json"
   ],
   "dependencies": {
-    "pg": "^8.13.0"
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "@sqldoc/db": "workspace:*",
-    "@types/pg": "^8.11.0"
+    "@sqldoc/db": "workspace:*"
   }
 }
