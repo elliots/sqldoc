@@ -25,3 +25,5 @@ out.sql
 out/
 
 CLAUDE.md
+.bg-shell
+.claude
