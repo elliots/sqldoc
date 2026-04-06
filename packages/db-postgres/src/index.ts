@@ -1,5 +1,6 @@
 import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
 import { normalizeValue } from '@sqldoc/db'
+import postgres from 'postgres'
 
 const plugin: DatabaseAdapterPlugin = {
   apiVersion: 1,
@@ -9,24 +10,35 @@ const plugin: DatabaseAdapterPlugin = {
   runtime: 'node',
 
   async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
-    const { Client } = await import('pg')
-    const client = new Client({ connectionString })
-    await client.connect()
+    const sql = postgres(connectionString, { connect_timeout: 5, onnotice: () => {} })
+
+    // Verify the connection works — postgres.js connects lazily
+    try {
+      await sql`SELECT 1`
+    } catch (err) {
+      await sql.end()
+      throw err
+    }
 
     return {
-      async query(sql: string, args?: unknown[]): Promise<QueryResult> {
-        const result = await client.query({ text: sql, values: args, rowMode: 'array' })
+      async query(queryText: string, args?: unknown[]): Promise<QueryResult> {
+        const result = await sql.unsafe(queryText, args as any[], { prepare: false }).values()
+        if (result.length === 0) {
+          return { columns: [], rows: [] }
+        }
+        const colCount = (result[0] as unknown[]).length
+        const columns = result.columns?.map((c: any) => c.name) ?? Array.from({ length: colCount }, (_, i) => `col${i}`)
         return {
-          columns: result.fields.map((f: { name: string }) => f.name),
-          rows: (result.rows as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
+          columns,
+          rows: (result as unknown[][]).map((row) => row.map((v) => normalizeValue(v))),
         }
       },
-      async exec(sql: string): Promise<ExecResult> {
-        const result = await client.query(sql)
-        return { rowsAffected: result.rowCount ?? 0 }
+      async exec(queryText: string): Promise<ExecResult> {
+        const result = await sql.unsafe(queryText, [], { prepare: false })
+        return { rowsAffected: result.count }
       },
       async close(): Promise<void> {
-        await client.end()
+        await sql.end()
       },
     }
   },

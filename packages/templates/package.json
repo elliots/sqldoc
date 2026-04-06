@@ -155,13 +155,12 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.4.1",
-    "@types/pg": "^8.11.0",
     "@electric-sql/pglite-socket": "^0.1.1",
     "@sqldoc/db": "workspace:*",
     "@sqldoc/core": "workspace:*",
     "@sqldoc/ns-codegen": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
-    "pg": "^8.13.0",
+    "postgres": "^3.4.5",
     "tsx": "^4.21.0",
     "@typescript/native-preview": "catalog:",
     "@sqldoc/test-utils": "workspace:*"

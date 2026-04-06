@@ -32,7 +32,6 @@
     "@sqldoc/db-postgres": "workspace:*",
     "@sqldoc/db-mysql": "workspace:*",
     "@sqldoc/test-utils": "workspace:*",
-    "@types/pg": "^8.11.0",
     "tsx": "^4.21.0",
     "@typescript/native-preview": "catalog:"
   }

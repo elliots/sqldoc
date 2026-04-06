@@ -6,9 +6,9 @@
  * in the "content" schema, so drizzle correctly schema-qualifies queries as
  * "content"."posts". All tables use the type-safe drizzle query builder.
  */
-import { drizzle } from 'drizzle-orm/node-postgres'
+import { drizzle } from 'drizzle-orm/postgres-js'
 import { eq } from 'drizzle-orm'
-import pg from 'pg'
+import postgres from 'postgres'
 import * as schema from './schema.ts'
 
 const DATABASE_URL = process.env.DATABASE_URL
@@ -17,8 +17,8 @@ if (!DATABASE_URL) {
   process.exit(1)
 }
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL })
-const db = drizzle(pool, { schema })
+const sql = postgres(DATABASE_URL)
+const db = drizzle(sql, { schema })
 
 let failed = 0
 function assert(condition: boolean, msg: string) {
@@ -74,7 +74,7 @@ async function run() {
     }
     console.log('\nAll assertions passed!')
   } finally {
-    await pool.end()
+    await sql.end()
   }
 }
 
