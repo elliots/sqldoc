@@ -37,7 +37,7 @@ export async function validateCommand(
 async function validateProject(
   inputPath: string | undefined,
   config: ResolvedConfig,
-  _configRoot: string,
+  configRoot: string,
 ): Promise<void> {
   // Resolve input path: explicit arg > config.schema > error
   const resolvedInput = inputPath ?? config.schema
@@ -46,7 +46,7 @@ async function validateProject(
   }
 
   // Discover SQL files
-  const sqlFiles = await discoverSqlFiles(resolvedInput, config.include)
+  const sqlFiles = await discoverSqlFiles(resolvedInput, config.include, configRoot)
   if (sqlFiles.length === 0) {
     console.log(pc.yellow('No SQL files found'))
     return

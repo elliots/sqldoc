@@ -1,10 +1,13 @@
-import { spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
+
 import type { ImportError } from '@sqldoc/core'
-import { findSqldocDir, loadImports } from '@sqldoc/core'
+import { findSqldocDir, installPackages, loadImports } from '@sqldoc/core'
 import pc from 'picocolors'
+
+// Re-export for use by pipeline.ts and schema.ts
+export { installPackages }
 
 /**
  * Detect missing npm packages from loadImport errors.
@@ -55,43 +58,8 @@ function findSqldocDirWithEnv(): string | null {
 }
 
 /**
- * Install packages into .sqldoc/node_modules using the same mechanism as `sqldoc add`.
- * Returns true if install succeeded.
- */
-export function installPackages(sqldocDir: string, packages: string[]): boolean {
-  // Detect if running as compiled Bun binary
-  const isBunBinary = typeof (globalThis as any).Bun !== 'undefined' && !process.execPath.match(/\/(bun|node)(\.exe)?$/)
-
-  let installArgs: string[]
-  const env: Record<string, string> = { ...process.env } as Record<string, string>
-
-  if (isBunBinary) {
-    installArgs = [process.execPath, 'install', ...packages]
-    env.BUN_BE_BUN = '1'
-  } else {
-    // Detect package manager from lockfiles
-    const projectRoot = path.dirname(sqldocDir)
-    let pm = 'npm'
-    if (fs.existsSync(path.join(projectRoot, 'pnpm-lock.yaml'))) pm = 'pnpm'
-    else if (fs.existsSync(path.join(projectRoot, 'yarn.lock'))) pm = 'yarn'
-    else if (fs.existsSync(path.join(projectRoot, 'bun.lockb')) || fs.existsSync(path.join(projectRoot, 'bun.lock')))
-      pm = 'bun'
-
-    installArgs = pm === 'yarn' ? ['yarn', 'add', ...packages] : [pm, 'install', ...packages]
-  }
-
-  console.error(pc.dim(`Installing ${packages.join(', ')}...`))
-  const result = spawnSync(installArgs[0], installArgs.slice(1), {
-    cwd: sqldocDir,
-    stdio: 'inherit',
-    env,
-  })
-
-  return result.status === 0
-}
-
-/**
  * Check for missing package errors, prompt the user to install, and retry loadImports.
+ * Uses the package installer set by the sqldoc binary (via @sqldoc/core).
  * Returns updated namespaces and remaining errors.
  */
 export async function promptAndInstallMissing(
@@ -106,9 +74,13 @@ export async function promptAndInstallMissing(
   if (!sqldocDir) return null
 
   if (await promptInstall(missingPackages)) {
-    if (installPackages(sqldocDir, missingPackages)) {
+    try {
+      console.error(pc.dim(`Installing ${missingPackages.join(', ')}...`))
+      await installPackages(sqldocDir, missingPackages)
       // Retry loading after install
       return await loadImports(importPaths, filePath)
+    } catch (err: any) {
+      console.error(pc.red(`Failed to install: ${err.message}`))
     }
   }
 

@@ -9,8 +9,12 @@ const IGNORE_DIRS = new Set(['node_modules', '__tests__', 'test', 'dist', '.sqld
  * If a directory, globs for SQL files within it.
  * Returns absolute paths sorted lexicographically for deterministic ordering.
  */
-export async function discoverSqlFiles(inputPath: string, includePatterns?: string[]): Promise<string[]> {
-  const resolved = path.resolve(inputPath)
+export async function discoverSqlFiles(
+  inputPath: string,
+  includePatterns?: string[],
+  configRoot?: string,
+): Promise<string[]> {
+  const resolved = configRoot ? path.resolve(configRoot, inputPath) : path.resolve(inputPath)
 
   // Single file
   if (resolved.endsWith('.sql')) {

@@ -1,20 +1,28 @@
 version: 2
 project_name: sqldoc
 
+# Binaries are built by CI (scripts/build-binary.sh) before GoReleaser runs.
+# GoReleaser handles archiving, checksums, and Homebrew tap only.
+
 builds:
   - id: sqldoc
-    builder: bun
+    builder: go
+    # Skip the actual Go build — we use pre-built Node.js SEA binaries
+    skip: true
     binary: sqldoc
-    main: packages/sqldoc/src/index.ts
-    targets:
-      - linux-x64-modern
-      - linux-arm64
-      - darwin-x64
-      - darwin-arm64
-      - windows-x64
-    flags:
-      - --compile
-      - --minify
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+# CI places binaries at dist/sqldoc_<os>_<arch>/sqldoc before goreleaser runs.
+# Use extra_files or a custom archive approach to pick them up.
 
 archives:
   - id: sqldoc

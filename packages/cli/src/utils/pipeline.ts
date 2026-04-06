@@ -54,7 +54,7 @@ export async function runCompilePipeline(
 ): Promise<PipelineResult> {
   debug('pipeline', `runCompilePipeline: input=${inputPath}, dialect=${config.dialect}`)
   // Discover SQL files
-  const sqlFiles = await discoverSqlFiles(inputPath, config.include)
+  const sqlFiles = await discoverSqlFiles(inputPath, config.include, configRoot)
   if (sqlFiles.length === 0) {
     console.error(pc.yellow('No SQL files found'))
     return {
@@ -123,7 +123,13 @@ export async function runCompilePipeline(
     sqldocDir,
     onMissingPlugin: async (packageNameWithVersion: string) => {
       if (await promptInstall([packageNameWithVersion])) {
-        return sqldocDir ? installPackages(sqldocDir, [packageNameWithVersion]) : false
+        if (!sqldocDir) return false
+        try {
+          await installPackages(sqldocDir, [packageNameWithVersion])
+          return true
+        } catch {
+          return false
+        }
       }
       return false
     },

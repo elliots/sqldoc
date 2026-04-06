@@ -19,7 +19,13 @@ function pluginInstallConfig(configRoot: string) {
     sqldocDir,
     onMissingPlugin: async (packageNameWithVersion: string) => {
       if (await promptInstall([packageNameWithVersion])) {
-        return sqldocDir ? installPackages(sqldocDir, [packageNameWithVersion]) : false
+        if (!sqldocDir) return false
+        try {
+          await installPackages(sqldocDir, [packageNameWithVersion])
+          return true
+        } catch {
+          return false
+        }
       }
       return false
     },

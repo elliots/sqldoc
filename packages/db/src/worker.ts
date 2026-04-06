@@ -1,3 +1,6 @@
+// Suppress Node experimental warnings (WASI)
+process.removeAllListeners('warning')
+
 /**
  * Worker thread entry point for Atlas WASI execution.
  *

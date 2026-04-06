@@ -28,6 +28,8 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@npmcli/arborist": "^9.4.2",
+    "@types/npmcli__arborist": "^6.3.3",
     "picocolors": "catalog:"
   },
   "devDependencies": {

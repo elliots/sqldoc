@@ -23,7 +23,7 @@ import {
   SIGNAL_DONE,
   SIGNAL_REQUEST,
 } from './bridge.ts'
-import { type DatabaseAdapter, isBun } from './db/types.ts'
+import type { DatabaseAdapter } from './db/types.ts'
 import type { AtlasCommand, AtlasRename, AtlasResult } from './types.ts'
 
 export interface AtlasRunnerOptions {
@@ -62,23 +62,13 @@ export interface AtlasRunner {
  */
 function resolveWorkerPath(): { workerPath: string; execArgv: string[] } {
   const thisDir = path.dirname(fileURLToPath(import.meta.url))
-  const candidates = [
-    path.resolve(thisDir, 'worker.js'), // dist/worker.js (production)
-    path.resolve(thisDir, '../dist/worker.js'), // src/../dist/worker.js (legacy)
-    path.resolve(thisDir, 'worker.ts'), // src/worker.ts (raw .ts dev)
-  ]
+  const workerMjs = path.resolve(thisDir, 'worker.mjs')
+  if (fs.existsSync(workerMjs)) return { workerPath: workerMjs, execArgv: [] }
 
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      if (candidate.endsWith('.ts') && !isBun) {
-        // Node 22.21+ runs .ts natively — no loader needed for workers
-        return { workerPath: candidate, execArgv: [] }
-      }
-      return { workerPath: candidate, execArgv: [] }
-    }
-  }
+  const workerTs = path.resolve(thisDir, 'worker.ts')
+  if (fs.existsSync(workerTs)) return { workerPath: workerTs, execArgv: [] }
 
-  throw new Error(`Cannot find worker file.\nLooked in:\n${candidates.map((c) => `  ${c}`).join('\n')}`)
+  throw new Error(`Cannot find worker file in ${thisDir}`)
 }
 
 /**
@@ -110,7 +100,7 @@ async function runCommand(
         dataBuffer: buffers.data,
         stdinData,
       },
-      execArgv,
+      execArgv: [...process.execArgv, ...execArgv],
     })
 
     let settled = false

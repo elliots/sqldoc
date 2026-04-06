@@ -1,42 +1,18 @@
-import { spawnSync } from 'node:child_process'
-import { dirname } from 'node:path'
 import pc from 'picocolors'
-import { detectPM } from '../detect-pm.ts'
-import { isCompiledBinary } from '../runtime.ts'
+
+import { updateAll } from '../arborist.ts'
 
 /**
  * Upgrade all packages in .sqldoc/node_modules.
  */
-export function upgradeCommand(sqldocDir: string): void {
-  const upgradeArgs = isCompiledBinary()
-    ? [process.execPath, 'update']
-    : (() => {
-        const projectRoot = dirname(sqldocDir)
-        const pm = detectPM(projectRoot)
-        console.log(pc.dim(`Upgrading packages with ${pm}...`))
-        switch (pm) {
-          case 'pnpm':
-            return ['pnpm', 'update']
-          case 'yarn':
-            return ['yarn', 'upgrade']
-          case 'bun':
-            return ['bun', 'update']
-          default:
-            return ['npm', 'update']
-        }
-      })()
+export async function upgradeCommand(sqldocDir: string): Promise<void> {
+  console.log(pc.dim('Upgrading packages...'))
 
-  const env = isCompiledBinary() ? { ...process.env, BUN_BE_BUN: '1' } : process.env
-
-  if (isCompiledBinary()) {
-    console.log(pc.dim('Upgrading packages with built-in package manager...'))
+  try {
+    await updateAll(sqldocDir)
+    console.log(pc.green('Packages upgraded successfully'))
+  } catch (err: any) {
+    console.error(pc.red(`Failed to upgrade: ${err.message}`))
+    process.exit(1)
   }
-
-  const result = spawnSync(upgradeArgs[0], upgradeArgs.slice(1), {
-    cwd: sqldocDir,
-    stdio: 'inherit',
-    env,
-  })
-
-  process.exit(result.status ?? 1)
 }

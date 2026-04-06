@@ -1,44 +1,115 @@
-import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { createRequire, register, stripTypeScriptTypes } from 'node:module'
 import { dirname, join } from 'node:path'
+
 import pc from 'picocolors'
+
+import { addPackages } from './arborist.ts'
+
+// Passed from index.ts — avoid circular import of package.json
+let shimVersion = ''
+export function setShimVersion(version: string): void {
+  shimVersion = version
+}
+
+/** Check if the installed CLI requires a newer shim version. */
+function checkVersion(sqldocDir: string): void {
+  try {
+    const cliPkg = JSON.parse(readFileSync(join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'package.json'), 'utf-8'))
+    const minShimVersion = cliPkg.sqldoc?.minShimVersion
+    if (minShimVersion && shimVersion && shimVersion < minShimVersion) {
+      console.error(
+        pc.yellow(
+          `Warning: @sqldoc/cli@${cliPkg.version} recommends sqldoc binary >= ${minShimVersion} (you have ${shimVersion})`,
+        ),
+      )
+      console.error(pc.yellow('Update with: brew upgrade sqldoc'))
+    }
+  } catch {}
+}
+
+/**
+ * Enable TypeScript type stripping for .ts files under node_modules/.
+ * Node's built-in stripping skips node_modules, so we handle it ourselves:
+ * - CJS: custom Module._extensions['.ts'] handler using amaro
+ * - ESM: register amaro/strip loader hook for transitive imports
+ */
+function enableNodeModulesTypeStripping(): void {
+  // CJS require() handler — uses bundled amaro for type stripping
+  const Module = require('node:module')
+  Module._extensions['.ts'] = (module: any, filename: string) => {
+    const content = readFileSync(filename, 'utf-8')
+    const code = stripTypeScriptTypes(content, { mode: 'strip' })
+    module._compile(code, filename)
+  }
+
+  // ESM: register a loader hook for transitive ESM imports of .ts under node_modules.
+  // Uses Node's built-in stripTypeScriptTypes (bypasses the node_modules restriction).
+  const loaderCode = [
+    'process.removeAllListeners("warning");',
+    'import { stripTypeScriptTypes } from "node:module";',
+    'export async function load(url, context, nextLoad) {',
+    '  if (url.endsWith(".ts") && url.includes("node_modules")) {',
+    '    const result = await nextLoad(url, context);',
+    '    const source = typeof result.source === "string" ? result.source : new TextDecoder().decode(result.source);',
+    '    const stripped = stripTypeScriptTypes(source, { mode: "strip" });',
+    '    return { format: "module", source: stripped, shortCircuit: true };',
+    '  }',
+    '  return nextLoad(url, context);',
+    '}',
+  ].join('\n')
+  register(`data:text/javascript,${encodeURIComponent(loaderCode)}`)
+
+  // Suppress experimental warnings from the loader hooks thread and worker threads
+  process.execArgv.push('--no-warnings')
+}
 
 /**
  * Delegate command execution to the project-local @sqldoc/cli.
- * Spawns the local CLI with inherited stdio and SQLDOC_PROJECT_ROOT env var.
+ * Runs in-process via require() so the CLI shares the same
+ * @sqldoc/core module instance (and its package installer hook).
  */
-export function delegate(sqldocDir: string, args: string[]): void {
-  // Try src/index.ts first (Bun runtime can execute .ts directly)
-  let localCli = join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'src', 'index.ts')
-  if (!existsSync(localCli)) {
-    // Fallback to dist/index.js (for pre-built npm packages)
-    localCli = join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'dist', 'index.js')
-  }
+export async function delegate(sqldocDir: string, args: string[]): Promise<void> {
+  const nodeModules = join(sqldocDir, 'node_modules')
 
-  if (!existsSync(localCli)) {
+  // Verify CLI is installed
+  const cliDir = join(nodeModules, '@sqldoc', 'cli')
+  let cliEntry = join(cliDir, 'src', 'index.ts')
+  if (!existsSync(cliEntry)) {
+    cliEntry = join(cliDir, 'dist', 'index.js')
+  }
+  if (!existsSync(cliEntry)) {
     console.error(pc.red('Error: @sqldoc/cli not found in .sqldoc/node_modules'))
     console.error(`Run: ${pc.cyan('sqldoc init')}`)
     process.exit(1)
   }
 
+  checkVersion(sqldocDir)
+
+  // Enable .ts type stripping for files under node_modules/
+  enableNodeModulesTypeStripping()
+
+  // Set environment for the CLI
   const projectRoot = dirname(sqldocDir)
-  const child = spawn(process.execPath, [localCli, ...args], {
-    stdio: 'inherit',
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      SQLDOC_PROJECT_ROOT: projectRoot,
-      BUN_BE_BUN: '1',
-      NODE_PATH: join(sqldocDir, 'node_modules'),
-    },
-  })
+  process.env.SQLDOC_PROJECT_ROOT = projectRoot
+  process.env.NODE_PATH = nodeModules
 
-  child.on('exit', (code) => {
-    process.exit(code ?? 1)
-  })
+  // Rewrite process.argv so Commander picks up the right args
+  process.argv = [process.execPath, 'sqldoc', ...args]
 
-  child.on('error', (err) => {
-    console.error(pc.red(`Failed to start @sqldoc/cli: ${err.message}`))
-    process.exit(1)
-  })
+  // Create a require function that loads from the filesystem (required for SEA binaries)
+  // and resolves packages from .sqldoc/node_modules
+  const localRequire = createRequire(join(nodeModules, '.package.json'))
+
+  // Require core and set the package installer.
+  // This must happen BEFORE requiring the CLI so they share the same core instance.
+  const core = localRequire('@sqldoc/core')
+  if (typeof core.setPackageInstaller === 'function') {
+    core.setPackageInstaller(async (sqldocDir: string, packages: string[]) => {
+      await addPackages(sqldocDir, packages)
+    })
+  }
+
+  // Require and run the CLI — it calls program.parseAsync() on require
+  localRequire(cliEntry)
 }

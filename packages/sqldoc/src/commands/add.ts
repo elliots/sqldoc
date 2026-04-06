@@ -1,45 +1,50 @@
-import { spawnSync } from 'node:child_process'
-import { dirname } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import pc from 'picocolors'
-import { detectPM } from '../detect-pm.ts'
+
+import { addPackages } from '../arborist.ts'
 import { generateConfigTypes } from '../generate-config-types.ts'
-import { isCompiledBinary } from '../runtime.ts'
+
+/** Read the installed version of @sqldoc/cli from node_modules. */
+function getInstalledCliVersion(sqldocDir: string): string | null {
+  const pkgPath = join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'package.json')
+  if (!existsSync(pkgPath)) return null
+  try {
+    return JSON.parse(readFileSync(pkgPath, 'utf-8')).version
+  } catch {
+    return null
+  }
+}
 
 /**
  * Install packages into .sqldoc/node_modules.
+ * @sqldoc/* packages are pinned to the installed CLI version.
  */
-export function addCommand(sqldocDir: string, packages: string[]): void {
+export async function addCommand(sqldocDir: string, packages: string[]): Promise<void> {
   if (packages.length === 0) {
     console.error(pc.red('Error: No packages specified'))
     console.error(`Usage: ${pc.cyan('sqldoc add <package> [package...]')}`)
     process.exit(1)
   }
 
-  const installArgs = isCompiledBinary()
-    ? [process.execPath, 'install', ...packages]
-    : (() => {
-        const projectRoot = dirname(sqldocDir)
-        const pm = detectPM(projectRoot)
-        console.log(pc.dim(`Installing ${packages.join(', ')} with ${pm}...`))
-        return pm === 'yarn' ? ['yarn', 'add', ...packages] : [pm, 'install', ...packages]
-      })()
-
-  const env = isCompiledBinary() ? { ...process.env, BUN_BE_BUN: '1' } : process.env
-
-  if (isCompiledBinary()) {
-    console.log(pc.dim(`Installing ${packages.join(', ')} with built-in package manager...`))
-  }
-
-  const result = spawnSync(installArgs[0], installArgs.slice(1), {
-    cwd: sqldocDir,
-    stdio: 'inherit',
-    env,
+  // Pin @sqldoc/* packages to the installed CLI version
+  const cliVersion = getInstalledCliVersion(sqldocDir)
+  const resolved = packages.map((pkg) => {
+    if (pkg.startsWith('@sqldoc/') && !pkg.includes('@', 1) && cliVersion) {
+      return `${pkg}@${cliVersion}`
+    }
+    return pkg
   })
 
-  if (result.status === 0) {
+  console.log(pc.dim(`Installing ${packages.join(', ')}...`))
+
+  try {
+    await addPackages(sqldocDir, resolved)
     generateConfigTypes(sqldocDir)
     console.log(pc.dim('Updated .sqldoc/config.d.ts'))
+  } catch (err: any) {
+    console.error(pc.red(`Failed to install: ${err.message}`))
+    process.exit(1)
   }
-
-  process.exit(result.status ?? 1)
 }

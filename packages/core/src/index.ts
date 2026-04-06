@@ -52,13 +52,15 @@ export { lint } from './lint.ts'
 export type { ImportError, LoadResult } from './loader.ts'
 // Loader
 export { loadImports, setImportLogger } from './loader.ts'
+// Package installer hook
+export type { PackageInstaller } from './packages.ts'
+export { installPackages, setPackageInstaller } from './packages.ts'
 export type { ArgValue, ImportStatement, ParsedArgs, ParsedTag, ParseResult } from './parser.ts'
 // Parser
 export { parse, parseArgs } from './parser.ts'
 // Resolver
 export type { ResolvedFiles } from './resolver.ts'
 export { resolveDirectives } from './resolver.ts'
-
 // SQL Emitter
 export type { Dialect } from './sql-emitter.ts'
 export {
@@ -72,7 +74,6 @@ export {
   quoteIdentifier,
   timestampType,
 } from './sql-emitter.ts'
-
 // TS import helper
 export { tsImport } from './ts-import.ts'
 export type {

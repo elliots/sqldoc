@@ -1,17 +1,18 @@
 import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+
 import pc from 'picocolors'
 import packageJson from '../package.json' with { type: 'json' }
+import { installDeps } from './arborist.ts'
 import { addCommand } from './commands/add.ts'
 import { initCommand } from './commands/init.ts'
 import { upgradeCommand } from './commands/upgrade.ts'
-import { delegate } from './delegate.ts'
+import { delegate, setShimVersion } from './delegate.ts'
 import { findSqldocDir } from './find-sqldoc.ts'
-import { getPackageManagerCommand } from './runtime.ts'
 
-// Version is set at build time — the compiled binary can't read package.json
 const VERSION = packageJson.version
+setShimVersion(VERSION)
 
 type CommandInfo = {
   name: string
@@ -28,11 +29,10 @@ function discoverCliCommands(sqldocDir: string): CommandInfo[] | null {
   if (!fs.existsSync(localCli)) return null
 
   try {
-    const output = execSync(`"${process.execPath}" "${localCli}" --help-json`, {
+    const output = execSync(`"${process.execPath}" --experimental-strip-types "${localCli}" --help-json`, {
       env: {
         ...process.env,
         NODE_PATH: path.join(sqldocDir, 'node_modules'),
-        BUN_BE_BUN: '1',
       },
       timeout: 10000,
       encoding: 'utf-8',
@@ -82,7 +82,7 @@ function buildHelp(): string {
 }
 
 /** Run install in .sqldoc/ to ensure node_modules is up to date */
-function ensureDeps(sqldocDir: string): void {
+async function ensureDeps(sqldocDir: string): Promise<void> {
   const nodeModules = path.join(sqldocDir, 'node_modules')
   const pkgJson = path.join(sqldocDir, 'package.json')
 
@@ -102,13 +102,8 @@ function ensureDeps(sqldocDir: string): void {
     if (nmMtime > pkgMtime) return
   }
 
-  const pm = getPackageManagerCommand(sqldocDir)
   try {
-    execSync(`${pm.cmd} install`, {
-      cwd: sqldocDir,
-      stdio: 'inherit',
-      env: { ...process.env, ...pm.env },
-    })
+    await installDeps(sqldocDir)
   } catch {
     console.error(pc.yellow('Warning: failed to sync .sqldoc/ dependencies'))
   }
@@ -149,13 +144,13 @@ async function main(): Promise<void> {
 
   if (command === 'add') {
     const sqldocDir = requireSqldocDir()
-    addCommand(sqldocDir, args.slice(1))
+    await addCommand(sqldocDir, args.slice(1))
     return
   }
 
   if (command === 'upgrade') {
     const sqldocDir = requireSqldocDir()
-    upgradeCommand(sqldocDir)
+    await upgradeCommand(sqldocDir)
     return
   }
 
@@ -167,8 +162,8 @@ async function main(): Promise<void> {
 
   // Default: ensure dependencies are installed, then delegate
   const sqldocDir = requireSqldocDir()
-  ensureDeps(sqldocDir)
-  delegate(sqldocDir, args)
+  await ensureDeps(sqldocDir)
+  await delegate(sqldocDir, args)
 }
 
 main().catch((err) => {

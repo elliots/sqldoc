@@ -1,10 +1,11 @@
-import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+
 import pc from 'picocolors'
-import { detectPM } from '../detect-pm.ts'
+
+import { addPackages } from '../arborist.ts'
 import { generateConfigTypes } from '../generate-config-types.ts'
-import { isCompiledBinary } from '../runtime.ts'
+import { createRL, promptConfirm } from '../prompt.ts'
 
 function findLocalPackages(repoPath: string): Array<{ name: string; path: string }> {
   const packagesDir = join(repoPath, 'packages')
@@ -25,28 +26,15 @@ function findLocalPackages(repoPath: string): Array<{ name: string; path: string
   return packages
 }
 
-function installPackages(sqldocDir: string, targetDir: string, packages: string[]): boolean {
-  const installArgs = isCompiledBinary()
-    ? [process.execPath, 'install', ...packages]
-    : (() => {
-        const pm = detectPM(targetDir)
-        console.log(pc.dim(`Using ${pm} to install ${packages.join(', ')}...`))
-        return pm === 'yarn' ? ['yarn', 'add', ...packages] : [pm, 'install', ...packages]
-      })()
-
-  const env = isCompiledBinary() ? { ...process.env, BUN_BE_BUN: '1' } : process.env
-
-  if (isCompiledBinary()) {
-    console.log(pc.dim('Using built-in package manager...'))
+/** Read the installed version of @sqldoc/cli from node_modules. */
+function getInstalledCliVersion(sqldocDir: string): string | null {
+  const pkgPath = join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'package.json')
+  if (!existsSync(pkgPath)) return null
+  try {
+    return JSON.parse(readFileSync(pkgPath, 'utf-8')).version
+  } catch {
+    return null
   }
-
-  const result = spawnSync(installArgs[0], installArgs.slice(1), {
-    cwd: sqldocDir,
-    stdio: 'inherit',
-    env,
-  })
-
-  return result.status === 0
 }
 
 const DEFAULT_CONFIG = `import type { Config } from './.sqldoc/config'
@@ -65,38 +53,6 @@ export default {
     },
   },
 } satisfies Config
-`
-
-const EXAMPLE_SCHEMA = `-- @import '@sqldoc/ns-docs'
-
--- @docs.description('Application users')
-CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
-
-    -- @docs.description('Login email address')
-    email TEXT NOT NULL UNIQUE,
-
-    -- @docs.description('Display name')
-    name TEXT,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- @docs.description('User-created posts')
-CREATE TABLE posts (
-    id BIGSERIAL PRIMARY KEY,
-
-    -- @docs.description('Author of the post')
-    user_id BIGINT NOT NULL REFERENCES users(id),
-
-    title TEXT NOT NULL,
-    body TEXT,
-    published BOOLEAN NOT NULL DEFAULT false,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 `
 
 /**
@@ -158,17 +114,23 @@ export async function initCommand(targetDir: string = process.cwd(), devPath?: s
 
     console.log(pc.dim(`Linked ${localPackages.length} packages from ${repoPath}`))
   } else {
-    // Production mode — install @sqldoc/cli and ns-docs
+    // Production mode — install @sqldoc/cli first, then pin ns-docs to same version
     writeFileSync(
       join(sqldocDir, 'package.json'),
       `${JSON.stringify({ name: 'sqldoc-local', private: true, workspaces: [] }, null, 2)}\n`,
     )
 
-    // DB adapter plugins are auto-installed on first use by the CLI
-    if (!installPackages(sqldocDir, targetDir, ['@sqldoc/cli', '@sqldoc/ns-docs'])) {
-      console.error(pc.red('Failed to install packages'))
+    console.log(pc.dim('Installing @sqldoc/cli...'))
+    await addPackages(sqldocDir, ['@sqldoc/cli@latest'])
+
+    const cliVersion = getInstalledCliVersion(sqldocDir)
+    if (!cliVersion) {
+      console.error(pc.red('Failed to install @sqldoc/cli'))
       process.exit(1)
     }
+
+    console.log(pc.dim(`Installed @sqldoc/cli@${cliVersion}, installing @sqldoc/ns-docs...`))
+    await addPackages(sqldocDir, [`@sqldoc/ns-docs@${cliVersion}`])
   }
 
   // Generate config types
@@ -177,26 +139,23 @@ export async function initCommand(targetDir: string = process.cwd(), devPath?: s
   // Scaffold sqldoc.config.ts
   const configPath = join(targetDir, 'sqldoc.config.ts')
   if (!existsSync(configPath)) {
-    writeFileSync(configPath, DEFAULT_CONFIG)
-    console.log(`  ${pc.green('+')} ${pc.bold('sqldoc.config.ts')}`)
-  }
-
-  // Scaffold example schema if schema/ doesn't exist
-  const schemaDir = join(targetDir, 'schema')
-  if (!existsSync(schemaDir)) {
-    mkdirSync(schemaDir, { recursive: true })
-    writeFileSync(join(schemaDir, 'schema.sql'), EXAMPLE_SCHEMA)
-    console.log(`  ${pc.green('+')} ${pc.bold('schema/schema.sql')} ${pc.dim('(example schema with two tables)')}`)
+    let createConfig = true
+    if (process.stdin.isTTY) {
+      const rl = createRL()
+      createConfig = await promptConfirm(rl, 'Create sqldoc.config.ts?')
+      rl.close()
+    }
+    if (createConfig) {
+      writeFileSync(configPath, DEFAULT_CONFIG)
+      console.log(`  ${pc.green('+')} ${pc.bold('sqldoc.config.ts')}`)
+    }
   }
 
   console.log('')
   console.log(pc.green('Project initialized!'))
   console.log('')
-  console.log(`Edit ${pc.bold('sqldoc.config.ts')} to configure your project.`)
-  console.log(`We've created an example schema in ${pc.bold('schema/')} to get you started.`)
-  console.log('')
-  console.log('Try these commands:')
-  console.log(`  ${pc.cyan('sqldoc codegen')}                 Generate HTML docs from your schema`)
+  console.log('Next steps:')
+  console.log(`  ${pc.cyan('sqldoc codegen')}                 Generate docs and code from your schema`)
   console.log(`  ${pc.cyan('sqldoc schema inspect')}          View the parsed schema`)
   console.log(`  ${pc.cyan('sqldoc migrate')}                 Generate a migration file`)
   console.log('')
