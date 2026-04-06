@@ -6,6 +6,7 @@
       "name": "sqldoc",
       "devDependencies": {
         "@biomejs/biome": "2.4.8",
+        "@types/node": "catalog:",
         "esbuild": "0.27.4",
         "lefthook": "2.1.4",
       },
