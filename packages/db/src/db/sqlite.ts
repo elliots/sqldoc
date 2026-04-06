@@ -3,7 +3,7 @@
  * Uses bun:sqlite when running in Bun, node:sqlite when running in Node.
  * Both are synchronous APIs wrapped in async methods to match the DatabaseAdapter interface.
  */
-import type { SupportedValueType } from 'node:sqlite'
+import type { SQLInputValue } from 'node:sqlite'
 import type { DatabaseAdapter, ExecResult, QueryResult } from './types.ts'
 import { isBun, normalizeValue } from './types.ts'
 
@@ -44,7 +44,7 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
   return {
     async query(sql: string, args?: unknown[]): Promise<QueryResult> {
       const stmt = db.prepare(sql)
-      const rows = (args ? stmt.all(...(args as SupportedValueType[])) : stmt.all()) as Record<string, unknown>[]
+      const rows = (args ? stmt.all(...(args as SQLInputValue[])) : stmt.all()) as Record<string, unknown>[]
       const columns =
         rows.length > 0 ? Object.keys(rows[0]) : ((stmt as any).columns?.()?.map((c: any) => c.name) ?? [])
       return {
@@ -54,7 +54,7 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
     },
     async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
       if (args && args.length > 0) {
-        const result = db.prepare(sql).run(...(args as SupportedValueType[]))
+        const result = db.prepare(sql).run(...(args as SQLInputValue[]))
         return { rowsAffected: Number(result.changes) }
       }
       db.exec(sql)
