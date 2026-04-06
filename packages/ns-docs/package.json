@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-docs",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Documentation namespace for sqldoc -- generates Markdown/HTML docs with Mermaid ER diagrams via Atlas CLI",
   "exports": {
     ".": {

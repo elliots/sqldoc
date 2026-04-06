@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.10 (2026-04-06)
+ - feat: db: replace pg with postgres.js
+ - feat: cli: handle multiple configs in file
+ - feat: use Bun built-in SQL drivers, skip npm drivers on Bun
+ - feat: database adapter plugins
+ - feat: db-neon-temporary: fires up a temporary Neon database, as an alternative to pglite or docker
+ - feat: db-neon: connect to neon db instance using websocket. much todo there.
+ - feat: drop number of roundtrips to postgres during inspection
+ - fix: lots of tiny fixes from static analysis
+
 ## v0.0.9 (2026-04-04)
  - feat: move bundle-require from core to vscode extension
  - feat: replace fast-glob with built-in fs.globSync
