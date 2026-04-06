@@ -161,7 +161,6 @@
     "@sqldoc/ns-codegen": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
     "postgres": "^3.4.5",
-    "tsx": "^4.21.0",
     "@typescript/native-preview": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
