@@ -256,16 +256,21 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     throw new Error(`Atlas WASM binary not found: ${wasmPath}`)
   }
 
-  /** If Atlas reports an error indicating a dirty dev DB, reset the adapter. */
-  async function resetIfDirty(result: AtlasResult): Promise<void> {
-    if (!autoReset || !db.reset || !result.error) return
-    if (
-      result.error.includes('already exists') ||
-      result.error.includes('not clean') ||
-      result.error.includes('restore:')
-    ) {
-      await db.reset()
-    }
+  /** Check if an Atlas error indicates a dirty dev DB with leftover state from a previous run. */
+  function isDirtyError(error: string | undefined): boolean {
+    if (!error) return false
+    return error.includes('already exists') || error.includes('not clean') || error.includes('restore:')
+  }
+
+  /**
+   * If Atlas reports a dirty-dev-DB error, reset the adapter and retry the command once.
+   * This handles the case where Atlas fails to restore the dev DB after a previous operation,
+   * leaving leftover schema objects that cause the next operation to fail.
+   */
+  async function retryIfDirty(result: AtlasResult, retryFn: () => Promise<AtlasResult>): Promise<AtlasResult> {
+    if (!autoReset || !db.reset || !isDirtyError(result.error)) return result
+    await db.reset()
+    return retryFn()
   }
 
   return {
@@ -278,8 +283,7 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
         schema: opts?.schema,
       }
       const result = await runCommand(wasmPath, db, command)
-      await resetIfDirty(result)
-      return result
+      return retryIfDirty(result, () => runCommand(wasmPath, db, command))
     },
 
     async diff(
@@ -304,8 +308,7 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
       if (fromIsDb) extraAdapters.from = from as DatabaseAdapter
       if (toIsDb) extraAdapters.to = to as DatabaseAdapter
       const result = await runCommand(wasmPath, db, command, extraAdapters)
-      await resetIfDirty(result)
-      return result
+      return retryIfDirty(result, () => runCommand(wasmPath, db, command, extraAdapters))
     },
 
     async close(): Promise<void> {

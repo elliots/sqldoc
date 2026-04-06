@@ -131,5 +131,8 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
     if (process.env.DEBUG) console.error('[runner] extensions validated')
   }
 
-  return createAtlasRunner({ wasmPath, db, dialect, autoReset: config.autoReset })
+  // Auto-enable autoReset for ephemeral adapters (pglite, docker) that implement reset().
+  // This ensures dirty dev-DB state from failed Atlas restore steps is automatically recovered.
+  const autoReset = config.autoReset ?? (db.reset != null)
+  return createAtlasRunner({ wasmPath, db, dialect, autoReset })
 }
