@@ -11,7 +11,6 @@
  */
 
 import * as fs from 'node:fs'
-import { createRequire } from 'node:module'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Worker } from 'node:worker_threads'
@@ -73,14 +72,7 @@ function resolveWorkerPath(): { workerPath: string; execArgv: string[] } {
     if (fs.existsSync(candidate)) {
       if (candidate.endsWith('.ts') && !isBun) {
         // Node 22.21+ runs .ts natively — no loader needed for workers
-        // Older Node needs tsx/cjs to register TypeScript transform
-        const [major, minor] = (process.versions?.node ?? '0.0').split('.').map(Number)
-        if (major > 22 || (major === 22 && minor >= 21)) {
-          return { workerPath: candidate, execArgv: [] }
-        }
-        const atlasRequire = createRequire(candidate)
-        const tsxCjs = atlasRequire.resolve('tsx/cjs')
-        return { workerPath: candidate, execArgv: ['--require', tsxCjs] }
+        return { workerPath: candidate, execArgv: [] }
       }
       return { workerPath: candidate, execArgv: [] }
     }

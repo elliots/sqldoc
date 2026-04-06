@@ -1,6 +1,5 @@
 /**
  * Resolves @import paths and loads TagNamespace definitions.
- * Uses tsx to handle TypeScript files without pre-compilation.
  */
 
 import * as path from 'node:path'
