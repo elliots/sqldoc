@@ -90,7 +90,7 @@ export async function runWasi(options: WasiRunOptions): Promise<WasiRunResult> {
     let wasmModule = options.compiledModule
     if (!wasmModule) {
       const wasmBytes = fs.readFileSync(wasmPath)
-      wasmModule = await WebAssembly.compile(wasmBytes)
+      wasmModule = await WebAssembly.compile(wasmBytes as BufferSource)
     }
 
     // Build imports
