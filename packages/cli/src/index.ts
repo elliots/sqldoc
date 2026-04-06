@@ -12,6 +12,7 @@ import { migrateCommand } from './commands/migrate.ts'
 import { schemaDiffCommand, schemaInspectCommand } from './commands/schema.ts'
 import { validateCommand } from './commands/validate.ts'
 import { CliError } from './errors.ts'
+import { checkSqldocVersions } from './utils/auto-install.ts'
 import { runForAllConfigs } from './utils/workspace.ts'
 
 /** Wrap a command action to support --all (run across all workspace configs) */
@@ -36,6 +37,8 @@ function withAll<T extends (...args: any[]) => Promise<void>>(action: T): T {
 
 const req = createRequire(import.meta.url)
 const version: string = req('../package.json').version
+
+checkSqldocVersions()
 
 const program = new Command()
 

@@ -1,10 +1,21 @@
 import { spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
+import { createRequire } from 'node:module'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
 import type { ImportError } from '@sqldoc/core'
 import { findSqldocDir, loadImports } from '@sqldoc/core'
 import pc from 'picocolors'
+
+/** Get the version of @sqldoc/cli (used to pin installed plugin versions). */
+export function getCliVersion(): string {
+  try {
+    const req = createRequire(import.meta.url)
+    return req('../../package.json').version
+  } catch {
+    return '0.0.0'
+  }
+}
 
 /**
  * Detect missing npm packages from loadImport errors.
@@ -91,6 +102,39 @@ export function installPackages(sqldocDir: string, packages: string[]): boolean 
 }
 
 /**
+ * Check that all @sqldoc/* packages in .sqldoc/node_modules share the same version as @sqldoc/cli.
+ * Prints a warning to stderr if any are mismatched.
+ */
+export function checkSqldocVersions(): void {
+  const sqldocDir = findSqldocDirWithEnv()
+  if (!sqldocDir) return
+
+  const cliVersion = getCliVersion()
+  if (cliVersion === '0.0.0') return
+
+  const scopeDir = path.join(sqldocDir, 'node_modules', '@sqldoc')
+  if (!fs.existsSync(scopeDir)) return
+
+  const mismatched: { name: string; version: string }[] = []
+  for (const entry of fs.readdirSync(scopeDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const pkgJsonPath = path.join(scopeDir, entry.name, 'package.json')
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'))
+      if (pkg.version && pkg.version !== cliVersion) {
+        mismatched.push({ name: `@sqldoc/${entry.name}`, version: pkg.version })
+      }
+    } catch {}
+  }
+
+  if (mismatched.length > 0) {
+    const lines = mismatched.map((m) => `  ${m.name}@${m.version}`)
+    console.error(pc.yellow(`Warning: @sqldoc package version mismatch (cli is ${cliVersion}):\n${lines.join('\n')}`))
+    console.error(pc.yellow(`Run \`sqldoc add <package>@${cliVersion}\` to fix, or reinstall all packages.`))
+  }
+}
+
+/**
  * Check for missing package errors, prompt the user to install, and retry loadImports.
  * Returns updated namespaces and remaining errors.
  */
@@ -105,8 +149,14 @@ export async function promptAndInstallMissing(
   const sqldocDir = findSqldocDirWithEnv()
   if (!sqldocDir) return null
 
-  if (await promptInstall(missingPackages)) {
-    if (installPackages(sqldocDir, missingPackages)) {
+  // Pin @sqldoc/* packages to the CLI version
+  const version = getCliVersion()
+  const pinned = missingPackages.map((pkg) =>
+    pkg.startsWith('@sqldoc/') && version !== '0.0.0' ? `${pkg}@${version}` : pkg,
+  )
+
+  if (await promptInstall(pinned)) {
+    if (installPackages(sqldocDir, pinned)) {
       // Retry loading after install
       return await loadImports(importPaths, filePath)
     }
