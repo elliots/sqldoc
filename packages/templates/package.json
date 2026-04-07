@@ -129,6 +129,21 @@
       "import": "./src/cobol-copybook/index.ts",
       "default": "./src/cobol-copybook/index.ts"
     },
+    "./ruby-activerecord": {
+      "types": "./src/ruby-activerecord/index.ts",
+      "import": "./src/ruby-activerecord/index.ts",
+      "default": "./src/ruby-activerecord/index.ts"
+    },
+    "./php-eloquent": {
+      "types": "./src/php-eloquent/index.ts",
+      "import": "./src/php-eloquent/index.ts",
+      "default": "./src/php-eloquent/index.ts"
+    },
+    "./swift-codable": {
+      "types": "./src/swift-codable/index.ts",
+      "import": "./src/swift-codable/index.ts",
+      "default": "./src/swift-codable/index.ts"
+    },
     "./typeorm": {
       "types": "./src/typeorm/index.ts",
       "import": "./src/typeorm/index.ts",
