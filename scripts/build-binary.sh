@@ -22,7 +22,7 @@ ENTRY="packages/sqldoc/src/index.ts"
 OUT_DIR="${SQLDOC_BIN_DIR:-dist}"
 ARGS=("$ENTRY" --out-dir "$OUT_DIR" --output-name sqldoc)
 
-if [ $# -gt 0 ]; then
+if [[ $# -gt 0 ]]; then
   for platform in "$@"; do
     ARGS+=(--platforms "$platform")
   done
@@ -36,6 +36,6 @@ echo "Building sqldoc binary..."
 # Apple Developer ID signing or users run: xattr -d com.apple.quarantine sqldoc
 if [[ "$(uname)" == "Darwin" ]]; then
   for bin in "$OUT_DIR"/sqldoc-darwin-*; do
-    [ -f "$bin" ] && codesign -s - "$bin" 2>/dev/null && echo "Signed: $bin"
+    [[ -f "$bin" ]] && codesign -s - "$bin" 2>/dev/null && echo "Signed: $bin"
   done
 fi

@@ -36,4 +36,4 @@ for dir in packages/*/; do
 done
 
 echo "Published: ${PUBLISHED}, Failed: ${FAILED}"
-[ "$FAILED" -gt 0 ] && exit 1 || exit 0
+[[ "$FAILED" -gt 0 ]] && exit 1 || exit 0
