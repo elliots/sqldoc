@@ -124,6 +124,7 @@
       "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
+        "@sqldoc/db": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
         "@typescript/native-preview": "catalog:",
       },
@@ -225,6 +226,7 @@
       "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
+        "@sqldoc/db": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
         "@typescript/native-preview": "catalog:",
       },
@@ -263,6 +265,7 @@
       "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
+        "@sqldoc/db": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
         "@typescript/native-preview": "catalog:",
       },

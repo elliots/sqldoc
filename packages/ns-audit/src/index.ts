@@ -39,7 +39,7 @@ function generateAuditTableSql(destination: string, dialect: Dialect): string {
   operation TEXT NOT NULL,
   old_data ${jsonType(dialect)},
   new_data ${jsonType(dialect)},
-  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${currentTimestamp(dialect)}
+  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${dialect === 'sqlite' ? `(${currentTimestamp(dialect)})` : currentTimestamp(dialect)}
 );`
 }
 
