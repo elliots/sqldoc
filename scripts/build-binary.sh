@@ -1,68 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build sqldoc as a standalone Node.js SEA (Single Executable Application).
+# Build sqldoc as standalone binaries via fossilize (Node.js SEA).
 # This compiles the THIN SHIM (packages/sqldoc/) — NOT the full CLI.
 # The shim handles init/add/upgrade/delegate. The actual CLI lives in
-# .sqldoc/node_modules/@sqldoc/cli and is loaded at runtime.
+# .sqldoc/node_modules/@sqldoc/cli and is loaded at runtime via require().
 #
-# Requirements: Node.js 25+, esbuild
+# Usage: ./scripts/build-binary.sh [PLATFORMS...]
 #
-# Usage: ./scripts/build-binary.sh
+# Examples:
+#   ./scripts/build-binary.sh                                    # current platform
+#   ./scripts/build-binary.sh linux-x64 linux-arm64              # specific targets
+#   ./scripts/build-binary.sh linux-x64 linux-arm64 darwin-x64 darwin-arm64  # all release targets
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BIN="$ROOT/node_modules/.bin"
 
 ENTRY="packages/sqldoc/src/index.ts"
-DIST="dist"
-BUNDLE="$DIST/sqldoc-bundle.cjs"
-SEA_CONFIG="$DIST/sea-config.json"
-OUT="$DIST/sqldoc"
 
-# Verify Node.js version >= 25.5.0 (required for --build-sea)
-NODE_VERSION=$(node -v | sed 's/^v//')
-NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
-NODE_MINOR=$(echo "$NODE_VERSION" | cut -d. -f2)
-if [[ "$NODE_MAJOR" -lt 25 || ( "$NODE_MAJOR" -eq 25 && "$NODE_MINOR" -lt 5 ) ]]; then
-  echo "Error: Node.js >= 25.5.0 required for --build-sea (found v$NODE_VERSION)" >&2
-  exit 1
+ARGS=("$ENTRY" --out-dir dist --output-name sqldoc)
+
+if [ $# -gt 0 ]; then
+  for platform in "$@"; do
+    ARGS+=(--platforms "$platform")
+  done
 fi
 
-mkdir -p "$DIST"
+echo "Building sqldoc binary..."
+"$BIN/fossilize" "${ARGS[@]}"
 
-# -- Stage 1: Bundle with esbuild --
-# TypeScript → single CJS file with all deps (picocolors, @npmcli/arborist) inlined
-echo "Bundling with esbuild..."
-"$BIN/esbuild" "$ENTRY" \
-  --bundle \
-  --platform=node \
-  --target=node25 \
-  --format=cjs \
-  --outfile="$BUNDLE" \
-  --minify
-
-echo "Bundle: $BUNDLE ($(du -h "$BUNDLE" | cut -f1))"
-
-# -- Stage 2: Build SEA binary (Node 25+ --build-sea) --
-cat > "$SEA_CONFIG" << EOF
-{
-  "main": "$BUNDLE",
-  "output": "$OUT",
-  "disableExperimentalSEAWarning": true,
-  "useCodeCache": false,
-  "useSnapshot": false
-}
-EOF
-
-echo "Building SEA binary..."
-node --build-sea "$SEA_CONFIG"
-
-# Sign on macOS (required for execution on Apple Silicon)
-if [[ "$(uname)" == "Darwin" ]]; then
-  codesign -s - "$OUT"
-fi
-
-echo ""
-echo "Built: $OUT ($(du -h "$OUT" | cut -f1))"
-echo "Test:  $OUT --version"
+# Ad-hoc sign for local macOS testing
+for bin in dist/sqldoc-darwin-*; do
+  [ -f "$bin" ] && codesign -s - "$bin" 2>/dev/null && echo "Signed: $bin"
+done
