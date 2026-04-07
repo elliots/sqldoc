@@ -17,9 +17,3 @@ export async function addPackages(sqldocDir: string, packages: string[]): Promis
   const arb = new Arborist({ path: sqldocDir, savePrefix: '' })
   await arb.reify({ add: packages })
 }
-
-/** Update all dependencies to latest (equivalent to `npm update`). */
-export async function updateAll(sqldocDir: string): Promise<void> {
-  const arb = new Arborist({ path: sqldocDir })
-  await arb.reify({ update: true })
-}
