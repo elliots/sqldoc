@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
@@ -29,7 +29,7 @@ function discoverCliCommands(sqldocDir: string): CommandInfo[] | null {
   if (!fs.existsSync(localCli)) return null
 
   try {
-    const output = execSync(`"${process.execPath}" --experimental-strip-types "${localCli}" --help-json`, {
+    const output = execFileSync(process.execPath, ['--experimental-strip-types', localCli, '--help-json'], {
       env: {
         ...process.env,
         NODE_PATH: path.join(sqldocDir, 'node_modules'),
