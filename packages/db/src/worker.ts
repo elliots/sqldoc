@@ -1,9 +1,3 @@
-// Suppress WASI experimental warnings (keep other warnings visible)
-process.on('warning', (warning) => {
-  if (warning.name === 'ExperimentalWarning' && warning.message.includes('WASI')) return
-  console.error(warning)
-})
-
 /**
  * Worker thread entry point for Atlas WASI execution.
  *

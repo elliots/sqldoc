@@ -49,8 +49,9 @@ export async function addCommand(sqldocDir: string, packages: string[]): Promise
     await addPackages(sqldocDir, resolved)
     generateConfigTypes(sqldocDir)
     console.log(pc.dim('Updated .sqldoc/config.d.ts'))
-  } catch (err: any) {
-    console.error(pc.red(`Failed to install: ${err.message}`))
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(pc.red(`Failed to install: ${msg}`))
     process.exit(1)
   }
 }

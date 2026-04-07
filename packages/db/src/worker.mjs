@@ -9,7 +9,14 @@ import { register } from 'node:module'
 
 // Suppress experimental warnings (WASI, stripTypeScriptTypes) — keep others visible
 process.on('warning', (warning) => {
-  if (warning.name === 'ExperimentalWarning') return
+  if (warning.name === 'ExperimentalWarning') {
+    const message = warning.message || ''
+    const code = warning.code || ''
+    if (message.includes('WASI') || message.includes('stripTypeScriptTypes') ||
+        code.includes('WASI') || code.includes('stripTypeScriptTypes')) {
+      return
+    }
+  }
   console.error(warning)
 })
 

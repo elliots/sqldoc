@@ -8,17 +8,29 @@ set -euo pipefail
 #
 # Requirements: Node.js 25+, esbuild
 #
-# Usage: ./scripts/build-binary.sh
+# Usage: ./scripts/build-binary.sh [GOOS] [GOARCH]
+# Examples:
+#   ./scripts/build-binary.sh                 # Build for current platform
+#   ./scripts/build-binary.sh linux amd64     # Build for Linux AMD64
+#   ./scripts/build-binary.sh darwin arm64    # Build for macOS ARM64
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BIN="$ROOT/node_modules/.bin"
 
+# Accept GOOS/GOARCH parameters (optional, default to current platform)
+GOOS="${1:-$(uname -s | tr '[:upper:]' '[:lower:]')}"
+GOARCH="${2:-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')}"
+
+# Normalize Darwin to darwin
+GOOS=$(echo "$GOOS" | tr '[:upper:]' '[:lower:]' | sed 's/darwin/darwin/')
+
 ENTRY="packages/sqldoc/src/index.ts"
 DIST="dist"
-BUNDLE="$DIST/sqldoc-bundle.cjs"
-SEA_CONFIG="$DIST/sea-config.json"
-OUT="$DIST/sqldoc"
+PLATFORM_DIR="$DIST/sqldoc_${GOOS}_${GOARCH}"
+BUNDLE="$PLATFORM_DIR/sqldoc-bundle.cjs"
+SEA_CONFIG="$PLATFORM_DIR/sea-config.json"
+OUT="$PLATFORM_DIR/sqldoc"
 
 # Verify Node.js version >= 25.5.0 (required for --build-sea)
 NODE_VERSION=$(node -v | sed 's/^v//')
@@ -29,7 +41,7 @@ if [[ "$NODE_MAJOR" -lt 25 || ( "$NODE_MAJOR" -eq 25 && "$NODE_MINOR" -lt 5 ) ]]
   exit 1
 fi
 
-mkdir -p "$DIST"
+mkdir -p "$PLATFORM_DIR"
 
 # -- Stage 1: Bundle with esbuild --
 # TypeScript → single CJS file with all deps (picocolors, @npmcli/arborist) inlined
