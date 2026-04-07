@@ -90,7 +90,7 @@ describe('docker template tests', () => {
     // Run codegen — outputs directly into each src/<template>/test/ directory
     console.log('Running codegen...')
     execSync(
-      `${process.execPath} ${join(REPO_ROOT, 'packages/cli/src/index.ts')} codegen -c ${join(TEST_DIR, 'sqldoc.config.ts')} ${join(TEST_DIR, 'fixture.sql')}`,
+      `${process.execPath} ${join(REPO_ROOT, 'packages/cli/src/main.ts')} codegen -c ${join(TEST_DIR, 'sqldoc.config.ts')} ${join(TEST_DIR, 'fixture.sql')}`,
       {
         cwd: TEMPLATES_DIR,
         stdio: 'pipe',
