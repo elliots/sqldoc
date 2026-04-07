@@ -81,7 +81,7 @@ function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
 }
 
 /**
- * Create an Atlas runner with sensible defaults.
+ * Create a DatabaseAdapter from a dialect + devUrl.
  *
  * All adapters go through the plugin resolver. Built-in plugins (Bun SQL,
  * SQLite) are registered at import time. External plugins (@sqldoc/db-*)
@@ -90,8 +90,7 @@ function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
  * Docker is the only special case — it orchestrates a container, then
  * delegates to the plugin system for the actual DB connection.
  */
-export async function createRunner(config: CreateRunnerConfig): Promise<import('./runner').AtlasRunner> {
-  const wasmPath = resolveWasm()
+export async function createAdapter(config: CreateRunnerConfig): Promise<import('./db/types').DatabaseAdapter> {
   const dialect = config.dialect
   const devUrl = config.devUrl ?? defaultDevUrl(dialect)
   const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
@@ -104,15 +103,12 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
   let db: import('./db/types').DatabaseAdapter
 
   if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
-    // Docker orchestration: spin up container, then the inner adapter
-    // handles Bun vs Node via the plugin system
     if (dialect === 'mysql') {
       db = await createMysqlDockerAdapter(devUrl, pluginOpts)
     } else {
       db = await createPostgresDockerAdapter(devUrl, pluginOpts)
     }
   } else {
-    // Everything else goes through plugin resolution
     db = await resolveAdapterPlugin({ devUrl, ...pluginOpts })
   }
 
@@ -128,5 +124,15 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
     if (process.env.DEBUG) console.error('[runner] extensions validated')
   }
 
-  return createAtlasRunner({ wasmPath, db, dialect })
+  return db
+}
+
+/**
+ * Create an Atlas runner with sensible defaults.
+ * Uses createAdapter() internally, then wraps the adapter in the Atlas WASI runner.
+ */
+export async function createRunner(config: CreateRunnerConfig): Promise<import('./runner').AtlasRunner> {
+  const wasmPath = resolveWasm()
+  const db = await createAdapter(config)
+  return createAtlasRunner({ wasmPath, db, dialect: config.dialect })
 }

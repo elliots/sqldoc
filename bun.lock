@@ -183,6 +183,19 @@
         "@sqldoc/db": "workspace:*",
       },
     },
+    "packages/ns-history": {
+      "name": "@sqldoc/ns-history",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@sqldoc/core": "workspace:*",
+        "@sqldoc/db": "workspace:*",
+        "@sqldoc/test-utils": "workspace:*",
+        "@typescript/native-preview": "catalog:",
+      },
+      "peerDependencies": {
+        "@sqldoc/core": "workspace:*",
+      },
+    },
     "packages/ns-lint": {
       "name": "@sqldoc/ns-lint",
       "version": "0.1.0",
@@ -212,6 +225,32 @@
       "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
+        "@sqldoc/test-utils": "workspace:*",
+        "@typescript/native-preview": "catalog:",
+      },
+      "peerDependencies": {
+        "@sqldoc/core": "workspace:*",
+      },
+    },
+    "packages/ns-softdelete": {
+      "name": "@sqldoc/ns-softdelete",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@sqldoc/core": "workspace:*",
+        "@sqldoc/db": "workspace:*",
+        "@sqldoc/test-utils": "workspace:*",
+        "@typescript/native-preview": "catalog:",
+      },
+      "peerDependencies": {
+        "@sqldoc/core": "workspace:*",
+      },
+    },
+    "packages/ns-temporal": {
+      "name": "@sqldoc/ns-temporal",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@sqldoc/core": "workspace:*",
+        "@sqldoc/db": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
         "@typescript/native-preview": "catalog:",
       },
@@ -292,8 +331,11 @@
         "@sqldoc/ns-audit": "workspace:*",
         "@sqldoc/ns-comment": "workspace:*",
         "@sqldoc/ns-deprecated": "workspace:*",
+        "@sqldoc/ns-history": "workspace:*",
         "@sqldoc/ns-postgraphile": "workspace:*",
         "@sqldoc/ns-rls": "workspace:*",
+        "@sqldoc/ns-softdelete": "workspace:*",
+        "@sqldoc/ns-temporal": "workspace:*",
         "@sqldoc/ns-validate": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
         "@typescript/native-preview": "catalog:",
@@ -558,11 +600,17 @@
 
     "@sqldoc/ns-docs": ["@sqldoc/ns-docs@workspace:packages/ns-docs"],
 
+    "@sqldoc/ns-history": ["@sqldoc/ns-history@workspace:packages/ns-history"],
+
     "@sqldoc/ns-lint": ["@sqldoc/ns-lint@workspace:packages/ns-lint"],
 
     "@sqldoc/ns-postgraphile": ["@sqldoc/ns-postgraphile@workspace:packages/ns-postgraphile"],
 
     "@sqldoc/ns-rls": ["@sqldoc/ns-rls@workspace:packages/ns-rls"],
+
+    "@sqldoc/ns-softdelete": ["@sqldoc/ns-softdelete@workspace:packages/ns-softdelete"],
+
+    "@sqldoc/ns-temporal": ["@sqldoc/ns-temporal@workspace:packages/ns-temporal"],
 
     "@sqldoc/ns-validate": ["@sqldoc/ns-validate@workspace:packages/ns-validate"],
 

@@ -23,6 +23,9 @@
     "@sqldoc/ns-postgraphile": "workspace:*",
     "@sqldoc/ns-rls": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
+    "@sqldoc/ns-softdelete": "workspace:*",
+    "@sqldoc/ns-history": "workspace:*",
+    "@sqldoc/ns-temporal": "workspace:*",
     "@typescript/native-preview": "catalog:"
   }
 }
