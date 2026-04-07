@@ -19,7 +19,7 @@ jobs:
           - name: node
             version: "25"
 
-    name: test (${{ matrix.runtime.name }})
+    name: test (${{ matrix.runtime.name }} ${{ matrix.runtime.version }})
 
     steps:
       - uses: actions/checkout@v4
