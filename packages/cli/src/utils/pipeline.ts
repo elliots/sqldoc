@@ -122,8 +122,11 @@ export async function runCompilePipeline(
     extensions,
     sqldocDir,
     onMissingPlugin: async (packageNameWithVersion: string) => {
+      if (!sqldocDir) {
+        console.error(pc.yellow('Cannot auto-install: no .sqldoc/ directory found'))
+        return false
+      }
       if (await promptInstall([packageNameWithVersion])) {
-        if (!sqldocDir) return false
         try {
           await installPackages(sqldocDir, [packageNameWithVersion])
           return true
