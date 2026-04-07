@@ -37,7 +37,7 @@ export async function promptSelect<T extends string>(
   const answer = await ask(rl, `${pc.dim(`[${defaultIdx + 1}]`)} > `)
 
   if (answer.trim() === '') return defaultValue
-  const idx = parseInt(answer.trim(), 10) - 1
+  const idx = Number.parseInt(answer.trim(), 10) - 1
   if (idx >= 0 && idx < options.length) return options[idx].value
   return defaultValue
 }
@@ -73,7 +73,7 @@ export async function promptCheckbox<T extends string>(
 
   if (answer.trim() === '') return defaults
 
-  const indices = answer.split(',').map((s) => parseInt(s.trim(), 10) - 1)
+  const indices = answer.split(',').map((s) => Number.parseInt(s.trim(), 10) - 1)
   const selected: T[] = []
   for (const idx of indices) {
     if (idx >= 0 && idx < options.length) {

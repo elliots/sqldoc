@@ -15,12 +15,12 @@ FAILED=0
 PUBLISHED=0
 
 for dir in packages/*/; do
-  [ -f "${dir}package.json" ] || continue
+  [[ -f "${dir}package.json" ]] || continue
 
   PRIVATE=$(bun -e "const p = require('./${dir}package.json'); console.log(!!p.private)")
   NAME=$(bun -e "const p = require('./${dir}package.json'); console.log(p.name)")
 
-  if [ "$PRIVATE" = "true" ]; then
+  if [[ "$PRIVATE" = "true" ]]; then
     echo "SKIP ${NAME} (private)"
     continue
   fi
