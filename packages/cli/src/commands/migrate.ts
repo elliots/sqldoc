@@ -121,7 +121,9 @@ async function migrateProject(
 
   // ── Step 4: Diff current -> desired (up migration) ─────────────────
   // Inspect all schemas (no scope restriction) but strip the default schema from output.
-  const defaultSchemaOpt = dialect === 'postgres' ? 'public' : dialect === 'sqlite' ? 'main' : undefined
+  let defaultSchemaOpt: string | undefined
+  if (dialect === 'postgres') defaultSchemaOpt = 'public'
+  else if (dialect === 'sqlite') defaultSchemaOpt = 'main'
 
   const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)

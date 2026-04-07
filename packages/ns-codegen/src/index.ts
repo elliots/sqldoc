@@ -81,6 +81,10 @@ const plugin: NamespacePlugin = {
 
       const templateName =
         typeof entry.template === 'string' ? extractTemplateName(entry.template) : (template.name ?? 'unknown')
+      let defaultSchema: string | undefined
+      if (ctx.dialect === 'postgres') defaultSchema = 'public'
+      else if (ctx.dialect === 'sqlite') defaultSchema = 'main'
+
       const templateCtx: TemplateContext = {
         realm,
         allFileTags: ctx.allFileTags,
@@ -90,7 +94,7 @@ const plugin: NamespacePlugin = {
         templateName,
         externalObjectNames: ctx.externalObjectNames,
         stripSchemaFromName: config.stripSchemaFromName,
-        defaultSchema: ctx.dialect === 'postgres' ? 'public' : ctx.dialect === 'sqlite' ? 'main' : undefined,
+        defaultSchema,
       }
 
       const result = template.generate(templateCtx)
