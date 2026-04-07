@@ -122,53 +122,61 @@ program
 
 program.command('doctor').description('Check project setup and report status').action(doctorCommand)
 
-// Machine-readable command listing for the shim binary
-if (process.argv.includes('--help-json')) {
-  function serializeCommand(cmd: Command): unknown {
-    const args =
-      cmd.registeredArguments?.map((a: any) => ({
-        name: a.name(),
-        description: a.description,
-        required: a.required,
+function serializeCommand(cmd: Command): unknown {
+  const args =
+    cmd.registeredArguments?.map((a: any) => ({
+      name: a.name(),
+      description: a.description,
+      required: a.required,
+    })) ?? []
+  const opts =
+    cmd.options
+      ?.filter((o: any) => o.long !== '--help')
+      .map((o: any) => ({
+        flags: o.flags,
+        description: o.description,
       })) ?? []
-    const opts =
-      cmd.options
-        ?.filter((o: any) => o.long !== '--help')
-        .map((o: any) => ({
-          flags: o.flags,
-          description: o.description,
-        })) ?? []
-    const subs = cmd.commands?.map(serializeCommand)
-    return {
-      name: cmd.name(),
-      description: cmd.description(),
-      ...(args.length ? { arguments: args } : {}),
-      ...(opts.length ? { options: opts } : {}),
-      ...(subs?.length ? { subcommands: subs } : {}),
-    }
+  const subs = cmd.commands?.map(serializeCommand)
+  return {
+    name: cmd.name(),
+    description: cmd.description(),
+    ...(args.length ? { arguments: args } : {}),
+    ...(opts.length ? { options: opts } : {}),
+    ...(subs?.length ? { subcommands: subs } : {}),
   }
-  const commands = program.commands.map(serializeCommand)
-  console.log(JSON.stringify(commands))
+}
+
+/** Get machine-readable command listing. Called by the shim for --help. */
+export function getCommandInfo(): unknown[] {
+  return program.commands.map(serializeCommand)
+}
+
+// Machine-readable command listing for the shim binary (subprocess mode)
+if (process.argv.includes('--help-json')) {
+  console.log(JSON.stringify(getCommandInfo()))
   process.exit(0)
 }
 
-// Global handler — force exit on both success and error
-// (pglite/WASI worker threads keep the process alive otherwise)
-program
-  .parseAsync()
-  .then(() => {
-    process.exit(0)
-  })
-  .catch((err) => {
-    if (err instanceof CliError) {
-      console.error(pc.red(err.message))
-      process.exit(err.exitCode)
-    }
-    if (err?.code === 'ECONNREFUSED') {
-      console.error(pc.red('Cannot connect to database. Is it running?'))
+// When loaded in-process by the shim (e.g. for getCommandInfo), skip parseAsync.
+// The shim sets process.argv to include the command and calls parseAsync itself
+// via the delegate flow, or just calls getCommandInfo() for help discovery.
+if (!process.env.SQLDOC_SKIP_PARSE) {
+  program
+    .parseAsync()
+    .then(() => {
+      process.exit(0)
+    })
+    .catch((err) => {
+      if (err instanceof CliError) {
+        console.error(pc.red(err.message))
+        process.exit(err.exitCode)
+      }
+      if (err?.code === 'ECONNREFUSED') {
+        console.error(pc.red('Cannot connect to database. Is it running?'))
+        process.exit(1)
+      }
+      console.error(pc.red(err?.message ?? String(err)))
+      if (err?.stack) console.error(pc.dim(err.stack))
       process.exit(1)
-    }
-    console.error(pc.red(err?.message ?? String(err)))
-    if (err?.stack) console.error(pc.dim(err.stack))
-    process.exit(1)
-  })
+    })
+}

@@ -45,7 +45,7 @@ function checkVersion(sqldocDir: string): void {
  * - CJS: custom Module._extensions['.ts'] handler using amaro
  * - ESM: register amaro/strip loader hook for transitive imports
  */
-function enableNodeModulesTypeStripping(): void {
+export function enableNodeModulesTypeStripping(): void {
   // CJS require() handler — uses bundled amaro for type stripping
   const Module = require('node:module')
   Module._extensions['.ts'] = (module: any, filename: string) => {
