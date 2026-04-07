@@ -16,7 +16,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "bin": {
-    "sqldoc": "src/index.ts"
+    "sqldoc": "src/main.ts"
   },
   "files": [
     "src",
