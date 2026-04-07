@@ -242,7 +242,7 @@ export default defineTemplate({
     if (config.mode === 'per-table') {
       const files = [
         ...tables.map((table) => ({
-          path: `${table.sqlName.replace(/\./g, '-')}.schema.json`,
+          path: `${table.sqlName.replaceAll('.', '-')}.schema.json`,
           content: `${JSON.stringify(
             { $schema: 'https://json-schema.org/draft/2020-12/schema', ...buildTableSchema(table, baseId) },
             null,
@@ -250,7 +250,7 @@ export default defineTemplate({
           )}\n`,
         })),
         ...views.map((view) => ({
-          path: `${view.sqlName.replace(/\./g, '-')}.schema.json`,
+          path: `${view.sqlName.replaceAll('.', '-')}.schema.json`,
           content: `${JSON.stringify(
             { $schema: 'https://json-schema.org/draft/2020-12/schema', ...buildViewSchema(view, baseId) },
             null,

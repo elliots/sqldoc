@@ -117,7 +117,7 @@ export default defineTemplate({
         fieldLines.push(`    public ${mapped.type} ${toCamelCase(f.name)};`)
       }
 
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       const parts: string[] = []
       parts.push(sortedImports.map((imp) => `import ${imp};`).join('\n'))
       parts.push('')
@@ -231,7 +231,7 @@ export default defineTemplate({
         fieldLines.push('')
       }
 
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       const importLines = sortedImports.map((imp) => `import ${imp};`)
 
       const parts: string[] = []
@@ -286,7 +286,7 @@ export default defineTemplate({
         fieldLines.push('')
       }
 
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       const importLines = sortedImports.map((imp) => `import ${imp};`)
 
       const parts: string[] = []

@@ -136,7 +136,7 @@ export default defineTemplate({
       return { files: [] }
     }
 
-    const sortedImports = [...allImports].sort()
+    const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
     const useLines = sortedImports.map((imp) => `use ${imp};`)
 
     const parts: string[] = []

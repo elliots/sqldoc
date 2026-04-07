@@ -128,7 +128,7 @@ export default defineTemplate({
 
     let importBlock = ''
     if (allImports.size > 0) {
-      const sorted = [...allImports].sort()
+      const sorted = [...allImports].sort((a, b) => a.localeCompare(b))
       if (sorted.length === 1) {
         importBlock = `import "${sorted[0]}"\n\n`
       } else {
