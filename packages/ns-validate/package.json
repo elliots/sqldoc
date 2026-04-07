@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-validate",
-  "version": "0.0.10",
+  "version": "0.1.0",
   "description": "Validation namespace for sqldoc -- generates CHECK constraints",
   "exports": {
     ".": {

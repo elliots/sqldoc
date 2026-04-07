@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-comment",
-  "version": "0.0.10",
+  "version": "0.1.0",
   "description": "Comment namespace for sqldoc -- generates COMMENT ON statements",
   "exports": {
     ".": {

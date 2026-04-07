@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.0 (2026-04-07)
+ - feat: bundle with node (SEA) + aborist instead of bun compile
+ - feat: use fossilize for cross-platform binary builds
+ - feat: show embedded Node.js version in --version output
+
 ## v0.0.10 (2026-04-06)
  - feat: db: replace pg with postgres.js
  - feat: cli: handle multiple configs in file

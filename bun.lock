@@ -14,7 +14,7 @@
     },
     "packages/cli": {
       "name": "@sqldoc/cli",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "bin": {
         "sqldoc": "src/main.ts",
       },
@@ -32,7 +32,7 @@
     },
     "packages/core": {
       "name": "@sqldoc/core",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "@sqldoc/sqlparser-ts": "0.61.3",
       },
@@ -44,7 +44,7 @@
     },
     "packages/db": {
       "name": "@sqldoc/db",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "picocolors": "catalog:",
       },
@@ -58,7 +58,7 @@
     },
     "packages/db-mysql": {
       "name": "@sqldoc/db-mysql",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "mysql2": "^3.20.0",
       },
@@ -68,7 +68,7 @@
     },
     "packages/db-neon": {
       "name": "@sqldoc/db-neon",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "@neondatabase/serverless": "^0.10.0",
       },
@@ -78,7 +78,7 @@
     },
     "packages/db-neon-temporary": {
       "name": "@sqldoc/db-neon-temporary",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "@neondatabase/serverless": "^1.0.0",
       },
@@ -89,7 +89,7 @@
     },
     "packages/db-pglite": {
       "name": "@sqldoc/db-pglite",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "@electric-sql/pglite": "^0.4.0",
       },
@@ -99,7 +99,7 @@
     },
     "packages/db-postgres": {
       "name": "@sqldoc/db-postgres",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "dependencies": {
         "postgres": "^3.4.5",
       },
@@ -109,7 +109,7 @@
     },
     "packages/ns-anon": {
       "name": "@sqldoc/ns-anon",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -121,7 +121,7 @@
     },
     "packages/ns-audit": {
       "name": "@sqldoc/ns-audit",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -133,7 +133,7 @@
     },
     "packages/ns-codegen": {
       "name": "@sqldoc/ns-codegen",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/db": "workspace:*",
@@ -147,7 +147,7 @@
     },
     "packages/ns-comment": {
       "name": "@sqldoc/ns-comment",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -159,7 +159,7 @@
     },
     "packages/ns-deprecated": {
       "name": "@sqldoc/ns-deprecated",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -171,7 +171,7 @@
     },
     "packages/ns-docs": {
       "name": "@sqldoc/ns-docs",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/db": "workspace:*",
@@ -185,7 +185,7 @@
     },
     "packages/ns-lint": {
       "name": "@sqldoc/ns-lint",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -197,7 +197,7 @@
     },
     "packages/ns-postgraphile": {
       "name": "@sqldoc/ns-postgraphile",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -209,7 +209,7 @@
     },
     "packages/ns-rls": {
       "name": "@sqldoc/ns-rls",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -221,7 +221,7 @@
     },
     "packages/ns-validate": {
       "name": "@sqldoc/ns-validate",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@sqldoc/core": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
@@ -233,7 +233,7 @@
     },
     "packages/sqldoc": {
       "name": "@sqldoc/sqldoc",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "bin": {
         "sqldoc": "./src/index.ts",
       },
@@ -250,7 +250,7 @@
     },
     "packages/templates": {
       "name": "@sqldoc/templates",
-      "version": "0.0.10",
+      "version": "0.1.0",
       "devDependencies": {
         "@electric-sql/pglite": "^0.4.1",
         "@electric-sql/pglite-socket": "^0.1.1",
