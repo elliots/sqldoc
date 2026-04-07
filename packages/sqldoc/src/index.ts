@@ -127,7 +127,7 @@ async function main(): Promise<void> {
 
   // Handle flags
   if (command === '--version' || command === '-V') {
-    console.log(VERSION)
+    console.log(`${VERSION} (node ${process.version})`)
     return
   }
 
