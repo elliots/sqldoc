@@ -30,8 +30,14 @@ export async function addCommand(sqldocDir: string, packages: string[]): Promise
 
   // Pin @sqldoc/* packages to the installed CLI version
   const cliVersion = getInstalledCliVersion(sqldocDir)
+  const hasSqldocPackages = packages.some((pkg) => pkg.startsWith('@sqldoc/') && !pkg.includes('@', 1))
+  if (hasSqldocPackages && !cliVersion) {
+    console.error(pc.red('Error: @sqldoc/cli is not installed. Run sqldoc init first.'))
+    process.exit(1)
+  }
+
   const resolved = packages.map((pkg) => {
-    if (pkg.startsWith('@sqldoc/') && !pkg.includes('@', 1) && cliVersion) {
+    if (pkg.startsWith('@sqldoc/') && !pkg.includes('@', 1)) {
       return `${pkg}@${cliVersion}`
     }
     return pkg
