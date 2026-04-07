@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
+import { createRequire } from 'node:module'
 import * as path from 'node:path'
 
 import pc from 'picocolors'
@@ -8,7 +8,7 @@ import { installDeps } from './arborist.ts'
 import { addCommand } from './commands/add.ts'
 import { initCommand } from './commands/init.ts'
 import { upgradeCommand } from './commands/upgrade.ts'
-import { delegate, setShimVersion } from './delegate.ts'
+import { delegate, enableNodeModulesTypeStripping, setShimVersion } from './delegate.ts'
 import { findSqldocDir } from './find-sqldoc.ts'
 
 const VERSION = packageJson.version
@@ -20,27 +20,29 @@ type CommandInfo = {
   subcommands?: CommandInfo[]
 }
 
-/** Discover commands from the project-local @sqldoc/cli via --help-json. */
+/** Discover commands from the project-local @sqldoc/cli in-process. */
 function discoverCliCommands(sqldocDir: string): CommandInfo[] | null {
-  let localCli = path.join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'src', 'index.ts')
-  if (!fs.existsSync(localCli)) {
-    localCli = path.join(sqldocDir, 'node_modules', '@sqldoc', 'cli', 'dist', 'index.js')
-  }
-  if (!fs.existsSync(localCli)) return null
+  const nodeModules = path.join(sqldocDir, 'node_modules')
+  const cliPkg = path.join(nodeModules, '@sqldoc', 'cli', 'package.json')
+  if (!fs.existsSync(cliPkg)) return null
 
   try {
-    const output = execFileSync(process.execPath, ['--experimental-strip-types', localCli, '--help-json'], {
-      env: {
-        ...process.env,
-        NODE_PATH: path.join(sqldocDir, 'node_modules'),
-      },
-      timeout: 10000,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
-    return JSON.parse(output)
-  } catch {
+    enableNodeModulesTypeStripping()
+    process.env.SQLDOC_SKIP_PARSE = '1'
+    const localRequire = createRequire(path.join(nodeModules, '.package.json'))
+    const cli = localRequire('@sqldoc/cli')
+    if (typeof cli.getCommandInfo !== 'function') {
+      console.error(
+        pc.yellow('Warning: installed @sqldoc/cli does not export getCommandInfo — update with: sqldoc upgrade'),
+      )
+      return null
+    }
+    return cli.getCommandInfo() as CommandInfo[]
+  } catch (err: any) {
+    console.error(pc.yellow(`Warning: failed to load CLI commands: ${err?.message ?? String(err)}`))
     return null
+  } finally {
+    delete process.env.SQLDOC_SKIP_PARSE
   }
 }
 
