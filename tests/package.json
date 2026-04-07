@@ -18,14 +18,18 @@
     "@sqldoc/test-utils": "workspace:*",
     "@sqldoc/ns-anon": "workspace:*",
     "@sqldoc/ns-audit": "workspace:*",
+    "@sqldoc/ns-codegen": "workspace:*",
     "@sqldoc/ns-comment": "workspace:*",
     "@sqldoc/ns-deprecated": "workspace:*",
+    "@sqldoc/ns-docs": "workspace:*",
+    "@sqldoc/ns-lint": "workspace:*",
     "@sqldoc/ns-postgraphile": "workspace:*",
     "@sqldoc/ns-rls": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
     "@sqldoc/ns-softdelete": "workspace:*",
     "@sqldoc/ns-history": "workspace:*",
     "@sqldoc/ns-temporal": "workspace:*",
+    "@sqldoc/templates": "workspace:*",
     "@typescript/native-preview": "catalog:"
   }
 }

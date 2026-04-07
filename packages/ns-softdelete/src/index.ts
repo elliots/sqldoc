@@ -7,7 +7,7 @@
  */
 
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
-import { currentTimestamp, type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
+import { type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
 
 // -- Minimal type shapes for Atlas objects --
 

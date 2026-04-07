@@ -1,6 +1,6 @@
 import { defineTemplate } from '@sqldoc/ns-codegen'
 import { activeTables, enrichRealm } from '../helpers/enrich.ts'
-import { singularizeLast, toCamelCase, toPascalCase, toScreamingSnake } from '../helpers/naming.ts'
+import { singularizeLast, toCamelCase, toPascalCase } from '../helpers/naming.ts'
 import { pgToSwift } from '../types/pg-to-swift.ts'
 
 export default defineTemplate({

@@ -96,7 +96,7 @@ const PG_TO_RUBY: Record<string, string> = {
  * Map a PostgreSQL type to a Ruby type string.
  * ActiveRecord handles nil natively — nullable doesn't change the type.
  */
-export function pgToRuby(pgType: string, nullable: boolean, category?: string): string {
+export function pgToRuby(pgType: string, _nullable: boolean, category?: string): string {
   const normalized = pgType.toLowerCase().trim()
 
   // Handle arrays: text[] or _text

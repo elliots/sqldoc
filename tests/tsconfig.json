@@ -5,5 +5,5 @@
     "noEmit": true
   },
   "include": ["."],
-  "exclude": ["**/generated/**"]
+  "exclude": ["**/generated/**", "**/generated-all/**"]
 }
