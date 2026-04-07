@@ -12,8 +12,9 @@ import { describe, expect, initProject, it, runCli } from '@sqldoc/test-utils'
 const projectDir = import.meta.dirname
 
 function ensureInit(): void {
-  const sqldocDir = path.join(projectDir, '.sqldoc')
-  if (!fs.existsSync(sqldocDir)) {
+  const nodeModules = path.join(projectDir, '.sqldoc', 'node_modules')
+  if (!fs.existsSync(nodeModules)) {
+    fs.rmSync(path.join(projectDir, '.sqldoc'), { recursive: true, force: true })
     initProject(projectDir)
   }
 }

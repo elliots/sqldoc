@@ -226,6 +226,7 @@ const plugin: NamespacePlugin = {
       name: 'audit.require-audit',
       description: 'Tables should have an @audit tag',
       default: 'warn',
+
       check(ctx) {
         const diagnostics = []
         for (const output of ctx.outputs) {
