@@ -7,7 +7,7 @@ dist/
 vscode-sqldoc/out
 /docs/
 .planning
-
+.node-cache
 out.sql
 
 .DS_Store

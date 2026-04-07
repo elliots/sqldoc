@@ -19,7 +19,8 @@ BIN="$ROOT/node_modules/.bin"
 
 ENTRY="packages/sqldoc/src/index.ts"
 
-ARGS=("$ENTRY" --out-dir dist --output-name sqldoc)
+OUT_DIR="${SQLDOC_BIN_DIR:-dist}"
+ARGS=("$ENTRY" --out-dir "$OUT_DIR" --output-name sqldoc)
 
 if [ $# -gt 0 ]; then
   for platform in "$@"; do
@@ -30,7 +31,11 @@ fi
 echo "Building sqldoc binary..."
 "$BIN/fossilize" "${ARGS[@]}"
 
-# Ad-hoc sign for local macOS testing
-for bin in dist/sqldoc-darwin-*; do
-  [ -f "$bin" ] && codesign -s - "$bin" 2>/dev/null && echo "Signed: $bin"
-done
+# Ad-hoc sign macOS binaries so they run locally without Gatekeeper killing them.
+# This only works on the build machine — distributed binaries need proper
+# Apple Developer ID signing or users run: xattr -d com.apple.quarantine sqldoc
+if [[ "$(uname)" == "Darwin" ]]; then
+  for bin in "$OUT_DIR"/sqldoc-darwin-*; do
+    [ -f "$bin" ] && codesign -s - "$bin" 2>/dev/null && echo "Signed: $bin"
+  done
+fi
