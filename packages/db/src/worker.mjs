@@ -7,7 +7,11 @@
  */
 import { register } from 'node:module'
 
-process.removeAllListeners('warning')
+// Suppress experimental warnings (WASI, stripTypeScriptTypes) — keep others visible
+process.on('warning', (warning) => {
+  if (warning.name === 'ExperimentalWarning') return
+  console.error(warning)
+})
 
 const loaderCode = [
   'import { stripTypeScriptTypes } from "node:module";',
