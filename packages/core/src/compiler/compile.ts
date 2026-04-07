@@ -279,52 +279,33 @@ function compileAtlas(
 
   const skippedPlugins = new Set<string>()
   const missingNamespaces = new Set<string>()
+  const actx: AtlasObjectContext = {
+    realm,
+    filePath,
+    plugins,
+    statements,
+    config,
+    sqlOutputs,
+    codeOutputs,
+    docsMeta,
+    errors,
+    allTagOccurrences,
+    skippedPlugins,
+    missingNamespaces,
+    fileNamespaces,
+  }
   for (const schema of realm.schemas) {
     // Process tables
     if (schema.tables) {
       for (const table of schema.tables) {
-        processAtlasObject(
-          table,
-          'table',
-          table.name,
-          realm,
-          filePath,
-          plugins,
-          statements,
-          config,
-          sqlOutputs,
-          codeOutputs,
-          docsMeta,
-          errors,
-          allTagOccurrences,
-          skippedPlugins,
-          missingNamespaces,
-          fileNamespaces,
-        )
+        processAtlasObject(table, 'table', table.name, actx)
       }
     }
 
     // Process views
     if (schema.views) {
       for (const view of schema.views) {
-        processAtlasObject(
-          view,
-          'view',
-          view.name,
-          realm,
-          filePath,
-          plugins,
-          statements,
-          config,
-          sqlOutputs,
-          codeOutputs,
-          docsMeta,
-          errors,
-          allTagOccurrences,
-          skippedPlugins,
-          missingNamespaces,
-          fileNamespaces,
-        )
+        processAtlasObject(view, 'view', view.name, actx)
       }
     }
   }
@@ -338,31 +319,51 @@ function compileAtlas(
   return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
 }
 
-/** Process a single Atlas object (table or view) and its columns for tag invocation */
-function processAtlasObject(
-  obj: InternalAtlasTable | InternalAtlasView,
-  target: SqlTarget,
-  objectName: string,
-  realm: InternalAtlasRealm,
-  filePath: string,
-  plugins: Map<string, NamespacePlugin>,
-  statements: SqlStatement[],
-  config: ResolvedConfig,
-  sqlOutputs: SqlOutput[],
-  codeOutputs: CodeOutput[],
-  docsMeta: DocsMeta[],
-  errors: Array<{ namespace: string; message: string }>,
+/** Shared context for processAtlasObject — same for every object in a file */
+interface AtlasObjectContext {
+  realm: InternalAtlasRealm
+  filePath: string
+  plugins: Map<string, NamespacePlugin>
+  statements: SqlStatement[]
+  config: ResolvedConfig
+  sqlOutputs: SqlOutput[]
+  codeOutputs: CodeOutput[]
+  docsMeta: DocsMeta[]
+  errors: Array<{ namespace: string; message: string }>
   allTagOccurrences: Array<{
     objectName: string
     target: SqlTarget
     namespace: string
     tag: string | null
     args: Record<string, unknown> | unknown[]
-  }>,
-  skippedPlugins: Set<string>,
-  missingNamespaces: Set<string>,
-  fileNamespaces: Set<string>,
+  }>
+  skippedPlugins: Set<string>
+  missingNamespaces: Set<string>
+  fileNamespaces: Set<string>
+}
+
+/** Process a single Atlas object (table or view) and its columns for tag invocation */
+function processAtlasObject(
+  obj: InternalAtlasTable | InternalAtlasView,
+  target: SqlTarget,
+  objectName: string,
+  actx: AtlasObjectContext,
 ): void {
+  const {
+    realm,
+    filePath,
+    plugins,
+    statements,
+    config,
+    sqlOutputs,
+    codeOutputs,
+    docsMeta,
+    errors,
+    allTagOccurrences,
+    skippedPlugins,
+    missingNamespaces,
+    fileNamespaces,
+  } = actx
   // Extract tags from object-level attrs
   const objectTags = findAtlasTags(obj.attrs)
 
