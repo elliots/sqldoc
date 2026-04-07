@@ -24,8 +24,8 @@ OUT="$DIST/sqldoc"
 NODE_VERSION=$(node -v | sed 's/^v//')
 NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
 NODE_MINOR=$(echo "$NODE_VERSION" | cut -d. -f2)
-if [ "$NODE_MAJOR" -lt 25 ] || { [ "$NODE_MAJOR" -eq 25 ] && [ "$NODE_MINOR" -lt 5 ]; }; then
-  echo "Error: Node.js >= 25.5.0 required for --build-sea (found v$NODE_VERSION)"
+if [[ "$NODE_MAJOR" -lt 25 || ( "$NODE_MAJOR" -eq 25 && "$NODE_MINOR" -lt 5 ) ]]; then
+  echo "Error: Node.js >= 25.5.0 required for --build-sea (found v$NODE_VERSION)" >&2
   exit 1
 fi
 
