@@ -6,7 +6,7 @@ const plugin: DatabaseAdapterPlugin = {
   name: 'mysql',
   schemes: ['mysql'],
   dialects: ['mysql'],
-  runtime: 'node',
+  runtime: 'any',
 
   async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
     const mysql = await import('mysql2/promise')
