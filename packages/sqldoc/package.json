@@ -29,11 +29,11 @@
   },
   "dependencies": {
     "@npmcli/arborist": "^9.4.2",
-    "@types/npmcli__arborist": "^6.3.3",
     "picocolors": "catalog:"
   },
   "devDependencies": {
     "@sqldoc/test-utils": "workspace:*",
+    "@types/npmcli__arborist": "^6.3.3",
     "@types/node": "catalog:",
     "@typescript/native-preview": "catalog:"
   }
