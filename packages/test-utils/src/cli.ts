@@ -9,7 +9,7 @@ import { execSync, spawnSync } from 'node:child_process'
 import * as path from 'node:path'
 
 export const MONOREPO_ROOT = path.resolve(import.meta.dirname, '../../..')
-export const CLI_ENTRY = path.join(MONOREPO_ROOT, 'packages/cli/src/index.ts')
+export const CLI_ENTRY = path.join(MONOREPO_ROOT, 'packages/cli/src/main.ts')
 export const SHIM_ENTRY = path.join(MONOREPO_ROOT, 'packages/sqldoc/src/index.ts')
 
 export function runCli(

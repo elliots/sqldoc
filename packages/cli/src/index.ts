@@ -1,9 +1,8 @@
-// Suppress Node experimental warnings (WASI)
-process.removeAllListeners('warning')
-
 import { createRequire } from 'node:module'
+
 import { Command } from 'commander'
 import pc from 'picocolors'
+
 import { codegenCommand } from './commands/codegen.ts'
 import { compileCommand } from './commands/compile.ts'
 import { doctorCommand } from './commands/doctor.ts'
@@ -37,7 +36,7 @@ function withAll<T extends (...args: any[]) => Promise<void>>(action: T): T {
 const req = createRequire(import.meta.url)
 const version: string = req('../package.json').version
 
-const program = new Command()
+export const program = new Command()
 
 program.name('sqldoc').description('SQL documentation and code generation tool').version(version)
 
@@ -151,16 +150,19 @@ export function getCommandInfo(): unknown[] {
   return program.commands.map(serializeCommand)
 }
 
-// Machine-readable command listing for the shim binary (subprocess mode)
-if (process.argv.includes('--help-json')) {
-  console.log(JSON.stringify(getCommandInfo()))
-  process.exit(0)
-}
+/** Parse argv and run the matched command. Called by main.ts or the shim's delegate. */
+export function run(): void {
+  // Suppress Node experimental warnings (WASI)
+  process.removeAllListeners('warning')
 
-// When loaded in-process by the shim (e.g. for getCommandInfo), skip parseAsync.
-// The shim sets process.argv to include the command and calls parseAsync itself
-// via the delegate flow, or just calls getCommandInfo() for help discovery.
-if (!process.env.SQLDOC_SKIP_PARSE) {
+  // Machine-readable command listing for subprocess mode
+  if (process.argv.includes('--help-json')) {
+    console.log(JSON.stringify(getCommandInfo()))
+    process.exit(0)
+  }
+
+  // Global handler — force exit on both success and error
+  // (pglite/WASI worker threads keep the process alive otherwise)
   program
     .parseAsync()
     .then(() => {

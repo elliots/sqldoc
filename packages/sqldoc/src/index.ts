@@ -28,7 +28,6 @@ function discoverCliCommands(sqldocDir: string): CommandInfo[] | null {
 
   try {
     enableNodeModulesTypeStripping()
-    process.env.SQLDOC_SKIP_PARSE = '1'
     const localRequire = createRequire(path.join(nodeModules, '.package.json'))
     const cli = localRequire('@sqldoc/cli')
     if (typeof cli.getCommandInfo !== 'function') {
@@ -41,8 +40,6 @@ function discoverCliCommands(sqldocDir: string): CommandInfo[] | null {
   } catch (err: any) {
     console.error(pc.yellow(`Warning: failed to load CLI commands: ${err?.message ?? String(err)}`))
     return null
-  } finally {
-    delete process.env.SQLDOC_SKIP_PARSE
   }
 }
 

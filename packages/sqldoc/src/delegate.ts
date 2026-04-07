@@ -84,12 +84,7 @@ export async function delegate(sqldocDir: string, args: string[]): Promise<void>
   const nodeModules = join(sqldocDir, 'node_modules')
 
   // Verify CLI is installed
-  const cliDir = join(nodeModules, '@sqldoc', 'cli')
-  let cliEntry = join(cliDir, 'src', 'index.ts')
-  if (!existsSync(cliEntry)) {
-    cliEntry = join(cliDir, 'dist', 'index.js')
-  }
-  if (!existsSync(cliEntry)) {
+  if (!existsSync(join(nodeModules, '@sqldoc', 'cli', 'package.json'))) {
     console.error(pc.red('Error: @sqldoc/cli not found in .sqldoc/node_modules'))
     console.error(`Run: ${pc.cyan('sqldoc init')}`)
     process.exit(1)
@@ -121,6 +116,7 @@ export async function delegate(sqldocDir: string, args: string[]): Promise<void>
     })
   }
 
-  // Require and run the CLI — it calls program.parseAsync() on require
-  localRequire(cliEntry)
+  // Require the CLI module (side-effect-free) and call run() to parse argv
+  const cli = localRequire('@sqldoc/cli')
+  cli.run()
 }
