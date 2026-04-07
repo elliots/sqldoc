@@ -1,14 +1,11 @@
 version: 2
 project_name: sqldoc
 
-# Binaries are built by CI (scripts/build-binary.sh) before GoReleaser runs.
-# GoReleaser handles archiving, checksums, and Homebrew tap only.
+# Binary builds are handled by scripts/build-binary.sh (fossilize).
+# Run goreleaser with --skip=build after placing binaries in dist/.
 
 builds:
   - id: sqldoc
-    builder: go
-    # Skip the actual Go build — we use pre-built Node.js SEA binaries
-    skip: true
     binary: sqldoc
     goos:
       - linux
@@ -20,9 +17,11 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
-
-# CI places binaries at dist/sqldoc_<os>_<arch>/sqldoc before goreleaser runs.
-# Use extra_files or a custom archive approach to pick them up.
+    # Dummy go build that will be skipped via --skip=build
+    main: .
+    hooks:
+      post:
+        - echo "skipped"
 
 archives:
   - id: sqldoc
