@@ -26,7 +26,8 @@ function pluginInstallConfig(configRoot: string) {
         try {
           await installPackages(sqldocDir, [packageNameWithVersion])
           return true
-        } catch {
+        } catch (err: any) {
+          console.error(pc.red(`Failed to install ${packageNameWithVersion}: ${err?.message ?? String(err)}`))
           return false
         }
       }
