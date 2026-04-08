@@ -21,7 +21,7 @@ export default defineTemplate({
 
     // Composite types
     const composites = new Map<string, Array<{ name: string; type: string }>>()
-    for (const table of schema.tables) {
+    for (const table of [...schema.tables, ...schema.views]) {
       for (const col of table.columns) {
         if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
           composites.set(col.pgType, col.compositeFields)
@@ -102,6 +102,9 @@ export default defineTemplate({
         } else if (col.category === 'enum' && col.enumValues?.length) {
           const enumName = toPascalCase(col.pgType)
           swiftType = col.nullable ? `${enumName}?` : enumName
+        } else if (col.category === 'composite' && col.compositeFields?.length) {
+          const compositeType = toPascalCase(col.pgType)
+          swiftType = col.nullable ? `${compositeType}?` : compositeType
         } else {
           swiftType = pgToSwift(col.pgType, col.nullable, col.category)
         }
