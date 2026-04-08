@@ -129,6 +129,10 @@ export function pgToEloquentCast(pgType: string, category?: string): string | un
 
   if (normalized.endsWith('[]') || normalized.startsWith('_')) return 'array'
 
+  // Extract scale from numeric/decimal(p,s) for Eloquent's decimal:s cast
+  const scaleMatch = normalized.match(/(?:numeric|decimal)\(\d+,\s*(\d+)\)/)
+  const decimalScale = scaleMatch ? scaleMatch[1] : undefined
+
   const baseType = normalized.replace(/\(\d+(?:,\s*\d+)?\)/, '').trim()
 
   const CAST_MAP: Record<string, string> = {
@@ -167,6 +171,11 @@ export function pgToEloquentCast(pgType: string, category?: string): string | un
       time: 'datetime',
     }
     cast = CATEGORY_CAST[category]
+  }
+
+  // Eloquent's decimal cast requires a scale suffix: decimal:2
+  if (cast === 'decimal' && decimalScale) {
+    return `decimal:${decimalScale}`
   }
 
   return cast
