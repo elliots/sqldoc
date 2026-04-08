@@ -139,7 +139,9 @@ export async function createRunner(config: CreateRunnerConfig): Promise<import('
   try {
     return await createAtlasRunner({ wasmPath, db, dialect: config.dialect })
   } catch (err) {
-    await db.close()
+    try {
+      await db.close()
+    } catch {}
     throw err
   }
 }
