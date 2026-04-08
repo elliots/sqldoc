@@ -82,6 +82,23 @@ function generatePerEventCascade(
   const q = (name: string) => quoteIdentifier(name, dialect)
   const triggerName = `${childTable}_${fkColumn}_softdelete_cascade_after_update`
 
+  if (dialect === 'sqlite') {
+    // SQLite doesn't support IF...THEN in trigger bodies — use WHEN clause
+    return [
+      {
+        sql: `CREATE TRIGGER ${q(triggerName)}
+  AFTER UPDATE ON ${q(parentTable)}
+  FOR EACH ROW
+  WHEN NEW.${q(columnName)} IS NOT NULL AND OLD.${q(columnName)} IS NULL
+BEGIN
+  UPDATE ${q(childTable)} SET ${q(columnName)} = NEW.${q(columnName)}
+  WHERE ${q(fkColumn)} = NEW.${q(parentPkColumn)};
+END;`,
+      },
+    ]
+  }
+
+  // MySQL: procedural IF...THEN in trigger body
   return [
     {
       sql: `CREATE TRIGGER ${q(triggerName)}
