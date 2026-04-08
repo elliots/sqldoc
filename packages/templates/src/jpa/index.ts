@@ -154,7 +154,8 @@ export default defineTemplate({
         } else if (col.category === 'composite' && col.compositeFields?.length) {
           javaType = toPascalCase(col.pgType)
         } else {
-          const mapped = pgToJava(col.pgType, col.nullable, col.category)
+          // Use wrapper types for @Id fields (JPA uses null to indicate "not persisted")
+          const mapped = pgToJava(col.pgType, col.nullable || col.isPrimaryKey, col.category)
           javaType = mapped.type
           for (const imp of mapped.imports) allImports.add(imp)
         }
