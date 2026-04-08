@@ -75,7 +75,12 @@ end
       if (enumCols.length > 0) {
         lines.push('')
         for (const col of enumCols) {
-          const values = col.enumValues!.map((v) => `${v}: '${v}'`).join(', ')
+          const values = col
+            .enumValues!.map((v) => {
+              const escaped = v.replace(/'/g, "\\'")
+              return `'${escaped}' => '${escaped}'`
+            })
+            .join(', ')
           lines.push(`  enum :${col.name}, { ${values} }`)
         }
       }
