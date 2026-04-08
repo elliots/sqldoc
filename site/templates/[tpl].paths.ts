@@ -42,6 +42,9 @@ const DEVICON_MAP: Record<string, string> = {
   kotlin: 'devicon-kotlin-plain',
   rust: 'devicon-rust-original',
   csharp: 'devicon-csharp-plain',
+  php: 'devicon-php-plain',
+  ruby: 'devicon-ruby-plain',
+  swift: 'devicon-swift-plain',
   json: 'devicon-json-plain',
   xml: 'devicon-xml-plain',
   cobol: 'devicon-cobol-plain',
@@ -65,6 +68,9 @@ function langForCodeBlock(tpl: TemplateMeta): string {
     protobuf: 'protobuf',
     cobol: 'cobol',
     sql: 'sql',
+    php: 'php',
+    ruby: 'ruby',
+    swift: 'swift',
   }
   return map[tpl.language] ?? 'text'
 }
@@ -210,6 +216,9 @@ function getDefaultOutputFilename(tpl: TemplateMeta): string {
     protobuf: 'schema.proto',
     sql: 'schema.prisma',
     cobol: 'COPYBOOK.cpy',
+    php: 'Models/',
+    ruby: 'models/',
+    swift: 'Models.swift',
   }
   return ext[tpl.language] || 'output'
 }

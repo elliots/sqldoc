@@ -17,7 +17,7 @@ interface CliCommand {
   subcommands?: CliCommand[]
 }
 
-const cliEntry = path.resolve(import.meta.dirname!, '../../packages/cli/src/index.ts')
+const cliEntry = path.resolve(import.meta.dirname!, '../../packages/cli/src/main.ts')
 const json = execSync(`bun ${cliEntry} --help-json`, { encoding: 'utf-8' }).trim()
 const commands: CliCommand[] = JSON.parse(json)
 
