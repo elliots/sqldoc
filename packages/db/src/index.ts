@@ -136,5 +136,10 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
 export async function createRunner(config: CreateRunnerConfig): Promise<import('./runner').AtlasRunner> {
   const wasmPath = resolveWasm()
   const db = await createAdapter(config)
-  return createAtlasRunner({ wasmPath, db, dialect: config.dialect })
+  try {
+    return await createAtlasRunner({ wasmPath, db, dialect: config.dialect })
+  } catch (err) {
+    await db.close()
+    throw err
+  }
 }
