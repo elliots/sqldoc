@@ -57,12 +57,13 @@ describe('ns-rls integration - Postgres', () => {
 
     // Switch to test_user — should only see their own documents
     await db.exec('SET ROLE test_user')
-    const userDocs = await db.query('SELECT content FROM documents ORDER BY id')
-    expect(userDocs.rows).toHaveLength(1)
-    expect(userDocs.rows[0][0]).toBe('secret doc')
-
-    // Reset role
-    await db.exec('RESET ROLE')
+    try {
+      const userDocs = await db.query('SELECT content FROM documents ORDER BY id')
+      expect(userDocs.rows).toHaveLength(1)
+      expect(userDocs.rows[0][0]).toBe('secret doc')
+    } finally {
+      await db.exec('RESET ROLE')
+    }
   })
 
   it('RLS is actually enabled on the table', async () => {
