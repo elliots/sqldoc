@@ -307,7 +307,7 @@ function nextSequentialPrefix(existing: ParsedMigration[], format: MigrationForm
     for (const m of existing) {
       const match = m.filename.match(/^V(\d+)/)
       if (match) {
-        const n = parseInt(match[1], 10)
+        const n = Number.parseInt(match[1], 10)
         if (n > max) max = n
       }
     }
@@ -319,7 +319,7 @@ function nextSequentialPrefix(existing: ParsedMigration[], format: MigrationForm
   for (const m of existing) {
     const match = m.sortKey.match(/^(\d+)/)
     if (match) {
-      const n = parseInt(match[1], 10)
+      const n = Number.parseInt(match[1], 10)
       if (n > max) max = n
     }
   }

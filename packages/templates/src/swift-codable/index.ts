@@ -1,0 +1,142 @@
+import { defineTemplate } from '@sqldoc/ns-codegen'
+import { activeTables, enrichRealm } from '../helpers/enrich.ts'
+import { singularizeLast, toCamelCase, toPascalCase } from '../helpers/naming.ts'
+import { pgToSwift } from '../types/pg-to-swift.ts'
+
+export default defineTemplate({
+  name: 'Swift Codable',
+  description: 'Generate Swift Codable structs with CodingKeys from SQL schema',
+  language: 'swift',
+
+  generate(ctx) {
+    const schema = enrichRealm(ctx)
+    const blocks: string[] = []
+
+    // Enums
+    for (const e of schema.enums) {
+      const typeName = toPascalCase(e.name)
+      const cases = e.values.map((v) => `    case ${toCamelCase(v)} = "${v}"`).join('\n')
+      blocks.push(`enum ${typeName}: String, Codable {\n${cases}\n}`)
+    }
+
+    // Composite types
+    const composites = new Map<string, Array<{ name: string; type: string }>>()
+    for (const table of [...schema.tables, ...schema.views]) {
+      for (const col of table.columns) {
+        if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
+          composites.set(col.pgType, col.compositeFields)
+        }
+      }
+    }
+    for (const [name, fields] of composites) {
+      const typeName = toPascalCase(name)
+      const props = fields.map((f) => {
+        const swiftType = pgToSwift(f.type, false)
+        const propName = toCamelCase(f.name)
+        return `    let ${propName}: ${swiftType}`
+      })
+
+      const needsCodingKeys = fields.some((f) => toCamelCase(f.name) !== f.name)
+      let codingKeys = ''
+      if (needsCodingKeys) {
+        const cases = fields
+          .map((f) => {
+            const camel = toCamelCase(f.name)
+            return camel !== f.name ? `        case ${camel} = "${f.name}"` : `        case ${camel}`
+          })
+          .join('\n')
+        codingKeys = `\n\n    enum CodingKeys: String, CodingKey {\n${cases}\n    }`
+      }
+
+      blocks.push(`struct ${typeName}: Codable {\n${props.join('\n')}${codingKeys}\n}`)
+    }
+
+    // Tables
+    for (const table of activeTables(schema)) {
+      const structName = toPascalCase(singularizeLast(table.name))
+      const props: string[] = []
+
+      for (const col of table.columns) {
+        let swiftType: string
+        if (col.typeOverride) {
+          swiftType = col.typeOverride
+        } else if (col.category === 'enum' && col.enumValues?.length) {
+          const enumName = toPascalCase(col.pgType)
+          swiftType = col.nullable ? `${enumName}?` : enumName
+        } else if (col.category === 'composite' && col.compositeFields?.length) {
+          const compositeType = toPascalCase(col.pgType)
+          swiftType = col.nullable ? `${compositeType}?` : compositeType
+        } else {
+          swiftType = pgToSwift(col.pgType, col.nullable, col.category)
+        }
+
+        const propName = toCamelCase(col.name)
+        props.push(`    let ${propName}: ${swiftType}`)
+      }
+
+      // CodingKeys: Swift requires ALL properties when a custom enum is defined
+      const needsCodingKeys = table.columns.some((c) => toCamelCase(c.name) !== c.name)
+      let codingKeys = ''
+      if (needsCodingKeys) {
+        const cases = table.columns
+          .map((c) => {
+            const camel = toCamelCase(c.name)
+            return camel !== c.name ? `        case ${camel} = "${c.name}"` : `        case ${camel}`
+          })
+          .join('\n')
+        codingKeys = `\n\n    enum CodingKeys: String, CodingKey {\n${cases}\n    }`
+      }
+
+      blocks.push(`struct ${structName}: Codable {\n${props.join('\n')}${codingKeys}\n}`)
+    }
+
+    // Views
+    for (const view of schema.views.filter((v) => !v.skipped)) {
+      const structName = toPascalCase(singularizeLast(view.name))
+      const props: string[] = []
+
+      for (const col of view.columns) {
+        let swiftType: string
+        if (col.typeOverride) {
+          swiftType = col.typeOverride
+        } else if (col.category === 'enum' && col.enumValues?.length) {
+          const enumName = toPascalCase(col.pgType)
+          swiftType = col.nullable ? `${enumName}?` : enumName
+        } else if (col.category === 'composite' && col.compositeFields?.length) {
+          const compositeType = toPascalCase(col.pgType)
+          swiftType = col.nullable ? `${compositeType}?` : compositeType
+        } else {
+          swiftType = pgToSwift(col.pgType, col.nullable, col.category)
+        }
+
+        const propName = toCamelCase(col.name)
+        props.push(`    let ${propName}: ${swiftType}`)
+      }
+
+      const needsCodingKeys = view.columns.some((c) => toCamelCase(c.name) !== c.name)
+      let codingKeys = ''
+      if (needsCodingKeys) {
+        const cases = view.columns
+          .map((c) => {
+            const camel = toCamelCase(c.name)
+            return camel !== c.name ? `        case ${camel} = "${c.name}"` : `        case ${camel}`
+          })
+          .join('\n')
+        codingKeys = `\n\n    enum CodingKeys: String, CodingKey {\n${cases}\n    }`
+      }
+
+      blocks.push(`/// Read-only (from view)\nstruct ${structName}: Codable {\n${props.join('\n')}${codingKeys}\n}`)
+    }
+
+    const content = `// Generated by @sqldoc/templates/swift-codable -- DO NOT EDIT
+
+import Foundation
+
+${blocks.join('\n\n')}
+`
+
+    return {
+      files: [{ path: 'Models.swift', content }],
+    }
+  },
+})

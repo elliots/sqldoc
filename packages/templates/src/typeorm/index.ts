@@ -99,7 +99,7 @@ function pgTypeToTsType(pgType: string, nullable: boolean, category: string): st
 
 /** Convert table name to entity file name: "post_tags" -> "post-tags.entity.ts" */
 function toEntityFileName(name: string): string {
-  return `${name.replace(/_/g, '-')}.entity.ts`
+  return `${name.replaceAll('_', '-')}.entity.ts`
 }
 
 export default defineTemplate({
@@ -178,7 +178,7 @@ export default defineTemplate({
       lines.push('')
 
       // TypeORM imports
-      const sortedImports = [...imports].sort()
+      const sortedImports = [...imports].sort((a, b) => a.localeCompare(b))
       lines.push(`import { ${sortedImports.join(', ')} } from 'typeorm'`)
 
       // Entity imports (sorted for determinism)

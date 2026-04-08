@@ -7,6 +7,24 @@ import pc from 'picocolors'
 const CHECK = pc.green('\u2713')
 const CROSS = pc.red('\u2717')
 
+function getCliDepDetail(sqldocDir: string | undefined, hasPkgJson: boolean, hasCliDep: boolean): string | undefined {
+  if (!sqldocDir) return 'No .sqldoc/ directory'
+  if (!hasPkgJson) return 'No package.json in .sqldoc/'
+  if (!hasCliDep) return '@sqldoc/cli not listed in dependencies'
+  return undefined
+}
+
+function getCliInstalledDetail(
+  sqldocDir: string | undefined,
+  hasNodeModules: boolean,
+  hasCliInstalled: boolean,
+): string | undefined {
+  if (!sqldocDir) return 'No .sqldoc/ directory'
+  if (!hasNodeModules) return 'node_modules/ missing. Run install in .sqldoc/'
+  if (!hasCliInstalled) return '@sqldoc/cli not found in node_modules/'
+  return undefined
+}
+
 interface CheckResult {
   label: string
   ok: boolean
@@ -45,13 +63,7 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: 'package.json has @sqldoc/cli dependency',
     ok: hasCliDep,
-    detail: sqldocDir
-      ? hasPkgJson
-        ? hasCliDep
-          ? undefined
-          : '@sqldoc/cli not listed in dependencies'
-        : 'No package.json in .sqldoc/'
-      : 'No .sqldoc/ directory',
+    detail: getCliDepDetail(sqldocDir ?? undefined, hasPkgJson, hasCliDep),
   })
 
   // 3. node_modules exists and has @sqldoc/cli
@@ -67,13 +79,7 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: 'node_modules/ has @sqldoc/cli installed',
     ok: hasCliInstalled,
-    detail: sqldocDir
-      ? hasNodeModules
-        ? hasCliInstalled
-          ? undefined
-          : '@sqldoc/cli not found in node_modules/'
-        : 'node_modules/ missing. Run install in .sqldoc/'
-      : 'No .sqldoc/ directory',
+    detail: getCliInstalledDetail(sqldocDir ?? undefined, hasNodeModules, hasCliInstalled),
   })
 
   // 4. atlas.wasm is findable

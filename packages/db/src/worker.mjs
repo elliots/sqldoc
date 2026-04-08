@@ -12,8 +12,12 @@ process.on('warning', (warning) => {
   if (warning.name === 'ExperimentalWarning') {
     const message = warning.message || ''
     const code = warning.code || ''
-    if (message.includes('WASI') || message.includes('stripTypeScriptTypes') ||
-        code.includes('WASI') || code.includes('stripTypeScriptTypes')) {
+    if (
+      message.includes('WASI') ||
+      message.includes('stripTypeScriptTypes') ||
+      code.includes('WASI') ||
+      code.includes('stripTypeScriptTypes')
+    ) {
       return
     }
   }

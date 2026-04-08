@@ -132,7 +132,7 @@ export default defineTemplate({
     if (content.includes('UUID')) imports.add('import java.util.UUID')
 
     const parts: string[] = []
-    const sortedImports = [...imports].sort()
+    const sortedImports = [...imports].sort((a, b) => a.localeCompare(b))
     if (sortedImports.length > 0) {
       parts.push(sortedImports.join('\n'))
       parts.push('')

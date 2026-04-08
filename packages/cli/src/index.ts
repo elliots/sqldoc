@@ -17,9 +17,9 @@ import { runForAllConfigs } from './utils/workspace.ts'
 function withAll<T extends (...args: any[]) => Promise<void>>(action: T): T {
   return (async (...args: any[]) => {
     // Commander passes options as last arg (before the Command object)
-    const opts = args.length >= 2 ? args[args.length - 2] : args[0]
+    const opts = args.length >= 2 ? args.at(-2) : args[0]
     if (opts?.all) {
-      const commandName = args[args.length - 1]?.name?.() ?? 'command'
+      const commandName = args.at(-1)?.name?.() ?? 'command'
       await runForAllConfigs(commandName, async (configPath) => {
         const newOpts = { ...opts, config: configPath, all: false }
         const newArgs = [...args]

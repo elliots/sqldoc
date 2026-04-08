@@ -26,7 +26,7 @@ export interface ExecResult {
 }
 
 /** Whether we're running in Bun (vs Node.js) */
-export const isBun = typeof (globalThis as any).Bun !== 'undefined'
+export const isBun = (globalThis as any).Bun !== undefined
 
 // ── Adapter Plugin System ──────────────────────────────────────────
 

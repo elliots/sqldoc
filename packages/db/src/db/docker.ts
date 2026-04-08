@@ -71,7 +71,7 @@ export function startContainer(opts: {
     spawnSync('docker', ['rm', '-f', id], { stdio: 'pipe' })
     throw new Error(`Failed to get mapped port for container ${id}: ${portOutput}`)
   }
-  const port = parseInt(portMatch[1], 10)
+  const port = Number.parseInt(portMatch[1], 10)
 
   // Wait for ready log message
   waitForLog(id, opts.readyLog, 30_000)

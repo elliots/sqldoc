@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { createRequire, register, stripTypeScriptTypes } from 'node:module'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 
 import pc from 'picocolors'
@@ -46,8 +46,13 @@ function checkVersion(sqldocDir: string): void {
  * - ESM: register amaro/strip loader hook for transitive imports
  */
 export function enableNodeModulesTypeStripping(): void {
+  // Bun handles TypeScript natively — no stripping needed
+  if (process.versions.bun) return
+
   // CJS require() handler — uses bundled amaro for type stripping
-  const Module = require('node:module')
+  const req = createRequire(import.meta.url)
+  const Module = req('node:module')
+  const { stripTypeScriptTypes, register } = Module
   Module._extensions['.ts'] = (module: any, filename: string) => {
     const content = readFileSync(filename, 'utf-8')
     const code = stripTypeScriptTypes(content, { mode: 'strip' })

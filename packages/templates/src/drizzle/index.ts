@@ -256,7 +256,7 @@ export default defineTemplate({
     }
 
     // Build imports
-    const importNames = Array.from(tracker.used).sort()
+    const importNames = Array.from(tracker.used).sort((a, b) => a.localeCompare(b))
     const sqlImport = importNames.includes('sql')
     const pgCoreImports = importNames.filter((n) => n !== 'sql')
 
@@ -272,7 +272,7 @@ export default defineTemplate({
 
     // Emit pgSchema declarations for non-default schemas
     if (nonDefaultSchemas.size > 0) {
-      const sortedSchemas = [...nonDefaultSchemas].sort()
+      const sortedSchemas = [...nonDefaultSchemas].sort((a, b) => a.localeCompare(b))
       for (const s of sortedSchemas) {
         lines.push(`export const ${toCamelCase(s)}Schema = pgSchema('${s}')`)
       }

@@ -48,8 +48,8 @@ function pgToCoboPic(col: EnrichedColumn): string {
     case 'decimal':
     case 'money': {
       const m = col.pgType.match(/\((\d+)(?:,\s*(\d+))?\)/)
-      const prec = m ? parseInt(m[1], 10) : 10
-      const scale = m?.[2] ? parseInt(m[2], 10) : 2
+      const prec = m ? Number.parseInt(m[1], 10) : 10
+      const scale = m?.[2] ? Number.parseInt(m[2], 10) : 2
       return `PIC S9(${prec - scale})V9(${scale}) COMP-3.`
     }
 
@@ -78,13 +78,13 @@ function pgToCoboPic(col: EnrichedColumn): string {
     case 'varchar':
     case 'character varying': {
       const lenMatch = col.pgType.match(/\((\d+)\)/)
-      const len = lenMatch ? parseInt(lenMatch[1], 10) : 255
+      const len = lenMatch ? Number.parseInt(lenMatch[1], 10) : 255
       return `PIC X(${len}).`
     }
     case 'char':
     case 'character': {
       const lenMatch = col.pgType.match(/\((\d+)\)/)
-      const len = lenMatch ? parseInt(lenMatch[1], 10) : 1
+      const len = lenMatch ? Number.parseInt(lenMatch[1], 10) : 1
       return `PIC X(${len}).`
     }
     case 'text':

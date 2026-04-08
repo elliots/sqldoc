@@ -245,7 +245,7 @@ export default defineTemplate({
       `  url      = env("DATABASE_URL")`,
     ]
     if (isMultiSchema) {
-      const sortedSchemas = [...allSchemas].sort()
+      const sortedSchemas = [...allSchemas].sort((a, b) => a.localeCompare(b))
       blocks.push(`  schemas  = [${sortedSchemas.map((s) => `"${s}"`).join(', ')}]`)
     }
     blocks.push(`}`, '')
@@ -404,7 +404,7 @@ export default defineTemplate({
           prismaType = pgToPrisma(col.pgType)
         }
 
-        const isIdCol = firstCol != null && col.name === firstCol.name
+        const isIdCol = col.name === firstCol?.name
 
         // Prisma requires @id fields to be non-nullable, so skip '?' for the dummy @id column on views
         if (col.nullable && !prismaType.endsWith('[]') && !isIdCol) {

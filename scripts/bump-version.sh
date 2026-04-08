@@ -7,13 +7,13 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 VERSION="${1:-}"
-if [ -z "$VERSION" ]; then
+if [[ -z "$VERSION" ]]; then
   CURRENT=$(bun -e "console.log(require('./package.json').version)")
   echo "Current version: ${CURRENT}"
   read -rp "New version: " VERSION
 fi
 
-[ -z "$VERSION" ] && echo "No version provided" && exit 1
+[[ -z "$VERSION" ]] && echo "No version provided" && exit 1
 VERSION="${VERSION#v}"
 
 echo "Bumping to ${VERSION}..."

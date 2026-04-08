@@ -14,8 +14,9 @@ const projectDir = import.meta.dirname
 
 // Ensure .sqldoc/ exists (idempotent — skips if already present)
 function ensureInit(): void {
-  const sqldocDir = path.join(projectDir, '.sqldoc')
-  if (!fs.existsSync(sqldocDir)) {
+  const nodeModules = path.join(projectDir, '.sqldoc', 'node_modules')
+  if (!fs.existsSync(nodeModules)) {
+    fs.rmSync(path.join(projectDir, '.sqldoc'), { recursive: true, force: true })
     initProject(projectDir)
   }
 }

@@ -21,4 +21,15 @@ export { findRename, findTypeOverride, isSkipped } from './helpers/tags.ts'
 // Tag functions (re-exported for convenience)
 export { csharp, dedent, go, java, kotlin, python, rust, sql, ts } from './tags/index.ts'
 export type { TsTypeOptions } from './types/index.ts'
-export { pgToCsharp, pgToGo, pgToJava, pgToKotlin, pgToPython, pgToRust, pgToTs } from './types/index.ts'
+export {
+  pgToCsharp,
+  pgToGo,
+  pgToJava,
+  pgToKotlin,
+  pgToPhp,
+  pgToPython,
+  pgToRuby,
+  pgToRust,
+  pgToSwift,
+  pgToTs,
+} from './types/index.ts'

@@ -193,7 +193,7 @@ export default defineTemplate({
     }
 
     // Collect needed SA type imports
-    const saImportTypes = ['Column', ...saTypes].sort()
+    const saImportTypes = ['Column', ...saTypes].sort((a, b) => a.localeCompare(b))
     if (needsForeignKey.value) saImportTypes.push('ForeignKey')
     if (needsARRAY.value) saImportTypes.push('ARRAY')
     if (needsTable.value) saImportTypes.push('Table')
@@ -208,7 +208,7 @@ export default defineTemplate({
     if (needsEnum.value) {
       importLines.push('import enum')
     }
-    for (const imp of [...extraImports].sort()) {
+    for (const imp of [...extraImports].sort((a, b) => a.localeCompare(b))) {
       importLines.push(imp)
     }
 

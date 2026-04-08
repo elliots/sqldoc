@@ -63,7 +63,7 @@ export default defineTemplate({
       }
 
       const importLines: string[] = []
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       for (const imp of sortedImports) {
         importLines.push(`import ${imp};`)
       }
@@ -106,7 +106,7 @@ export default defineTemplate({
       }
 
       const importLines: string[] = []
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       for (const imp of sortedImports) {
         importLines.push(`import ${imp};`)
       }
@@ -150,7 +150,7 @@ export default defineTemplate({
       }
 
       const importLines: string[] = []
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       for (const imp of sortedImports) {
         importLines.push(`import ${imp};`)
       }

@@ -53,16 +53,8 @@ if (isBun) {
     },
   })
 
-  registerBuiltin({
-    apiVersion: 1,
-    name: 'bun-mysql',
-    schemes: ['mysql'],
-    dialects: ['mysql'],
-    runtime: 'bun',
-    async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
-      return createBunSqlAdapter(connectionString)
-    },
-  })
+  // Bun SQL doesn't handle multi-statement DDL batches correctly (partial execution
+  // before error causes Atlas fallback to fail). Use @sqldoc/db-mysql (mysql2) instead.
 }
 
 // ── Scheme resolution ──────────────────────────────────────────────

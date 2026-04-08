@@ -140,7 +140,7 @@ export async function initCommand(targetDir: string = process.cwd(), devPath?: s
   const configPath = join(targetDir, 'sqldoc.config.ts')
   if (!existsSync(configPath)) {
     let createConfig = true
-    if (process.stdin.isTTY) {
+    if (process.stdin.isTTY && !process.env.NODE_TEST_CONTEXT && process.env.NODE_ENV !== 'test') {
       const rl = createRL()
       createConfig = await promptConfirm(rl, 'Create sqldoc.config.ts?')
       rl.close()

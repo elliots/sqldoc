@@ -11,7 +11,7 @@ const REFERENCE_TYPES = new Set(['string', 'byte[]', 'IPAddress'])
  */
 function getVarcharLength(pgType: string): number | undefined {
   const match = pgType.match(/(?:varchar|character varying)\((\d+)\)/i)
-  return match ? parseInt(match[1], 10) : undefined
+  return match ? Number.parseInt(match[1], 10) : undefined
 }
 
 /**

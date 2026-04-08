@@ -225,7 +225,7 @@ export default defineTemplate({
     const schemaContent = `${tableMacros.join('\n\n')}\n`
 
     // models.rs
-    const sortedImports = [...allImports].sort()
+    const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
     const useLines = sortedImports.map((imp) => `use ${imp};`)
     const modelsContent = [
       'use diesel::prelude::*;',

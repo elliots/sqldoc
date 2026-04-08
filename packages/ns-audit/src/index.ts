@@ -39,7 +39,7 @@ function generateAuditTableSql(destination: string, dialect: Dialect): string {
   operation TEXT NOT NULL,
   old_data ${jsonType(dialect)},
   new_data ${jsonType(dialect)},
-  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${currentTimestamp(dialect)}
+  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${dialect === 'sqlite' ? `(${currentTimestamp(dialect)})` : currentTimestamp(dialect)}
 );`
 }
 
@@ -226,6 +226,7 @@ const plugin: NamespacePlugin = {
       name: 'audit.require-audit',
       description: 'Tables should have an @audit tag',
       default: 'warn',
+
       check(ctx) {
         const diagnostics = []
         for (const output of ctx.outputs) {

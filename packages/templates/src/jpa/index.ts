@@ -8,7 +8,7 @@ import { pgToJava } from '../types/pg-to-java.ts'
  */
 function getVarcharLength(pgType: string): number | undefined {
   const match = pgType.match(/(?:varchar|character varying)\((\d+)\)/i)
-  return match ? parseInt(match[1], 10) : undefined
+  return match ? Number.parseInt(match[1], 10) : undefined
 }
 
 /**
@@ -117,7 +117,7 @@ export default defineTemplate({
         fieldLines.push(`    public ${mapped.type} ${toCamelCase(f.name)};`)
       }
 
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       const parts: string[] = []
       parts.push(sortedImports.map((imp) => `import ${imp};`).join('\n'))
       parts.push('')
@@ -154,7 +154,8 @@ export default defineTemplate({
         } else if (col.category === 'composite' && col.compositeFields?.length) {
           javaType = toPascalCase(col.pgType)
         } else {
-          const mapped = pgToJava(col.pgType, col.nullable, col.category)
+          // Use wrapper types for @Id fields (JPA uses null to indicate "not persisted")
+          const mapped = pgToJava(col.pgType, col.nullable || col.isPrimaryKey, col.category)
           javaType = mapped.type
           for (const imp of mapped.imports) allImports.add(imp)
         }
@@ -188,8 +189,13 @@ export default defineTemplate({
             pascalNameByQualified.get(fk.table) ??
             toPascalCase(singularizeLast(fk.table))
           const navPropName = toCamelCase(singularizeLast(fk.table))
-          annotations.push(`    @ManyToOne`)
-          annotations.push(`    @JoinColumn(name = "${col.name}")`)
+          if (col.nullable) {
+            annotations.push(`    @ManyToOne`)
+            annotations.push(`    @JoinColumn(name = "${col.name}")`)
+          } else {
+            annotations.push(`    @ManyToOne(optional = false)`)
+            annotations.push(`    @JoinColumn(name = "${col.name}", nullable = false)`)
+          }
 
           if (annotations.length > 0) {
             fieldLines.push(annotations.join('\n'))
@@ -231,7 +237,7 @@ export default defineTemplate({
         fieldLines.push('')
       }
 
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       const importLines = sortedImports.map((imp) => `import ${imp};`)
 
       const parts: string[] = []
@@ -286,7 +292,7 @@ export default defineTemplate({
         fieldLines.push('')
       }
 
-      const sortedImports = [...allImports].sort()
+      const sortedImports = [...allImports].sort((a, b) => a.localeCompare(b))
       const importLines = sortedImports.map((imp) => `import ${imp};`)
 
       const parts: string[] = []
