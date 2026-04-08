@@ -12,7 +12,7 @@
  * Requires Docker. Skipped in the default test suite — run explicitly.
  */
 
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -89,8 +89,15 @@ describe('docker template tests', () => {
 
     // Run codegen — outputs directly into each src/<template>/test/ directory
     console.log('Running codegen...')
-    execSync(
-      `${process.execPath} ${join(REPO_ROOT, 'packages/cli/src/main.ts')} codegen -c ${join(TEST_DIR, 'sqldoc.config.ts')} ${join(TEST_DIR, 'fixture.sql')}`,
+    execFileSync(
+      process.execPath,
+      [
+        join(REPO_ROOT, 'packages/cli/src/main.ts'),
+        'codegen',
+        '-c',
+        join(TEST_DIR, 'sqldoc.config.ts'),
+        join(TEST_DIR, 'fixture.sql'),
+      ],
       {
         cwd: TEMPLATES_DIR,
         stdio: 'pipe',
