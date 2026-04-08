@@ -7,10 +7,10 @@ public class MedicalRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public int id;
+    public Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "pet_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "pet_id", nullable = false)
     public Pet pet;
 
     @Column(name = "visit_date", nullable = false)

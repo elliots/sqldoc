@@ -12,6 +12,6 @@ class User < ApplicationRecord
   attribute :avatar, :binary
   attribute :balance, :decimal
 
-  validates :email, format: { with: /.+@.+\..+/ }
+  validates :email, format: { with: Regexp.new(".+@.+\\..+") }
   validates :age, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 120 }
 end

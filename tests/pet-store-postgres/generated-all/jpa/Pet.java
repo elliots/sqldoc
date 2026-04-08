@@ -12,7 +12,7 @@ public class Pet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public int id;
+    public Integer id;
 
     @ManyToOne
     @JoinColumn(name = "category_id")

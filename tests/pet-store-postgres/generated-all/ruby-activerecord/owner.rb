@@ -7,6 +7,6 @@ class Owner < ApplicationRecord
   has_many :adoptions
 
   validates :name, presence: true
-  validates :email, format: { with: /^[^@]+@[^@]+\.[^@]+$/ }
+  validates :email, format: { with: Regexp.new("^[^@]+@[^@]+\\.[^@]+$") }
   validates :phone, length: { minimum: 7, maximum: 20 }
 end

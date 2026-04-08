@@ -8,14 +8,14 @@ public class Adoption {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public int id;
+    public Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "pet_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "pet_id", nullable = false)
     public Pet pet;
 
-    @ManyToOne
-    @JoinColumn(name = "owner_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "owner_id", nullable = false)
     public Owner owner;
 
     @Column(name = "adopted_at", nullable = false)

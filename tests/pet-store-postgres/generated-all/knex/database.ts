@@ -2,6 +2,12 @@
 
 import type { Knex } from 'knex'
 
+export type JsonPrimitive = string | number | boolean | null
+export type JsonArray = JsonValue[]
+export type JsonObject = { [key: string]: JsonValue | undefined }
+export type JsonValue = JsonPrimitive | JsonArray | JsonObject
+export type Json = JsonValue
+
 export interface AdoptionTable {
   id: number
   pet_id: number

@@ -12,6 +12,6 @@ class Pet < ApplicationRecord
   attribute :price, :decimal
 
   validates :name, presence: true
-  validates :sku, format: { with: /^[A-Z]{3}-[0-9]{4}$/ }
+  validates :sku, format: { with: Regexp.new("^[A-Z]{3}-[0-9]{4}$") }
   validates :price, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 99999 }
 end

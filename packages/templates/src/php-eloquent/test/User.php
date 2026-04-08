@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property ?int $age
  * @property bool $is_active
  * @property ?array $metadata
- * @property ?mixed $address
+ * @property mixed $address
  * @property string $created_at
  * @property ?array $tags
  * @property ?string $avatar

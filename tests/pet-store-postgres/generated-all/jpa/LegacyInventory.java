@@ -6,7 +6,7 @@ public class LegacyInventory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public int id;
+    public Integer id;
 
     @Column(name = "item_name")
     public String itemName;

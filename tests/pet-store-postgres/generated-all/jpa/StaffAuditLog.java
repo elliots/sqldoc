@@ -7,7 +7,7 @@ public class StaffAuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public long id;
+    public Long id;
 
     @Column(name = "table_name", nullable = false)
     public String tableName;
