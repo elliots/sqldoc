@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.1.1 (2026-04-09)
+
+9d94eee7 feat: templates: php-eloquent, ruby-activerecord, swift-codable
+bcd1b547 feat: ns-history, ns-temporal, and ns-softdelete
+16aaebac feat: expose column precision, scale, and size from inspection
+fb46bb86 fix: deduplicate MaxLength attributes in EF Core template
+66c40d78 fix: swallow db.close() errors to preserve original runner failure
+deefb004 fix: correct ns-temporal doc comments for DELETE behavior and SQLite
+7bb1fc4b fix: close adapter if runner creation fails
+27b1ea15 fix: extract nested template literals in ns-temporal
+e57f509a fix: use ENV.fetch in Ruby test to validate DATABASE_URL
+d1703dfb fix: add scale to decimal cast in PHP Eloquent test fixture
+c84eb8f4 fix: cascade reads config.column fallback for soft-delete column name
+bd1e32fd fix: escape backslashes and Ruby interpolation in activerecord output
+8fa57682 fix: reject Docker dev URLs for unsupported dialects like sqlite
+c5d2b48d fix: coerce null to undefined for doctor detail functions
+5d269f8d fix: update softdelete tests for FK-qualified trigger names
+fb064240 fix: simplify FK null check with optional chaining
+d3ddfa9d fix: use execFileSync for docker build/run in template tests
+a9b9bd0e fix: detect Json usage in functions for knex template
+52c2217a fix: use Regexp.new for Ruby pattern validation
+9b323795 fix: quote Ruby enum keys for values with hyphens/spaces
+6d8c857b fix: ensure RESET ROLE runs even if RLS assertions fail
+4a6a4af8 fix: use wrapper types for JPA @Id fields
+8fe11fe0 fix: include scale suffix in Eloquent decimal cast
+254585d6 fix: propagate NOT NULL to JPA @ManyToOne/@JoinColumn annotations
+2e1f4d50 fix: handle composite columns in Swift Codable view rendering
+89f99bd8 fix: emit Json type declaration in knex template
+f43e6979 fix: use createRequire instead of bare require in ESM delegate
+de4655c3 fix: use execFileSync for codegen in docker template tests
+24cdef65 fix: use strict boolean comparison in PHP Eloquent test
+5c18d10b fix: correct stale output path in generate-all-templates.sh
+4e88c779 fix: escape regex delimiters in Ruby ActiveRecord pattern validation
+702aa361 fix: reject composite foreign keys in softdelete cascade
+8b6e2c45 fix: use WHEN clause for SQLite softdelete cascade triggers
+bf94ae9a fix: make softdelete cascade trigger names unique per FK column
+aad64bf8 fix: prevent invalid ?mixed in generated PHP types
+de8ccd38 fix: use Number.parseInt and [[ conditionals across project
+d3395e4c fix: scripts: use [[ instead of [ for conditionals
+8f1188a4 fix: cli: extract nested ternaries, use Number.parseInt, .at()
+e9ac770c fix: templates: use localeCompare in sort, replaceAll, optional chaining
+
 ## v0.1.0 (2026-04-07)
  - feat: bundle with node (SEA) + aborist instead of bun compile
  - feat: use fossilize for cross-platform binary builds
