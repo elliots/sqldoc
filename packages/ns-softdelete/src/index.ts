@@ -242,7 +242,7 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
 
   // Find the FK for this column
   const fk = table.foreign_keys?.find((fk) => fk.columns?.includes(columnName))
-  if (!fk || !fk.ref_table || !fk.ref_columns?.length) {
+  if (!fk?.ref_table || !fk?.ref_columns?.length) {
     return {
       sql: [],
       docs: {
