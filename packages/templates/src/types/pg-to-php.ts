@@ -117,6 +117,9 @@ export function pgToPhp(pgType: string, nullable: boolean, category?: string): s
     phpType = 'mixed'
   }
 
+  // PHP's `mixed` type already includes null — `?mixed` is a fatal error
+  if (phpType === 'mixed') return 'mixed'
+
   return nullable ? `?${phpType}` : phpType
 }
 
