@@ -105,8 +105,10 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
   if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
     if (dialect === 'mysql') {
       db = await createMysqlDockerAdapter(devUrl, pluginOpts)
-    } else {
+    } else if (dialect === 'postgres') {
       db = await createPostgresDockerAdapter(devUrl, pluginOpts)
+    } else {
+      throw new Error(`Docker dev URLs are not supported for dialect '${dialect}'`)
     }
   } else {
     db = await resolveAdapterPlugin({ devUrl, ...pluginOpts })
