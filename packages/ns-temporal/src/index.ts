@@ -5,11 +5,10 @@
  * and generates triggers for versioned row management:
  * - INSERT: set valid_from=NOW(), valid_to=NULL
  * - UPDATE: copy OLD row with valid_to=NOW(), set NEW.valid_from=NOW()
- * - DELETE: set valid_to=NOW() instead of deleting (cancel the delete)
+ * - DELETE: archive the row (insert copy with valid_to=NOW()), then allow the delete to proceed
  *
  * Postgres: PL/pgSQL BEFORE trigger functions.
  * MySQL: Limited support — DDL + view + INSERT trigger only (self-referential triggers not supported).
- * SQLite: BEFORE triggers with RAISE(IGNORE) for delete cancellation.
  */
 
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
