@@ -12,14 +12,15 @@ public class Owner {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 150)
     @NotEmpty
     public String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     @Pattern(regexp = "^[^@]+@[^@]+\\.[^@]+$")
     public String email;
 
+    @Column(length = 20)
     @Size(min = 7, max = 20)
     public String phone;
 

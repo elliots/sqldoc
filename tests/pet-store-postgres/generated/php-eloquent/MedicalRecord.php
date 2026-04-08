@@ -7,38 +7,33 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Adoption
+ * MedicalRecord
  *
  * @property int $id
  * @property int $pet_id
- * @property int $owner_id
- * @property string $adopted_at
- * @property float $adoption_fee
+ * @property string $visit_date
+ * @property string $diagnosis
+ * @property ?string $treatment
+ * @property ?string $vet_name
  */
-class Adoption extends Model
+class MedicalRecord extends Model
 {
-    protected $table = 'adoptions';
+    protected $table = 'medical_records';
 
     public $timestamps = false;
 
     protected $fillable = [
         'pet_id',
-        'owner_id',
-        'adopted_at',
-        'adoption_fee',
+        'visit_date',
+        'diagnosis',
+        'treatment',
+        'vet_name',
     ];
 
     protected $casts = [
         'pet_id' => 'integer',
-        'owner_id' => 'integer',
-        'adopted_at' => 'datetime',
-        'adoption_fee' => 'decimal:2',
+        'visit_date' => 'date',
     ];
-
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(Owner::class);
-    }
 
     public function pet(): BelongsTo
     {

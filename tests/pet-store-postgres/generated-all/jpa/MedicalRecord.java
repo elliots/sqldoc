@@ -21,7 +21,7 @@ public class MedicalRecord {
 
     public String treatment;
 
-    @Column(name = "vet_name")
+    @Column(name = "vet_name", length = 150)
     public String vetName;
 
 }

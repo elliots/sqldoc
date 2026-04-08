@@ -26,8 +26,8 @@ for (const t of templates) {
 // Define display order for languages
 const languageOrder = [
   'typescript', 'go', 'python', 'java', 'kotlin',
-  'rust', 'csharp', 'json', 'xml', 'protobuf',
-  'sql', 'cobol'
+  'rust', 'csharp', 'php', 'ruby', 'swift',
+  'json', 'xml', 'protobuf', 'sql', 'cobol'
 ]
 
 const languageNames = {
@@ -38,6 +38,9 @@ const languageNames = {
   kotlin: 'Kotlin',
   rust: 'Rust',
   csharp: 'C#',
+  php: 'PHP',
+  ruby: 'Ruby',
+  swift: 'Swift',
   json: 'JSON / Schema',
   xml: 'XML',
   protobuf: 'Protocol Buffers',

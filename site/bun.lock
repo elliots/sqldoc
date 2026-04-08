@@ -5,8 +5,8 @@
     "": {
       "name": "sqldoc-site",
       "devDependencies": {
-        "vitepress": "^1.6.4",
-        "vitepress-carbon": "^1.6.0",
+        "vitepress": "1.6.4",
+        "vitepress-carbon": "1.6.0",
       },
     },
   },

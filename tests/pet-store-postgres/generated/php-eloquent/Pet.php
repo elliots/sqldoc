@@ -37,7 +37,7 @@ class Pet extends Model
 
     protected $casts = [
         'category_id' => 'integer',
-        'price' => 'decimal:2',
+        'price' => 'decimal',
     ];
 
     public function category(): BelongsTo

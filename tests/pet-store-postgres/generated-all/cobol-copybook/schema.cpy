@@ -18,21 +18,21 @@
 
        01  CATEGORIES-RECORD.
            05  WS-ID  PIC S9(9) COMP.
-           05  WS-NAME  PIC X(255).
+           05  WS-NAME  PIC X(100).
            05  DESCRIPTION  PIC X(255).
 
        01  LEGACY-INVENTORY-RECORD.
            05  WS-ID  PIC S9(9) COMP.
-           05  ITEM-NAME  PIC X(255).
-           05  OLD-SKU  PIC X(255).
+           05  ITEM-NAME  PIC X(200).
+           05  OLD-SKU  PIC X(50).
            05  QUANTITY  PIC S9(9) COMP.
 
        01  LOCATIONS-RECORD.
            05  WS-ID  PIC S9(9) COMP.
-           05  WS-NAME  PIC X(255).
+           05  WS-NAME  PIC X(200).
            05  WS-ADDRESS  PIC X(255).
-           05  CITY  PIC X(255).
-           05  ZIP  PIC X(255).
+           05  CITY  PIC X(100).
+           05  ZIP  PIC X(20).
 
        01  MEDICAL-RECORDS-RECORD.
            05  WS-ID  PIC S9(9) COMP.
@@ -40,23 +40,23 @@
            05  VISIT-DATE  PIC 9(8).
            05  DIAGNOSIS  PIC X(255).
            05  TREATMENT  PIC X(255).
-           05  VET-NAME  PIC X(255).
+           05  VET-NAME  PIC X(150).
 
        01  OWNERS-RECORD.
            05  WS-ID  PIC S9(9) COMP.
-           05  WS-NAME  PIC X(255).
+           05  WS-NAME  PIC X(150).
            05  EMAIL  PIC X(255).
-           05  PHONE  PIC X(255).
+           05  PHONE  PIC X(20).
            05  CREATED-AT  PIC X(26).
 
        01  PETS-RECORD.
            05  WS-ID  PIC S9(9) COMP.
            05  CATEGORY-ID  PIC S9(9) COMP.
-           05  WS-NAME  PIC X(255).
-           05  SKU  PIC X(255).
+           05  WS-NAME  PIC X(100).
+           05  SKU  PIC X(20).
            05  PRICE  PIC S9(8)V9(2) COMP-3.
            05  INTERNAL-NOTES  PIC X(255).
-           05  WS-STATUS  PIC X(255).
+           05  WS-STATUS  PIC X(20).
            05  CREATED-AT  PIC X(26).
 
        01  REVIEWS-RECORD.

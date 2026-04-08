@@ -43,6 +43,7 @@ sqldoc compile [path] [options]
 | <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
 | <code v-pre>-o, --output &lt;path&gt;</code> | Write to file instead of stdout |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--all</code> | Run across all config files in the workspace |
 
 ---
 
@@ -69,6 +70,7 @@ sqldoc codegen [path] [options]
 | <code v-pre>-t, --template &lt;names&gt;</code> | Run template(s) by slug (comma-separated), ignoring config (output to stdout or -o dir) |
 | <code v-pre>-o, --output &lt;path&gt;</code> | Output file path (used with --template) |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--all</code> | Run across all config files in the workspace |
 
 ---
 
@@ -92,6 +94,7 @@ sqldoc validate [path] [options]
 |------|-------------|
 | <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--all</code> | Run across all config files in the workspace |
 
 ---
 
@@ -116,6 +119,7 @@ sqldoc lint [path] [options]
 | <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
 | <code v-pre>-v, --verbose</code> | Show ignored rules |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--all</code> | Run across all config files in the workspace |
 
 ---
 
@@ -189,6 +193,7 @@ sqldoc migrate [options]
 | <code v-pre>--check</code> | Exit non-zero if schema differs from migrations (CI mode) |
 | <code v-pre>--name &lt;name&gt;</code> | Custom migration name |
 | <code v-pre>--force</code> | Allow destructive changes (DROP TABLE, DROP COLUMN, etc.) |
+| <code v-pre>--all</code> | Run across all config files in the workspace |
 
 ---
 

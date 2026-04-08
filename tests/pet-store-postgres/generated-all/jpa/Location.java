@@ -8,15 +8,16 @@ public class Location {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     public String name;
 
     @Column(nullable = false)
     public String address;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     public String city;
 
+    @Column(length = 20)
     public String zip;
 
 }

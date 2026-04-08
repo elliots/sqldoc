@@ -25,9 +25,13 @@ export function isNullable(column: AtlasColumn): boolean {
   return column.type?.null === true
 }
 
-/** Get the column type string, falling back to 'unknown' */
+/** Get the column type string with precision/scale/size, falling back to 'unknown' */
 export function getColumnType(column: AtlasColumn): string {
-  return column.type?.T ?? column.type?.raw ?? 'unknown'
+  const base = column.type?.T ?? column.type?.raw ?? 'unknown'
+  const t = column.type as Record<string, unknown> | undefined
+  if (t?.precision && t?.scale) return `${base}(${t.precision},${t.scale})`
+  if (t?.size) return `${base}(${t.size})`
+  return base
 }
 
 /** Find all codegen tags for a given SQL object from allFileTags */

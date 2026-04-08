@@ -11,7 +11,7 @@ type Adoption struct {
 	PetId int32 `gorm:"type:integer;not null;foreignKey:id" json:"pet_id,omitempty"`
 	OwnerId int32 `gorm:"type:integer;not null;foreignKey:id" json:"owner_id,omitempty"`
 	AdoptedAt time.Time `gorm:"type:timestamp without time zone;not null;default:now()" json:"adopted_at,omitempty"`
-	AdoptionFee string `gorm:"type:numeric;not null;default:0" json:"adoption_fee,omitempty"`
+	AdoptionFee string `gorm:"type:numeric(10,2);not null;default:0" json:"adoption_fee,omitempty"`
 }
 
 type AdoptionsAuditLog struct {
@@ -25,23 +25,23 @@ type AdoptionsAuditLog struct {
 
 type Category struct {
 	Id int32 `gorm:"primaryKey;type:serial;not null;autoIncrement" json:"id,omitempty"`
-	Name string `gorm:"type:character varying;not null" json:"name,omitempty"`
+	Name string `gorm:"type:character varying(100);not null" json:"name,omitempty"`
 	Description *string `gorm:"type:text" json:"description,omitempty"`
 }
 
 type LegacyInventory struct {
 	Id int32 `gorm:"primaryKey;type:serial;not null;autoIncrement" json:"id,omitempty"`
-	ItemName *string `gorm:"type:character varying" json:"item_name,omitempty"`
-	OldSku *string `gorm:"type:character varying" json:"old_sku,omitempty"`
+	ItemName *string `gorm:"type:character varying(200)" json:"item_name,omitempty"`
+	OldSku *string `gorm:"type:character varying(50)" json:"old_sku,omitempty"`
 	Quantity *int32 `gorm:"type:integer;default:0" json:"quantity,omitempty"`
 }
 
 type Location struct {
 	Id int32 `gorm:"primaryKey;type:serial;not null;autoIncrement" json:"id,omitempty"`
-	Name string `gorm:"type:character varying;not null" json:"name,omitempty"`
+	Name string `gorm:"type:character varying(200);not null" json:"name,omitempty"`
 	Address string `gorm:"type:text;not null" json:"address,omitempty"`
-	City string `gorm:"type:character varying;not null" json:"city,omitempty"`
-	Zip *string `gorm:"type:character varying" json:"zip,omitempty"`
+	City string `gorm:"type:character varying(100);not null" json:"city,omitempty"`
+	Zip *string `gorm:"type:character varying(20)" json:"zip,omitempty"`
 }
 
 type MedicalRecord struct {
@@ -50,25 +50,25 @@ type MedicalRecord struct {
 	VisitDate time.Time `gorm:"type:date;not null;default:CURRENT_DATE" json:"visit_date,omitempty"`
 	Diagnosis string `gorm:"type:text;not null" json:"diagnosis,omitempty"`
 	Treatment *string `gorm:"type:text" json:"treatment,omitempty"`
-	VetName *string `gorm:"type:character varying" json:"vet_name,omitempty"`
+	VetName *string `gorm:"type:character varying(150)" json:"vet_name,omitempty"`
 }
 
 type Owner struct {
 	Id int32 `gorm:"primaryKey;type:serial;not null;autoIncrement" json:"id,omitempty"`
-	Name string `gorm:"type:character varying;not null" json:"name,omitempty"`
-	Email string `gorm:"type:character varying;not null" json:"email,omitempty"`
-	Phone *string `gorm:"type:character varying" json:"phone,omitempty"`
+	Name string `gorm:"type:character varying(150);not null" json:"name,omitempty"`
+	Email string `gorm:"type:character varying(255);not null" json:"email,omitempty"`
+	Phone *string `gorm:"type:character varying(20)" json:"phone,omitempty"`
 	CreatedAt *time.Time `gorm:"type:timestamp without time zone;default:now()" json:"created_at,omitempty"`
 }
 
 type Pet struct {
 	Id int32 `gorm:"primaryKey;type:serial;not null;autoIncrement" json:"id,omitempty"`
 	CategoryId *int32 `gorm:"type:integer;foreignKey:id" json:"category_id,omitempty"`
-	Name string `gorm:"type:character varying;not null" json:"name,omitempty"`
-	Sku string `gorm:"type:character varying;not null" json:"sku,omitempty"`
-	Price string `gorm:"type:numeric;not null;default:0" json:"price,omitempty"`
+	Name string `gorm:"type:character varying(100);not null" json:"name,omitempty"`
+	Sku string `gorm:"type:character varying(20);not null" json:"sku,omitempty"`
+	Price string `gorm:"type:numeric(10,2);not null;default:0" json:"price,omitempty"`
 	InternalNotes *string `gorm:"type:text" json:"internal_notes,omitempty"`
-	Status string `gorm:"type:character varying;not null;default:available" json:"status,omitempty"`
+	Status string `gorm:"type:character varying(20);not null;default:available" json:"status,omitempty"`
 	CreatedAt *time.Time `gorm:"type:timestamp without time zone;default:now()" json:"created_at,omitempty"`
 }
 

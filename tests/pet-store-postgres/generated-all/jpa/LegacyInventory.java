@@ -8,10 +8,10 @@ public class LegacyInventory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Integer id;
 
-    @Column(name = "item_name")
+    @Column(name = "item_name", length = 200)
     public String itemName;
 
-    @Column(name = "old_sku")
+    @Column(name = "old_sku", length = 50)
     public String oldSku;
 
     public Integer quantity;
