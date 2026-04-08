@@ -47,7 +47,7 @@ class User extends Model
         'is_active' => 'boolean',
         'metadata' => 'array',
         'tags' => 'array',
-        'balance' => 'decimal:2',
+        'balance' => 'decimal',
     ];
 
     public function posts(): HasMany
