@@ -18,11 +18,11 @@ public class Pet {
     @JoinColumn(name = "category_id")
     public Category category;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     @NotEmpty
     public String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     @Pattern(regexp = "^[A-Z]{3}-[0-9]{4}$")
     public String sku;
 
@@ -34,7 +34,7 @@ public class Pet {
     @Column(name = "internal_notes")
     public String internalNotes;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     public String status;
 
     @Column(name = "created_at")

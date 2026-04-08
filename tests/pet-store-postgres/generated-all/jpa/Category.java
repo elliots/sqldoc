@@ -9,7 +9,7 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     @NotEmpty
     public String name;
 

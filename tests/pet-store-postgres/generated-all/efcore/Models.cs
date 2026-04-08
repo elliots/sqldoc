@@ -54,6 +54,7 @@ public class Category
     public int Id { get; set; }
 
     [Required]
+    [MaxLength(100)]
     public string Name { get; set; }
 
     public string? Description { get; set; }
@@ -68,8 +69,10 @@ public class LegacyInventory
     [Key]
     public int Id { get; set; }
 
+    [MaxLength(200)]
     public string? ItemName { get; set; }
 
+    [MaxLength(50)]
     public string? OldSku { get; set; }
 
     public int? Quantity { get; set; }
@@ -85,14 +88,17 @@ public class Location
     public int Id { get; set; }
 
     [Required]
+    [MaxLength(200)]
     public string Name { get; set; }
 
     [Required]
     public string Address { get; set; }
 
     [Required]
+    [MaxLength(100)]
     public string City { get; set; }
 
+    [MaxLength(20)]
     public string? Zip { get; set; }
 
 
@@ -115,6 +121,7 @@ public class MedicalRecord
 
     public string? Treatment { get; set; }
 
+    [MaxLength(150)]
     public string? VetName { get; set; }
 
 
@@ -128,12 +135,15 @@ public class Owner
     public int Id { get; set; }
 
     [Required]
+    [MaxLength(150)]
     public string Name { get; set; }
 
     [Required]
+    [MaxLength(255)]
     [RegularExpression(@"^[^@]+@[^@]+\.[^@]+$")]
     public string Email { get; set; }
 
+    [MaxLength(20)]
     [MaxLength(20)]
     public string? Phone { get; set; }
 
@@ -153,9 +163,11 @@ public class Pet
     public int? CategoryId { get; set; }
 
     [Required]
+    [MaxLength(100)]
     public string Name { get; set; }
 
     [Required]
+    [MaxLength(20)]
     [RegularExpression(@"^[A-Z]{3}-[0-9]{4}$")]
     public string Sku { get; set; }
 
@@ -165,6 +177,7 @@ public class Pet
     public string? InternalNotes { get; set; }
 
     [Required]
+    [MaxLength(20)]
     public string Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }

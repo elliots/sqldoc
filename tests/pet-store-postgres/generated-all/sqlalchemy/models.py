@@ -13,7 +13,7 @@ class Adoption(Base):
     pet_id = Column(Integer, ForeignKey('pets.id'), nullable=False)
     owner_id = Column(Integer, ForeignKey('owners.id'), nullable=False)
     adopted_at = Column(DateTime, nullable=False)
-    adoption_fee = Column(Numeric, nullable=False)
+    adoption_fee = Column(Numeric(10, 2), nullable=False)
 
 
 class AdoptionsAuditLog(Base):
@@ -31,7 +31,7 @@ class Category(Base):
     __tablename__ = 'categories'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    name = Column(String(100), nullable=False)
     description = Column(Text)
 
 
@@ -39,8 +39,8 @@ class LegacyInventory(Base):
     __tablename__ = 'legacy_inventory'
 
     id = Column(Integer, primary_key=True)
-    item_name = Column(String)
-    old_sku = Column(String)
+    item_name = Column(String(200))
+    old_sku = Column(String(50))
     quantity = Column(Integer)
 
 
@@ -48,10 +48,10 @@ class Location(Base):
     __tablename__ = 'locations'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    name = Column(String(200), nullable=False)
     address = Column(Text, nullable=False)
-    city = Column(String, nullable=False)
-    zip = Column(String)
+    city = Column(String(100), nullable=False)
+    zip = Column(String(20))
 
 
 class MedicalRecord(Base):
@@ -62,16 +62,16 @@ class MedicalRecord(Base):
     visit_date = Column(Date, nullable=False)
     diagnosis = Column(Text, nullable=False)
     treatment = Column(Text)
-    vet_name = Column(String)
+    vet_name = Column(String(150))
 
 
 class Owner(Base):
     __tablename__ = 'owners'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    email = Column(String, nullable=False)
-    phone = Column(String)
+    name = Column(String(150), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(20))
     created_at = Column(DateTime)
 
 
@@ -80,11 +80,11 @@ class Pet(Base):
 
     id = Column(Integer, primary_key=True)
     category_id = Column(Integer, ForeignKey('categories.id'))
-    name = Column(String, nullable=False)
-    sku = Column(String, nullable=False)
-    price = Column(Numeric, nullable=False)
+    name = Column(String(100), nullable=False)
+    sku = Column(String(20), nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
     internal_notes = Column(Text)
-    status = Column(String, nullable=False)
+    status = Column(String(20), nullable=False)
     created_at = Column(DateTime)
 
 

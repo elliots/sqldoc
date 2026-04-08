@@ -32,7 +32,7 @@ class Adoption extends Model
         'pet_id' => 'integer',
         'owner_id' => 'integer',
         'adopted_at' => 'datetime',
-        'adoption_fee' => 'decimal',
+        'adoption_fee' => 'decimal:2',
     ];
 
     public function owner(): BelongsTo
