@@ -94,7 +94,7 @@ describe('ns-softdelete plugin', () => {
       )
       const sql = (result as any).sql
       expect(sql).toHaveLength(2)
-      expect(sql[0].sql).toContain('CREATE OR REPLACE FUNCTION "orders_softdelete_cascade_fn"()')
+      expect(sql[0].sql).toContain('CREATE OR REPLACE FUNCTION "orders_user_id_softdelete_cascade_fn"()')
       expect(sql[0].sql).toContain('UPDATE "orders" SET "deleted_at"')
       expect(sql[0].sql).toContain('WHERE "user_id" = NEW."id"')
       expect(sql[1].sql).toContain('AFTER UPDATE ON "users"')
@@ -159,7 +159,7 @@ describe('ns-softdelete plugin', () => {
       )
       const sql = (result as any).sql
       expect(sql).toHaveLength(1)
-      expect(sql[0].sql).toContain('`orders_softdelete_cascade_after_update`')
+      expect(sql[0].sql).toContain('`orders_user_id_softdelete_cascade_after_update`')
       expect(sql[0].sql).toContain('AFTER UPDATE ON `users`')
       expect(sql[0].sql).toContain('UPDATE `orders` SET `deleted_at`')
     })
@@ -207,7 +207,7 @@ describe('ns-softdelete plugin', () => {
       )
       const sql = (result as any).sql
       expect(sql).toHaveLength(1)
-      expect(sql[0].sql).toContain('"orders_softdelete_cascade_after_update"')
+      expect(sql[0].sql).toContain('"orders_user_id_softdelete_cascade_after_update"')
       expect(sql[0].sql).toContain('AFTER UPDATE ON "users"')
     })
   })
