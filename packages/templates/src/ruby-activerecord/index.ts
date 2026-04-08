@@ -185,8 +185,8 @@ function buildValidations(columns: ColumnWithTags[]): string[] {
         case 'pattern': {
           const args = tag.args
           if (Array.isArray(args) && args.length > 0) {
-            const escaped = String(args[0]).replace(/[{}]/g, '\\$&')
-            validations.push(`validates :${col.name}, format: { with: %r{${escaped}} }`)
+            const escaped = String(args[0]).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+            validations.push(`validates :${col.name}, format: { with: Regexp.new("${escaped}") }`)
           }
           break
         }
