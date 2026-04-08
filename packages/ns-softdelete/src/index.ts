@@ -276,7 +276,7 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
   // Get the soft-delete column name (from sibling tags or default)
   const selfTag = ctx.namespaceTags.find((t) => t.tag === null || t.tag === '$self')
   const selfArgs = (selfTag?.args ?? {}) as Record<string, unknown>
-  const softDeleteColumn = (selfArgs.column as string) || 'deleted_at'
+  const softDeleteColumn = (selfArgs.column as string) || (ctx.config.column as string) || 'deleted_at'
 
   let cascadeSqls: SqlOutput[]
   if (dialect === 'postgres') {
