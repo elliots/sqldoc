@@ -188,8 +188,13 @@ export default defineTemplate({
             pascalNameByQualified.get(fk.table) ??
             toPascalCase(singularizeLast(fk.table))
           const navPropName = toCamelCase(singularizeLast(fk.table))
-          annotations.push(`    @ManyToOne`)
-          annotations.push(`    @JoinColumn(name = "${col.name}")`)
+          if (col.nullable) {
+            annotations.push(`    @ManyToOne`)
+            annotations.push(`    @JoinColumn(name = "${col.name}")`)
+          } else {
+            annotations.push(`    @ManyToOne(optional = false)`)
+            annotations.push(`    @JoinColumn(name = "${col.name}", nullable = false)`)
+          }
 
           if (annotations.length > 0) {
             fieldLines.push(annotations.join('\n'))
