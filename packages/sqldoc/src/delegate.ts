@@ -50,7 +50,8 @@ export function enableNodeModulesTypeStripping(): void {
   if (process.versions.bun) return
 
   // CJS require() handler — uses bundled amaro for type stripping
-  const Module = require('node:module')
+  const req = createRequire(import.meta.url)
+  const Module = req('node:module')
   const { stripTypeScriptTypes, register } = Module
   Module._extensions['.ts'] = (module: any, filename: string) => {
     const content = readFileSync(filename, 'utf-8')
