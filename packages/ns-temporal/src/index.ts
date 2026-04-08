@@ -49,8 +49,9 @@ function generateTemporalColumnsSql(
   // The original PK columns become a regular unique index on current rows (via the view).
   if (pkColumns && pkColumns.length > 0) {
     if (dialect === 'postgres') {
+      const pkeyName = `${objectName}_pkey`
       sqls.push({
-        sql: `ALTER TABLE ${q(objectName)} DROP CONSTRAINT ${q(`${objectName}_pkey`)};`,
+        sql: `ALTER TABLE ${q(objectName)} DROP CONSTRAINT ${q(pkeyName)};`,
       })
       sqls.push({
         sql: `ALTER TABLE ${q(objectName)} ADD COLUMN ${q('version_id')} BIGSERIAL PRIMARY KEY;`,
@@ -137,7 +138,8 @@ function generateMysqlTriggers(objectName: string): SqlOutput[] {
 
   // MySQL cannot do self-referential INSERT/UPDATE in triggers
   // Only provide INSERT trigger for setting defaults
-  const insertTrigger = `CREATE TRIGGER ${q(`${objectName}_temporal_insert`)}
+  const triggerName = `${objectName}_temporal_insert`
+  const insertTrigger = `CREATE TRIGGER ${q(triggerName)}
   BEFORE INSERT ON ${q(objectName)}
   FOR EACH ROW
 BEGIN
