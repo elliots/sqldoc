@@ -19,4 +19,4 @@ rm -rf generated-all
 CSV=$(echo "$TEMPLATES" | tr '\n' ',' | sed 's/,$//')
 node ../../packages/cli/src/main.ts codegen --template "$CSV" --output generated-all
 
-echo "Done. Generated outputs in tests/pet-store-postgres/generated/"
+echo "Done. Generated outputs in tests/pet-store-postgres/generated-all/"
