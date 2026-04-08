@@ -77,7 +77,7 @@ end
         for (const col of enumCols) {
           const values = col
             .enumValues!.map((v) => {
-              const escaped = v.replace(/'/g, "\\'")
+              const escaped = v.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
               return `'${escaped}' => '${escaped}'`
             })
             .join(', ')
@@ -185,7 +185,7 @@ function buildValidations(columns: ColumnWithTags[]): string[] {
         case 'pattern': {
           const args = tag.args
           if (Array.isArray(args) && args.length > 0) {
-            const escaped = String(args[0]).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+            const escaped = String(args[0]).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/#/g, '\\#')
             validations.push(`validates :${col.name}, format: { with: Regexp.new("${escaped}") }`)
           }
           break
