@@ -41,7 +41,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 assert_eq($user['email'], 'test@example.com', 'user.email matches');
 assert_eq($user['name'], 'Test User', 'user.name matches');
 assert_eq((int)$user['age'], 30, 'user.age matches');
-assert_eq((bool)$user['is_active'], true, 'user.is_active matches');
+assert_eq($user['is_active'] === 't' || $user['is_active'] === true, true, 'user.is_active matches');
 
 // 2. Query post
 $stmt = $pdo->query("SELECT id, user_id, title, body, view_count FROM content.posts WHERE id = 1");
