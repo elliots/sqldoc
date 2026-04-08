@@ -4,8 +4,7 @@
 require 'uri'
 require 'pg'
 
-DATABASE_URL = ENV['DATABASE_URL']
-unless DATABASE_URL
+DATABASE_URL = ENV.fetch('DATABASE_URL') do
   $stderr.puts "DATABASE_URL not set"
   exit 1
 end
