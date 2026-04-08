@@ -123,11 +123,11 @@ describe('docker template tests', () => {
         const testDir = join(SRC_DIR, name, 'test')
         const tag = `sqldoc-test-${name}`
         try {
-          execSync(`docker build -t ${tag} ${testDir}`, {
+          execFileSync('docker', ['build', '-t', tag, testDir], {
             stdio: 'pipe',
             timeout: 120_000,
           })
-          execSync(`docker run --rm --network ${NETWORK} -e DATABASE_URL="${DB_URL}" ${tag}`, {
+          execFileSync('docker', ['run', '--rm', '--network', NETWORK, '-e', `DATABASE_URL=${DB_URL}`, tag], {
             stdio: 'pipe',
             timeout: 30_000,
           })
