@@ -63,7 +63,7 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: 'package.json has @sqldoc/cli dependency',
     ok: hasCliDep,
-    detail: getCliDepDetail(sqldocDir, hasPkgJson, hasCliDep),
+    detail: getCliDepDetail(sqldocDir ?? undefined, hasPkgJson, hasCliDep),
   })
 
   // 3. node_modules exists and has @sqldoc/cli
@@ -79,7 +79,7 @@ export async function doctorCommand(): Promise<void> {
   results.push({
     label: 'node_modules/ has @sqldoc/cli installed',
     ok: hasCliInstalled,
-    detail: getCliInstalledDetail(sqldocDir, hasNodeModules, hasCliInstalled),
+    detail: getCliInstalledDetail(sqldocDir ?? undefined, hasNodeModules, hasCliInstalled),
   })
 
   // 4. atlas.wasm is findable
