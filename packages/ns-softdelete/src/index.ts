@@ -51,7 +51,7 @@ function generatePostgresCascade(
   parentPkColumn: string,
   columnName: string,
 ): SqlOutput[] {
-  const fnName = `${childTable}_softdelete_cascade_fn`
+  const fnName = `${childTable}_${fkColumn}_softdelete_cascade_fn`
 
   const fnSql = `CREATE OR REPLACE FUNCTION "${fnName}"() RETURNS TRIGGER AS $$
 BEGIN
@@ -63,7 +63,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;`
 
-  const triggerSql = `CREATE TRIGGER "${childTable}_softdelete_cascade_trigger"
+  const triggerSql = `CREATE TRIGGER "${childTable}_${fkColumn}_softdelete_cascade_trigger"
   AFTER UPDATE ON "${parentTable}"
   FOR EACH ROW EXECUTE FUNCTION "${fnName}"();`
 
@@ -80,7 +80,7 @@ function generatePerEventCascade(
   dialect: Dialect,
 ): SqlOutput[] {
   const q = (name: string) => quoteIdentifier(name, dialect)
-  const triggerName = `${childTable}_softdelete_cascade_after_update`
+  const triggerName = `${childTable}_${fkColumn}_softdelete_cascade_after_update`
 
   return [
     {
