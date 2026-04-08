@@ -144,7 +144,6 @@ public class Owner
     public string Email { get; set; }
 
     [MaxLength(20)]
-    [MaxLength(20)]
     public string? Phone { get; set; }
 
     public DateTime? CreatedAt { get; set; }

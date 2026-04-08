@@ -138,9 +138,12 @@ export default defineTemplate({
           annotations.push(`    [MaxLength(${varcharLen})]`)
         }
 
-        // Validation annotations from @validate tags
+        // Validation annotations from @validate tags (skip duplicate MaxLength)
         const validationAnnotations = getValidationAnnotations(col.tags)
-        annotations.push(...validationAnnotations)
+        for (const ann of validationAnnotations) {
+          if (varcharLen && ann.includes('[MaxLength(')) continue
+          annotations.push(ann)
+        }
 
         if (annotations.length > 0) {
           propertyLines.push(annotations.join('\n'))
