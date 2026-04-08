@@ -256,6 +256,20 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
     }
   }
 
+  if ((fk.columns?.length ?? 0) > 1 || fk.ref_columns.length > 1) {
+    return {
+      sql: [],
+      docs: {
+        annotations: [
+          {
+            object: objectName,
+            text: '@softdelete.cascade does not support composite foreign keys',
+          },
+        ],
+      },
+    }
+  }
+
   const parentTable = fk.ref_table
   const parentPkColumn = fk.ref_columns[0]
 
