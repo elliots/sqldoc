@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.2 (2026-04-09)
+
+e3a8c99 fix: remove node_modules .ts import guard - type stripping hooks handle it
+
 ## v0.1.1 (2026-04-09)
 
 9d94eee7 feat: templates: php-eloquent, ruby-activerecord, swift-codable
