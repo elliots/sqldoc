@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.3 (2026-04-09)
+
+a61b6be fix: handle composite return types from functions
+bf8a190 fix: file order with imports/externals
+
 ## v0.1.2 (2026-04-09)
 
 e3a8c99 fix: remove node_modules .ts import guard - type stripping hooks handle it

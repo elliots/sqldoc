@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "sqldoc": {
     "minShimVersion": "0.0.10"
   },
