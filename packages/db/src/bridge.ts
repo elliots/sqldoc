@@ -29,9 +29,9 @@ export interface BridgeBuffers {
 
 /**
  * Create shared buffers for bridge communication.
- * @param dataSize Initial data buffer size in bytes (default 1MB)
+ * @param dataSize Initial data buffer size in bytes (default 8MB)
  */
-export function createBridgeBuffers(dataSize = 1024 * 1024): BridgeBuffers {
+export function createBridgeBuffers(dataSize = 8 * 1024 * 1024): BridgeBuffers {
   return {
     control: new SharedArrayBuffer(8),
     data: new SharedArrayBuffer(dataSize),

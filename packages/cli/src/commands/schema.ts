@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import type { ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { AtlasResult } from '@sqldoc/db'
-import { createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
+import { createAdapter, createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
@@ -85,7 +85,7 @@ async function resolveSource(source: string, config: ResolvedConfig, configRoot:
 
 export async function schemaInspectCommand(
   source: string | undefined,
-  options: { config?: string; format?: string; devUrl?: string; project?: string },
+  options: { config?: string; format?: string; devUrl?: string; schema?: string; project?: string },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
@@ -101,6 +101,7 @@ export async function schemaInspectCommand(
     }
     const dialect = config.dialect
     const format = (options.format ?? 'sql') as Format
+    const schemaOpt = options.schema ?? (dialect === 'postgres' ? 'public' : undefined)
 
     try {
       const resolved = await resolveSource(resolvedSource, config, configRoot)
@@ -110,7 +111,7 @@ export async function schemaInspectCommand(
         const runner = await createRunner({ dialect, devUrl: resolved.value, ...pluginInstallConfig(configRoot) })
         try {
           const result = await runner.inspect([], {
-            schema: dialect === 'postgres' ? 'public' : undefined,
+            schema: schemaOpt,
           })
           if (result.error) {
             throw new CliError(`Inspect error: ${result.error}`)
@@ -150,6 +151,8 @@ export async function schemaDiffCommand(options: {
   config?: string
   from?: string
   to?: string
+  fromSchema?: string
+  toSchema?: string
   format?: string
   devUrl?: string
   check?: boolean
@@ -163,6 +166,8 @@ export async function schemaDiffCommand(options: {
     if (options.devUrl) config.devUrl = options.devUrl
     const dialect = config.dialect
     const format = (options.format ?? 'sql') as Format
+    const fromSchemaOpt = options.fromSchema
+    const toSchemaOpt = options.toSchema
 
     // Default --to to config.schema, --from to config.migrations.dir when both omitted
     let toSource = options.to
@@ -187,7 +192,17 @@ export async function schemaDiffCommand(options: {
         : { type: 'file' as const, value: '' } // empty = no existing schema
 
       if (fromResolved.type === 'database' || toResolved.type === 'database') {
-        await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false, configRoot)
+        await diffWithLiveDb(
+          fromResolved,
+          toResolved,
+          config,
+          dialect,
+          format,
+          options.check ?? false,
+          configRoot,
+          fromSchemaOpt,
+          toSchemaOpt,
+        )
         return
       }
 
@@ -217,7 +232,7 @@ export async function schemaDiffCommand(options: {
       })
       try {
         const result = await runner.diff(fromSql, toSql, {
-          schema: dialect === 'postgres' ? 'public' : undefined,
+          schema: fromSchemaOpt,
         })
         outputDiff(result, format, options.check ?? false)
       } finally {
@@ -238,16 +253,19 @@ async function diffWithLiveDb(
   format: Format,
   check: boolean,
   configRoot: string,
+  fromSchemaOpt?: string,
+  toSchemaOpt?: string,
 ): Promise<void> {
-  const schemaOpt = dialect === 'postgres' ? 'public' : undefined
-
-  const liveSource = from.type === 'database' ? from : to
-  const sqlSource = from.type === 'database' ? to : from
+  const fromIsDb = from.type === 'database'
+  const liveSource = fromIsDb ? from : to
+  const sqlSource = fromIsDb ? to : from
+  const liveSchemaOpt = fromIsDb ? fromSchemaOpt : toSchemaOpt
+  const sqlSchemaOpt = fromIsDb ? toSchemaOpt : fromSchemaOpt
 
   const liveRunner = await createRunner({ dialect, devUrl: liveSource.value, ...pluginInstallConfig(configRoot) })
   let liveRealm
   try {
-    const liveResult = await liveRunner.inspect([], { schema: schemaOpt })
+    const liveResult = await liveRunner.inspect([], { schema: liveSchemaOpt })
     if (liveResult.error) throw new Error(`Live DB inspect: ${liveResult.error}`)
     liveRealm = liveResult.schema
   } finally {
@@ -262,37 +280,44 @@ async function diffWithLiveDb(
   })
   let sqlRealm
   try {
-    const sqlResult = await devRunner.inspect([sqlSource.value], { schema: schemaOpt })
+    const sqlResult = await devRunner.inspect([sqlSource.value], { schema: sqlSchemaOpt })
     if (sqlResult.error) throw new Error(`SQL inspect: ${sqlResult.error}`)
     sqlRealm = sqlResult.schema
   } finally {
     await devRunner.close()
   }
 
-  const diffSql = [...(from.type !== 'database' ? [from.value] : []), ...(to.type !== 'database' ? [to.value] : [])]
+  // For json/pretty formats, use the pre-inspected realms directly
+  if (format === 'json') {
+    console.log(JSON.stringify({ from: liveRealm, to: sqlRealm }, null, 2))
+    return
+  } else if (format === 'pretty') {
+    prettyCompareRealms(liveRealm, sqlRealm, check)
+    return
+  }
+
+  // For SQL format, diff using live DB adapter on one side, SQL files on the other
+  const liveAdapter = await createAdapter({ dialect, devUrl: liveSource.value, ...pluginInstallConfig(configRoot) })
+  const sqlSide = sqlSource.value ? [sqlSource.value] : []
+  const extensions = extractExtensions(sqlSide).extensions
   const diffRunner = await createRunner({
     dialect,
     devUrl: config.devUrl,
-    extensions: extractExtensions(diffSql).extensions,
+    extensions,
     ...pluginInstallConfig(configRoot),
   })
   try {
-    const fromSql = from.type === 'database' ? [] : [from.value]
-    const toSql = to.type === 'database' ? [] : [to.value]
-
-    if (from.type === 'database' && to.type !== 'database') {
-      if (format === 'json') {
-        console.log(JSON.stringify({ from: liveRealm, to: sqlRealm }, null, 2))
-        return
-      } else if (format === 'pretty') {
-        prettyCompareRealms(liveRealm, sqlRealm, check)
-        return
-      }
-    }
-    const result = await diffRunner.diff(fromSql, toSql, { schema: schemaOpt })
+    const fromDiffSource: import('@sqldoc/db').DiffSource = fromIsDb ? liveAdapter : sqlSide
+    const toDiffSource: import('@sqldoc/db').DiffSource = fromIsDb ? sqlSide : liveAdapter
+    const result = await diffRunner.diff(fromDiffSource, toDiffSource, {
+      fromSchema: fromSchemaOpt,
+      toSchema: toSchemaOpt,
+      normalizeSchemas: !!(fromSchemaOpt || toSchemaOpt),
+    })
     outputDiff(result, format, check)
   } finally {
     await diffRunner.close()
+    await liveAdapter.close()
   }
 }
 

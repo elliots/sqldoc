@@ -32,6 +32,9 @@ export interface AtlasCommand {
   dialect: 'postgres' | 'mysql' | 'sqlite'
   schema?: string
   defaultSchema?: string
+  fromSchema?: string
+  toSchema?: string
+  normalizeSchemas?: boolean
   files?: string[]
   fileNames?: string[]
   from?: string[]

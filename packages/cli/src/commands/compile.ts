@@ -7,10 +7,13 @@ import { runCompilePipeline } from '../utils/pipeline.ts'
 
 /**
  * compile command: reads SQL files, runs the full pipeline, outputs merged SQL to stdout or file.
+ *
+ * By default, external files are excluded from the output (they're compiled for validation
+ * but filtered from the result). Pass --include-externals to include them.
  */
 export async function compileCommand(
   inputPath: string | undefined,
-  options: { config?: string; output?: string; project?: string },
+  options: { config?: string; output?: string; project?: string; includeExternals?: boolean },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
@@ -29,12 +32,20 @@ export async function compileCommand(
       throw formatPipelineError(err, config)
     }
 
+    // Filter out external file outputs unless --include-externals is set
+    const outputSql = options.includeExternals
+      ? result.mergedSql
+      : result.outputs
+          .filter((o) => o.provenance !== 'external')
+          .map((o) => o.mergedSql)
+          .join('\n')
+
     if (options.output) {
       const outPath = path.resolve(configRoot, options.output)
       fs.mkdirSync(path.dirname(outPath), { recursive: true })
-      fs.writeFileSync(outPath, result.mergedSql, 'utf-8')
+      fs.writeFileSync(outPath, outputSql, 'utf-8')
     } else {
-      process.stdout.write(result.mergedSql)
+      process.stdout.write(outputSql)
     }
   }
 }

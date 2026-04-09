@@ -47,7 +47,13 @@ export interface AtlasRunner {
   diff(
     from: DiffSource,
     to: DiffSource,
-    options?: { schema?: string; defaultSchema?: string; renames?: AtlasRename[] },
+    options?: {
+      schema?: string
+      defaultSchema?: string
+      fromSchema?: string
+      toSchema?: string
+      renames?: AtlasRename[]
+    },
   ): Promise<AtlasResult>
 
   /** Clean up resources */
@@ -253,7 +259,14 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     async diff(
       from: DiffSource,
       to: DiffSource,
-      opts?: { schema?: string; defaultSchema?: string; renames?: AtlasRename[] },
+      opts?: {
+        schema?: string
+        defaultSchema?: string
+        fromSchema?: string
+        toSchema?: string
+        normalizeSchemas?: boolean
+        renames?: AtlasRename[]
+      },
     ): Promise<AtlasResult> {
       const fromIsDb = !Array.isArray(from)
       const toIsDb = !Array.isArray(to)
@@ -264,6 +277,9 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
         to: toIsDb ? [] : to,
         schema: opts?.schema,
         defaultSchema: opts?.defaultSchema,
+        fromSchema: opts?.fromSchema,
+        toSchema: opts?.toSchema,
+        normalizeSchemas: opts?.normalizeSchemas,
         renames: opts?.renames,
         fromConnection: fromIsDb ? 'from' : undefined,
         toConnection: toIsDb ? 'to' : undefined,
