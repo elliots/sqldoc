@@ -71,8 +71,8 @@ export async function resolveDirectives(
 
   debug('resolver', `resolved: ${externalFiles.length} external, ${includeFiles.length} include`)
   return {
-    externalFiles: externalFiles.sort(),
-    includeFiles: includeFiles.sort(),
+    externalFiles,
+    includeFiles,
     provenanceMap,
   }
 }
@@ -102,7 +102,13 @@ async function processFile(
     for (const resolved of resolvedPaths) {
       const provenance = directive.type as FileProvenance
 
-      // Set provenance: external takes precedence over include
+      // Recurse FIRST (depth-first, post-order) so dependencies appear before dependents
+      if (!visited.has(resolved)) {
+        const refContent = readFile(resolved)
+        await processFile(resolved, refContent, readFile, provenanceMap, visited)
+      }
+
+      // Set provenance AFTER recursion: external takes precedence over include
       const existing = provenanceMap.get(resolved)
       if (!existing) {
         debug('resolver', `${directive.type}: ${resolved}`)
@@ -112,12 +118,6 @@ async function processFile(
         provenanceMap.set(resolved, 'external')
       }
       // If already external or project, keep as-is
-
-      // Recurse into the referenced file (if not yet visited)
-      if (!visited.has(resolved)) {
-        const refContent = readFile(resolved)
-        await processFile(resolved, refContent, readFile, provenanceMap, visited)
-      }
     }
   }
 }
@@ -131,7 +131,7 @@ async function resolvePath(rawPath: string, fromDir: string, referrer: string): 
 
   if (isGlob) {
     const matches = fs.globSync(rawPath, { cwd: fromDir })
-    const files = matches.map((f) => path.resolve(fromDir, f)).filter((f) => fs.statSync(f).isFile())
+    const files = matches.map((f) => fs.realpathSync(path.resolve(fromDir, f))).filter((f) => fs.statSync(f).isFile())
     if (files.length === 0) {
       throw new Error(`No files matched glob: ${rawPath} (referenced from ${referrer})`)
     }
@@ -148,7 +148,7 @@ async function resolvePath(rawPath: string, fromDir: string, referrer: string): 
     if (!fs.existsSync(abs)) {
       throw new Error(`File not found: ${rawPath} in node_modules/ (referenced from ${referrer})`)
     }
-    return [abs]
+    return [fs.realpathSync(abs)]
   }
 
   // Relative path: resolve from containing file's directory
@@ -156,7 +156,7 @@ async function resolvePath(rawPath: string, fromDir: string, referrer: string): 
   if (!fs.existsSync(abs)) {
     throw new Error(`File not found: ${rawPath} (referenced from ${referrer})`)
   }
-  return [abs]
+  return [fs.realpathSync(abs)]
 }
 
 /** Walk up from startDir to find the nearest directory containing package.json */

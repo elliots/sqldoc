@@ -168,7 +168,8 @@ export async function runCompilePipeline(
     }
 
     // Inspection 2 (or sole inspection when no externals): all files -> fullRealm
-    const relFiles = allFiles.map((f) => path.relative(process.cwd(), f))
+    // Use zero-padded index prefix so Atlas preserves dependency order when it sorts by filename
+    const relFiles = allFiles.map((f, i) => `${String(i).padStart(4, '0')}_${path.relative(process.cwd(), f)}`)
     const inspectResult = await atlasRunner.inspect(allSqlContents, {
       fileNames: relFiles,
     })
