@@ -1,0 +1,3950 @@
+{
+  "schemas": [
+    {
+      "attrs": [
+        {
+          "kind": "comment",
+          "text": "standard public schema"
+        }
+      ],
+      "enums": [
+        {
+          "T": "mpaa_rating",
+          "schema": "public",
+          "values": ["G", "PG", "PG-13", "R", "NC-17"]
+        }
+      ],
+      "funcs": [
+        {
+          "args": [
+            {
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public._group_concat(text, text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\nAS $function$\nSELECT CASE\n  WHEN $2 IS NULL THEN $1\n  WHEN $1 IS NULL THEN $2\n  ELSE $1 || ', ' || $2\nEND\n$function$\n",
+          "deps": [
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "sql",
+          "name": "_group_concat",
+          "ret": {
+            "raw": "text",
+            "type": {
+              "T": "text",
+              "kind": "string"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "p_film_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "p_store_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "mode": "OUT",
+              "name": "p_film_count",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.film_in_stock(p_film_id integer, p_store_id integer, OUT p_film_count integer)\n RETURNS SETOF integer\n LANGUAGE sql\nAS $function$\n     SELECT inventory_id\n     FROM inventory\n     WHERE film_id = $1\n     AND store_id = $2\n     AND inventory_in_stock(inventory_id);\n$function$\n",
+          "deps": [
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "inventory_in_stock",
+              "schema": "public",
+              "type": "func"
+            }
+          ],
+          "lang": "sql",
+          "name": "film_in_stock",
+          "ret": {
+            "raw": "SETOF integer",
+            "type": {
+              "T": "SETOF integer",
+              "kind": "unknown"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "p_film_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "p_store_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "mode": "OUT",
+              "name": "p_film_count",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.film_not_in_stock(p_film_id integer, p_store_id integer, OUT p_film_count integer)\n RETURNS SETOF integer\n LANGUAGE sql\nAS $function$\n    SELECT inventory_id\n    FROM inventory\n    WHERE film_id = $1\n    AND store_id = $2\n    AND NOT inventory_in_stock(inventory_id);\n$function$\n",
+          "deps": [
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "inventory_in_stock",
+              "schema": "public",
+              "type": "func"
+            }
+          ],
+          "lang": "sql",
+          "name": "film_not_in_stock",
+          "ret": {
+            "raw": "SETOF integer",
+            "type": {
+              "T": "SETOF integer",
+              "kind": "unknown"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "p_customer_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "p_effective_date",
+              "type": {
+                "raw": "timestamptz",
+                "type": {
+                  "T": "timestamptz",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.get_customer_balance(p_customer_id integer, p_effective_date timestamp with time zone)\n RETURNS numeric\n LANGUAGE plpgsql\nAS $function$\n       --#OK, WE NEED TO CALCULATE THE CURRENT BALANCE GIVEN A CUSTOMER_ID AND A DATE\n       --#THAT WE WANT THE BALANCE TO BE EFFECTIVE FOR. THE BALANCE IS:\n       --#   1) RENTAL FEES FOR ALL PREVIOUS RENTALS\n       --#   2) ONE DOLLAR FOR EVERY DAY THE PREVIOUS RENTALS ARE OVERDUE\n       --#   3) IF A FILM IS MORE THAN RENTAL_DURATION * 2 OVERDUE, CHARGE THE REPLACEMENT_COST\n       --#   4) SUBTRACT ALL PAYMENTS MADE BEFORE THE DATE SPECIFIED\nDECLARE\n    v_rentfees DECIMAL(5,2); --#FEES PAID TO RENT THE VIDEOS INITIALLY\n    v_overfees INTEGER;      --#LATE FEES FOR PRIOR RENTALS\n    v_payments DECIMAL(5,2); --#SUM OF PAYMENTS MADE PREVIOUSLY\nBEGIN\n    SELECT COALESCE(SUM(film.rental_rate),0) INTO v_rentfees\n    FROM film, inventory, rental\n    WHERE film.film_id = inventory.film_id\n      AND inventory.inventory_id = rental.inventory_id\n      AND rental.rental_date <= p_effective_date\n      AND rental.customer_id = p_customer_id;\n\n    SELECT COALESCE(SUM(IF((rental.return_date - rental.rental_date) > (film.rental_duration * '1 day'::interval),\n        ((rental.return_date - rental.rental_date) - (film.rental_duration * '1 day'::interval)),0)),0) INTO v_overfees\n    FROM rental, inventory, film\n    WHERE film.film_id = inventory.film_id\n      AND inventory.inventory_id = rental.inventory_id\n      AND rental.rental_date <= p_effective_date\n      AND rental.customer_id = p_customer_id;\n\n    SELECT COALESCE(SUM(payment.amount),0) INTO v_payments\n    FROM payment\n    WHERE payment.payment_date <= p_effective_date\n    AND payment.customer_id = p_customer_id;\n\n    RETURN v_rentfees + v_overfees - v_payments;\nEND\n$function$\n",
+          "deps": [
+            {
+              "name": "film",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "payment",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "rental",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "plpgsql",
+          "name": "get_customer_balance",
+          "ret": {
+            "raw": "numeric",
+            "type": {
+              "T": "numeric",
+              "kind": "decimal"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "p_inventory_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.inventory_held_by_customer(p_inventory_id integer)\n RETURNS integer\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n    v_customer_id INTEGER;\nBEGIN\n\n  SELECT customer_id INTO v_customer_id\n  FROM rental\n  WHERE return_date IS NULL\n  AND inventory_id = p_inventory_id;\n\n  RETURN v_customer_id;\nEND $function$\n",
+          "deps": [
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "rental",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "plpgsql",
+          "name": "inventory_held_by_customer",
+          "ret": {
+            "raw": "integer",
+            "type": {
+              "T": "integer",
+              "kind": "integer"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "p_inventory_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.inventory_in_stock(p_inventory_id integer)\n RETURNS boolean\n LANGUAGE plpgsql\nAS $function$\nDECLARE\n    v_rentals INTEGER;\n    v_out     INTEGER;\nBEGIN\n    -- AN ITEM IS IN-STOCK IF THERE ARE EITHER NO ROWS IN THE rental TABLE\n    -- FOR THE ITEM OR ALL ROWS HAVE return_date POPULATED\n\n    SELECT count(*) INTO v_rentals\n    FROM rental\n    WHERE inventory_id = p_inventory_id;\n\n    IF v_rentals = 0 THEN\n      RETURN TRUE;\n    END IF;\n\n    SELECT COUNT(rental_id) INTO v_out\n    FROM inventory LEFT JOIN rental USING(inventory_id)\n    WHERE inventory.inventory_id = p_inventory_id\n    AND rental.return_date IS NULL;\n\n    IF v_out > 0 THEN\n      RETURN FALSE;\n    ELSE\n      RETURN TRUE;\n    END IF;\nEND $function$\n",
+          "deps": [
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "rental",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "plpgsql",
+          "name": "inventory_in_stock",
+          "ret": {
+            "raw": "boolean",
+            "type": {
+              "T": "boolean",
+              "kind": "boolean"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "timestamp",
+              "type": {
+                "raw": "with time zone",
+                "type": {
+                  "T": "with time zone",
+                  "kind": "unknown"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.last_day(timestamp with time zone)\n RETURNS date\n LANGUAGE sql\n IMMUTABLE STRICT\nAS $function$\n  SELECT CASE\n    WHEN EXTRACT(MONTH FROM $1) = 12 THEN\n      (((EXTRACT(YEAR FROM $1) + 1) operator(pg_catalog.||) '-01-01')::date - INTERVAL '1 day')::date\n    ELSE\n      ((EXTRACT(YEAR FROM $1) operator(pg_catalog.||) '-' operator(pg_catalog.||) (EXTRACT(MONTH FROM $1) + 1) operator(pg_catalog.||) '-01')::date - INTERVAL '1 day')::date\n    END\n$function$\n",
+          "deps": [
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "sql",
+          "name": "last_day",
+          "ret": {
+            "raw": "date",
+            "type": {
+              "T": "date",
+              "kind": "time"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "body": "CREATE OR REPLACE FUNCTION public.last_updated()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    NEW.last_update = CURRENT_TIMESTAMP;\n    RETURN NEW;\nEND $function$\n",
+          "deps": [
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "plpgsql",
+          "name": "last_updated",
+          "ret": {
+            "raw": "trigger",
+            "type": {
+              "T": "trigger",
+              "kind": "unknown"
+            }
+          },
+          "schema": "public"
+        },
+        {
+          "args": [
+            {
+              "name": "min_monthly_purchases",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "min_dollar_amount_purchased",
+              "type": {
+                "raw": "numeric",
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.rewards_report(min_monthly_purchases integer, min_dollar_amount_purchased numeric)\n RETURNS SETOF public.customer\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nDECLARE\n    last_month_start DATE;\n    last_month_end DATE;\nrr RECORD;\ntmpSQL TEXT;\nBEGIN\n\n    /* Some sanity checks... */\n    IF min_monthly_purchases = 0 THEN\n        RAISE EXCEPTION 'Minimum monthly purchases parameter must be > 0';\n    END IF;\n    IF min_dollar_amount_purchased = 0.00 THEN\n        RAISE EXCEPTION 'Minimum monthly dollar amount purchased parameter must be > $0.00';\n    END IF;\n\n    last_month_start := CURRENT_DATE - '3 month'::interval;\n    last_month_start := to_date((extract(YEAR FROM last_month_start) || '-' || extract(MONTH FROM last_month_start) || '-01'),'YYYY-MM-DD');\n    last_month_end := LAST_DAY(last_month_start);\n\n    /*\n    Create a temporary storage area for Customer IDs.\n    */\n    CREATE TEMPORARY TABLE tmpCustomer (customer_id INTEGER NOT NULL PRIMARY KEY);\n\n    /*\n    Find all customers meeting the monthly purchase requirements\n    */\n\n    tmpSQL := 'INSERT INTO tmpCustomer (customer_id)\n        SELECT p.customer_id\n        FROM payment AS p\n        WHERE DATE(p.payment_date) BETWEEN '||quote_literal(last_month_start) ||' AND '|| quote_literal(last_month_end) || '\n        GROUP BY customer_id\n        HAVING SUM(p.amount) > '|| min_dollar_amount_purchased || '\n        AND COUNT(customer_id) > ' ||min_monthly_purchases ;\n\n    EXECUTE tmpSQL;\n\n    /*\n    Output ALL customer information of matching rewardees.\n    Customize output as needed.\n    */\n    FOR rr IN EXECUTE 'SELECT c.* FROM tmpCustomer AS t INNER JOIN customer AS c ON t.customer_id = c.customer_id' LOOP\n        RETURN NEXT rr;\n    END LOOP;\n\n    /* Clean up */\n    tmpSQL := 'DROP TABLE tmpCustomer';\n    EXECUTE tmpSQL;\n\nRETURN;\nEND\n$function$\n",
+          "deps": [
+            {
+              "name": "customer",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "language",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "payment",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "last_day",
+              "schema": "public",
+              "type": "func"
+            }
+          ],
+          "lang": "plpgsql",
+          "name": "rewards_report",
+          "ret": {
+            "raw": "SETOF customer",
+            "type": {
+              "T": "SETOF customer",
+              "kind": "unknown"
+            }
+          },
+          "schema": "public"
+        }
+      ],
+      "name": "public",
+      "objects": [
+        {
+          "name": "bıgınt",
+          "type": "domain_type",
+          "value": {
+            "null": true,
+            "schema": "public",
+            "underlyingType": {
+              "T": "bigint",
+              "kind": "integer"
+            }
+          }
+        },
+        {
+          "name": "year",
+          "type": "domain_type",
+          "value": {
+            "checks": [
+              {
+                "expr": "CHECK (((VALUE >= 1901) AND (VALUE <= 2155)))",
+                "name": "year_check"
+              }
+            ],
+            "null": true,
+            "schema": "public",
+            "underlyingType": {
+              "T": "integer",
+              "kind": "integer"
+            }
+          }
+        },
+        {
+          "name": "group_concat",
+          "type": "aggregate",
+          "value": {
+            "parallel": "UNSAFE",
+            "stateFunc": "_group_concat"
+          }
+        }
+      ],
+      "sequences": [
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "actor_actor_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "address_address_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "category_category_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "city_city_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "country_country_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "customer_customer_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "film_film_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "inventory_inventory_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "language_language_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "payment_payment_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "rental_rental_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "staff_staff_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        },
+        {
+          "cache": 1,
+          "increment": 1,
+          "max": 9223372036854776000,
+          "min": 1,
+          "name": "store_store_id_seq",
+          "schema": "public",
+          "start": 1,
+          "type": "bigint"
+        }
+      ],
+      "tables": [
+        {
+          "attrs": [
+            {
+              "V": 16423,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.actor_actor_id_seq'::regclass)"
+              },
+              "name": "actor_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "first_name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "last_name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "actor_actor_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_actor_last_name",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "last_name"
+                }
+              ]
+            }
+          ],
+          "name": "actor",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "actor_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_actor_actor_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "actor_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "actor_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.actor FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16464,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.address_address_id_seq'::regclass)"
+              },
+              "name": "address_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "address",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "address2",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "district",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "city_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "postal_code",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "phone",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "address_address_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["city_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["city_id"],
+              "refSchema": "public",
+              "refTable": "city",
+              "symbol": "address_city_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_city_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "city_id"
+                }
+              ]
+            }
+          ],
+          "name": "address",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "staff_address_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "store_address_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "customer_address_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "address_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "address_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "address_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.address FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16431,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.category_category_id_seq'::regclass)"
+              },
+              "name": "category_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "category_category_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "name": "category",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "category_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_category_category_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "category_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "category_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.category FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16472,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.city_city_id_seq'::regclass)"
+              },
+              "name": "city_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "city",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "country_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "city_city_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["country_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["country_id"],
+              "refSchema": "public",
+              "refTable": "country",
+              "symbol": "city_country_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_country_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "country_id"
+                }
+              ]
+            }
+          ],
+          "name": "city",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "city_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "address_city_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "city_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "city_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.city FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16480,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.country_country_id_seq'::regclass)"
+              },
+              "name": "country_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "country",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "country_country_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "name": "country",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "country_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "city_country_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "country_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "country_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.country FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16411,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.customer_customer_id_seq'::regclass)"
+              },
+              "name": "customer_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "store_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "first_name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "last_name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "email",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "address_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "true"
+              },
+              "name": "activebool",
+              "type": {
+                "raw": "boolean",
+                "type": {
+                  "T": "boolean",
+                  "kind": "boolean"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "CURRENT_DATE"
+              },
+              "name": "create_date",
+              "type": {
+                "raw": "date",
+                "type": {
+                  "T": "date",
+                  "kind": "time"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "null": true,
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            },
+            {
+              "name": "active",
+              "type": {
+                "null": true,
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "customer_customer_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["address_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["address_id"],
+              "refSchema": "public",
+              "refTable": "address",
+              "symbol": "customer_address_id_fkey"
+            },
+            {
+              "columns": ["store_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["store_id"],
+              "refSchema": "public",
+              "refTable": "store",
+              "symbol": "customer_store_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_address_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "address_id"
+                }
+              ]
+            },
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_store_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "store_id"
+                }
+              ]
+            },
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_last_name",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "last_name"
+                }
+              ]
+            }
+          ],
+          "name": "customer",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_04_customer_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_05_customer_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_06_customer_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "customer_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "rental_customer_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_01_customer_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_02_customer_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_03_customer_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "customer_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "customer_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.customer FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16439,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.film_film_id_seq'::regclass)"
+              },
+              "name": "film_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "title",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "description",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "release_year",
+              "type": {
+                "null": true,
+                "raw": "public.year",
+                "type": {
+                  "T": "year",
+                  "checks": [
+                    {
+                      "expr": "CHECK (((VALUE >= 1901) AND (VALUE <= 2155)))",
+                      "name": "year_check"
+                    }
+                  ],
+                  "kind": "domain",
+                  "null": true,
+                  "schema": "public",
+                  "type": {
+                    "T": "integer",
+                    "kind": "integer"
+                  }
+                }
+              }
+            },
+            {
+              "name": "language_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "original_language_id",
+              "type": {
+                "null": true,
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "3"
+              },
+              "name": "rental_duration",
+              "type": {
+                "raw": "smallint",
+                "type": {
+                  "T": "smallint",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "4.99"
+              },
+              "name": "rental_rate",
+              "type": {
+                "raw": "numeric",
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 4,
+                  "scale": 2
+                }
+              }
+            },
+            {
+              "name": "length",
+              "type": {
+                "null": true,
+                "raw": "smallint",
+                "type": {
+                  "T": "smallint",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "19.99"
+              },
+              "name": "replacement_cost",
+              "type": {
+                "raw": "numeric",
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 5,
+                  "scale": 2
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "'G'"
+              },
+              "name": "rating",
+              "type": {
+                "null": true,
+                "raw": "public.mpaa_rating",
+                "type": {
+                  "T": "mpaa_rating",
+                  "kind": "enum",
+                  "schema": "public",
+                  "values": ["G", "PG", "PG-13", "R", "NC-17"]
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            },
+            {
+              "name": "special_features",
+              "type": {
+                "null": true,
+                "raw": "ARRAY",
+                "type": {
+                  "T": "text[]",
+                  "kind": "array",
+                  "type": {
+                    "T": "text",
+                    "kind": "string"
+                  }
+                }
+              }
+            },
+            {
+              "name": "fulltext",
+              "type": {
+                "raw": "tsvector",
+                "type": {
+                  "T": "tsvector",
+                  "kind": "text_search"
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "film_film_id_seq",
+              "type": "sequence"
+            },
+            {
+              "name": "mpaa_rating",
+              "schema": "public",
+              "type": "enum"
+            },
+            {
+              "name": "year",
+              "type": "domainType"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["language_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["language_id"],
+              "refSchema": "public",
+              "refTable": "language",
+              "symbol": "film_language_id_fkey"
+            },
+            {
+              "columns": ["original_language_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["language_id"],
+              "refSchema": "public",
+              "refTable": "language",
+              "symbol": "film_original_language_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "gist",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "film_fulltext_idx",
+              "parts": [
+                {
+                  "column": "fulltext"
+                }
+              ]
+            },
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_language_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "language_id"
+                }
+              ]
+            },
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_original_language_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "original_language_id"
+                }
+              ]
+            },
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_title",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "title"
+                }
+              ]
+            }
+          ],
+          "name": "film",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "inventory_film_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_actor_film_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_category_film_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "film_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "film_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER film_fulltext_trigger BEFORE INSERT OR UPDATE ON public.film FOR EACH ROW EXECUTE FUNCTION tsvector_update_trigger('fulltext', 'pg_catalog.english', 'title', 'description')",
+              "events": ["INSERT", "UPDATE"],
+              "forEach": "ROW",
+              "name": "film_fulltext_trigger"
+            },
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.film FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16450,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "name": "actor_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "film_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["actor_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["actor_id"],
+              "refSchema": "public",
+              "refTable": "actor",
+              "symbol": "film_actor_actor_id_fkey"
+            },
+            {
+              "columns": ["film_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["film_id"],
+              "refSchema": "public",
+              "refTable": "film",
+              "symbol": "film_actor_film_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_film_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "film_id"
+                }
+              ]
+            }
+          ],
+          "name": "film_actor",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_actor_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "film_actor_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "actor_id"
+              },
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "film_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.film_actor FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16454,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "name": "film_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "category_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["category_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["category_id"],
+              "refSchema": "public",
+              "refTable": "category",
+              "symbol": "film_category_category_id_fkey"
+            },
+            {
+              "columns": ["film_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["film_id"],
+              "refSchema": "public",
+              "refTable": "film",
+              "symbol": "film_category_film_id_fkey"
+            }
+          ],
+          "name": "film_category",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_category_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "film_category_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "film_id"
+              },
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "category_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.film_category FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16498,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.inventory_inventory_id_seq'::regclass)"
+              },
+              "name": "inventory_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "film_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "store_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "inventory_inventory_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["film_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["film_id"],
+              "refSchema": "public",
+              "refTable": "film",
+              "symbol": "inventory_film_id_fkey"
+            },
+            {
+              "columns": ["store_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["store_id"],
+              "refSchema": "public",
+              "refTable": "store",
+              "symbol": "inventory_store_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_store_id_film_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "store_id"
+                },
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "film_id"
+                }
+              ]
+            }
+          ],
+          "name": "inventory",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "inventory_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "rental_inventory_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "inventory_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "inventory_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.inventory FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16504,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.language_language_id_seq'::regclass)"
+              },
+              "name": "language_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "name",
+              "type": {
+                "raw": "character",
+                "type": {
+                  "T": "character",
+                  "kind": "string",
+                  "size": 20
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "language_language_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "name": "language",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "language_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_language_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "film_original_language_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "language_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "language_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.language FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16515,
+              "kind": "oid"
+            },
+            {
+              "_goType": "*postgres.Partition",
+              "kind": "unknown"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.payment_payment_id_seq'::regclass)"
+              },
+              "name": "payment_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "customer_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "staff_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "rental_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "amount",
+              "type": {
+                "raw": "numeric",
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 5,
+                  "scale": 2
+                }
+              }
+            },
+            {
+              "name": "payment_date",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "payment_payment_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "name": "payment",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "payment_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "payment_date"
+              },
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "payment_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16550,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.rental_rental_id_seq'::regclass)"
+              },
+              "name": "rental_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "rental_date",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            },
+            {
+              "name": "inventory_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "customer_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "return_date",
+              "type": {
+                "null": true,
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            },
+            {
+              "name": "staff_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "rental_rental_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["customer_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["customer_id"],
+              "refSchema": "public",
+              "refTable": "customer",
+              "symbol": "rental_customer_id_fkey"
+            },
+            {
+              "columns": ["inventory_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["inventory_id"],
+              "refSchema": "public",
+              "refTable": "inventory",
+              "symbol": "rental_inventory_id_fkey"
+            },
+            {
+              "columns": ["staff_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["staff_id"],
+              "refSchema": "public",
+              "refTable": "staff",
+              "symbol": "rental_staff_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_fk_inventory_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "inventory_id"
+                }
+              ]
+            },
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_unq_rental_rental_date_inventory_id_customer_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "rental_date"
+                },
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "inventory_id"
+                },
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "customer_id"
+                }
+              ],
+              "unique": true
+            }
+          ],
+          "name": "rental",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "rental_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_01_rental_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_02_rental_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_03_rental_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_04_rental_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_05_rental_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_06_rental_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "rental_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "rental_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.rental FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16568,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.staff_staff_id_seq'::regclass)"
+              },
+              "name": "staff_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "first_name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "last_name",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "address_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "email",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "store_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "true"
+              },
+              "name": "active",
+              "type": {
+                "raw": "boolean",
+                "type": {
+                  "T": "boolean",
+                  "kind": "boolean"
+                }
+              }
+            },
+            {
+              "name": "username",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "password",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            },
+            {
+              "name": "picture",
+              "type": {
+                "null": true,
+                "raw": "bytea",
+                "type": {
+                  "T": "bytea",
+                  "kind": "binary"
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "staff_staff_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["address_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["address_id"],
+              "refSchema": "public",
+              "refTable": "address",
+              "symbol": "staff_address_id_fkey"
+            },
+            {
+              "columns": ["store_id"],
+              "onDelete": "NO ACTION",
+              "onUpdate": "NO ACTION",
+              "refColumns": ["store_id"],
+              "refSchema": "public",
+              "refTable": "store",
+              "symbol": "staff_store_id_fkey"
+            }
+          ],
+          "name": "staff",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_05_staff_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_06_staff_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "staff_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "rental_staff_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_01_staff_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_02_staff_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_03_staff_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "payment_p2022_04_staff_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "staff_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "staff_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.staff FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        },
+        {
+          "attrs": [
+            {
+              "V": 16577,
+              "kind": "oid"
+            }
+          ],
+          "columns": [
+            {
+              "default": {
+                "X": "nextval('public.store_store_id_seq'::regclass)"
+              },
+              "name": "store_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "manager_staff_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "address_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "last_update",
+              "type": {
+                "raw": "timestamp with time zone",
+                "type": {
+                  "T": "timestamp with time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "deps": [
+            {
+              "name": "store_store_id_seq",
+              "type": "sequence"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["address_id"],
+              "onDelete": "RESTRICT",
+              "onUpdate": "CASCADE",
+              "refColumns": ["address_id"],
+              "refSchema": "public",
+              "refTable": "address",
+              "symbol": "store_address_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                }
+              ],
+              "name": "idx_unq_manager_staff_id",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "manager_staff_id"
+                }
+              ],
+              "unique": true
+            }
+          ],
+          "name": "store",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "inventory_store_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "store_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "staff_store_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "customer_store_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "store_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "store_id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public",
+          "triggers": [
+            {
+              "actionTime": "BEFORE",
+              "body": "CREATE TRIGGER last_updated BEFORE UPDATE ON public.store FOR EACH ROW EXECUTE FUNCTION public.last_updated()",
+              "events": ["UPDATE"],
+              "forEach": "ROW",
+              "name": "last_updated"
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "columns": [
+            {
+              "name": "actor_id",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "first_name",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "last_name",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "film_info",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            }
+          ],
+          "def": " SELECT a.actor_id,\n    a.first_name,\n    a.last_name,\n    public.group_concat(DISTINCT (c.name || ': '::text) || (( SELECT public.group_concat(f.title) AS group_concat\n           FROM public.film f\n             JOIN public.film_category fc_1 ON f.film_id = fc_1.film_id\n             JOIN public.film_actor fa_1 ON f.film_id = fa_1.film_id\n          WHERE fc_1.category_id = c.category_id AND fa_1.actor_id = a.actor_id\n          GROUP BY fa_1.actor_id))) AS film_info\n   FROM public.actor a\n     LEFT JOIN public.film_actor fa ON a.actor_id = fa.actor_id\n     LEFT JOIN public.film_category fc ON fa.film_id = fc.film_id\n     LEFT JOIN public.category c ON fc.category_id = c.category_id\n  GROUP BY a.actor_id, a.first_name, a.last_name;",
+          "deps": [
+            {
+              "name": "actor",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_actor",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_category",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "actor_info",
+          "schema": "public"
+        },
+        {
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "name",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "address",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "zip code",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "phone",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "city",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "country",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "notes",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "sid",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "def": " SELECT cu.customer_id AS id,\n    (cu.first_name || ' '::text) || cu.last_name AS name,\n    a.address,\n    a.postal_code AS \"zip code\",\n    a.phone,\n    city.city,\n    country.country,\n        CASE\n            WHEN cu.activebool THEN 'active'::text\n            ELSE ''::text\n        END AS notes,\n    cu.store_id AS sid\n   FROM public.customer cu\n     JOIN public.address a ON cu.address_id = a.address_id\n     JOIN public.city ON a.city_id = city.city_id\n     JOIN public.country ON city.country_id = country.country_id;",
+          "deps": [
+            {
+              "name": "address",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "city",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "country",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "customer",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "customer_list",
+          "schema": "public"
+        },
+        {
+          "columns": [
+            {
+              "name": "fid",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "title",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "description",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "category",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "price",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 4,
+                  "scale": 2
+                }
+              }
+            },
+            {
+              "name": "length",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "smallint",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "rating",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "public.mpaa_rating",
+                  "kind": "unknown"
+                }
+              }
+            },
+            {
+              "name": "actors",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            }
+          ],
+          "def": " SELECT film.film_id AS fid,\n    film.title,\n    film.description,\n    category.name AS category,\n    film.rental_rate AS price,\n    film.length,\n    film.rating,\n    public.group_concat((actor.first_name || ' '::text) || actor.last_name) AS actors\n   FROM public.category\n     LEFT JOIN public.film_category ON category.category_id = film_category.category_id\n     LEFT JOIN public.film ON film_category.film_id = film.film_id\n     JOIN public.film_actor ON film.film_id = film_actor.film_id\n     JOIN public.actor ON film_actor.actor_id = actor.actor_id\n  GROUP BY film.film_id, film.title, film.description, category.name, film.rental_rate, film.length, film.rating;",
+          "deps": [
+            {
+              "name": "mpaa_rating",
+              "schema": "public",
+              "type": "enum"
+            },
+            {
+              "name": "actor",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_actor",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_category",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "film_list",
+          "schema": "public"
+        },
+        {
+          "columns": [
+            {
+              "name": "fid",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "title",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "description",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "category",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "price",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 4,
+                  "scale": 2
+                }
+              }
+            },
+            {
+              "name": "length",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "smallint",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "rating",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "public.mpaa_rating",
+                  "kind": "unknown"
+                }
+              }
+            },
+            {
+              "name": "actors",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            }
+          ],
+          "def": " SELECT film.film_id AS fid,\n    film.title,\n    film.description,\n    category.name AS category,\n    film.rental_rate AS price,\n    film.length,\n    film.rating,\n    public.group_concat(((upper(\"substring\"(actor.first_name, 1, 1)) || lower(\"substring\"(actor.first_name, 2))) || upper(\"substring\"(actor.last_name, 1, 1))) || lower(\"substring\"(actor.last_name, 2))) AS actors\n   FROM public.category\n     LEFT JOIN public.film_category ON category.category_id = film_category.category_id\n     LEFT JOIN public.film ON film_category.film_id = film.film_id\n     JOIN public.film_actor ON film.film_id = film_actor.film_id\n     JOIN public.actor ON film_actor.actor_id = actor.actor_id\n  GROUP BY film.film_id, film.title, film.description, category.name, film.rental_rate, film.length, film.rating;",
+          "deps": [
+            {
+              "name": "mpaa_rating",
+              "schema": "public",
+              "type": "enum"
+            },
+            {
+              "name": "actor",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_actor",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_category",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "nicer_but_slower_film_list",
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "kind": "materialized"
+            }
+          ],
+          "columns": [
+            {
+              "name": "category",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "total_sales",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal"
+                }
+              }
+            }
+          ],
+          "def": " SELECT c.name AS category,\n    sum(p.amount) AS total_sales\n   FROM public.payment p\n     JOIN public.rental r ON p.rental_id = r.rental_id\n     JOIN public.inventory i ON r.inventory_id = i.inventory_id\n     JOIN public.film f ON i.film_id = f.film_id\n     JOIN public.film_category fc ON f.film_id = fc.film_id\n     JOIN public.category c ON fc.category_id = c.category_id\n  GROUP BY c.name\n  ORDER BY (sum(p.amount)) DESC;",
+          "deps": [
+            {
+              "name": "category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "payment",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "rental",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "materialized": true,
+          "name": "rental_by_category",
+          "schema": "public"
+        },
+        {
+          "columns": [
+            {
+              "name": "category",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "total_sales",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal"
+                }
+              }
+            }
+          ],
+          "def": " SELECT c.name AS category,\n    sum(p.amount) AS total_sales\n   FROM public.payment p\n     JOIN public.rental r ON p.rental_id = r.rental_id\n     JOIN public.inventory i ON r.inventory_id = i.inventory_id\n     JOIN public.film f ON i.film_id = f.film_id\n     JOIN public.film_category fc ON f.film_id = fc.film_id\n     JOIN public.category c ON fc.category_id = c.category_id\n  GROUP BY c.name\n  ORDER BY (sum(p.amount)) DESC;",
+          "deps": [
+            {
+              "name": "category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "film_category",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "payment",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "rental",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "sales_by_film_category",
+          "schema": "public"
+        },
+        {
+          "columns": [
+            {
+              "name": "store",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "manager",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "total_sales",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal"
+                }
+              }
+            }
+          ],
+          "def": " SELECT (c.city || ','::text) || cy.country AS store,\n    (m.first_name || ' '::text) || m.last_name AS manager,\n    sum(p.amount) AS total_sales\n   FROM public.payment p\n     JOIN public.rental r ON p.rental_id = r.rental_id\n     JOIN public.inventory i ON r.inventory_id = i.inventory_id\n     JOIN public.store s ON i.store_id = s.store_id\n     JOIN public.address a ON s.address_id = a.address_id\n     JOIN public.city c ON a.city_id = c.city_id\n     JOIN public.country cy ON c.country_id = cy.country_id\n     JOIN public.staff m ON s.manager_staff_id = m.staff_id\n  GROUP BY cy.country, c.city, s.store_id, m.first_name, m.last_name\n  ORDER BY cy.country, c.city;",
+          "deps": [
+            {
+              "name": "address",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "city",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "country",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "inventory",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "payment",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "rental",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "staff",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "store",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "sales_by_store",
+          "schema": "public"
+        },
+        {
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "name",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "address",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "zip code",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "phone",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "city",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "country",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "sid",
+              "type": {
+                "null": true,
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "def": " SELECT s.staff_id AS id,\n    (s.first_name || ' '::text) || s.last_name AS name,\n    a.address,\n    a.postal_code AS \"zip code\",\n    a.phone,\n    city.city,\n    country.country,\n    s.store_id AS sid\n   FROM public.staff s\n     JOIN public.address a ON s.address_id = a.address_id\n     JOIN public.city ON a.city_id = city.city_id\n     JOIN public.country ON city.country_id = country.country_id;",
+          "deps": [
+            {
+              "name": "address",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "city",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "country",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "staff",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "name": "staff_list",
+          "schema": "public"
+        }
+      ]
+    }
+  ]
+}

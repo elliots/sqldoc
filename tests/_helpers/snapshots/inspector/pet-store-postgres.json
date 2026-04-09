@@ -1,0 +1,1128 @@
+{
+  "schemas": [
+    {
+      "attrs": [
+        {
+          "kind": "comment",
+          "text": "standard public schema"
+        }
+      ],
+      "compositeTypes": [
+        {
+          "T": "adoption_report",
+          "fields": [
+            {
+              "name": "pet_name",
+              "type": {
+                "T": "character varying",
+                "kind": "string",
+                "size": 100
+              }
+            },
+            {
+              "name": "owner_name",
+              "type": {
+                "T": "character varying",
+                "kind": "string",
+                "size": 150
+              }
+            },
+            {
+              "name": "adopted_at",
+              "type": {
+                "T": "timestamp",
+                "kind": "time",
+                "precision": 6
+              }
+            },
+            {
+              "name": "adoption_fee",
+              "type": {
+                "T": "numeric",
+                "kind": "decimal",
+                "precision": 10,
+                "scale": 2
+              }
+            },
+            {
+              "name": "category_name",
+              "type": {
+                "T": "character varying",
+                "kind": "string",
+                "size": 100
+              }
+            }
+          ],
+          "kind": "composite",
+          "schema": "public"
+        }
+      ],
+      "funcs": [
+        {
+          "args": [
+            {
+              "name": "p_owner_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "body": "CREATE OR REPLACE FUNCTION public.get_adoption_report(p_owner_id integer DEFAULT NULL::integer)\n RETURNS SETOF public.adoption_report\n LANGUAGE sql\n STABLE\nAS $function$\n  SELECT p.name, o.name, a.adopted_at, a.adoption_fee, c.name\n  FROM adoptions a\n  JOIN pets p ON p.id = a.pet_id\n  JOIN owners o ON o.id = a.owner_id\n  LEFT JOIN categories c ON c.id = p.category_id\n  WHERE p_owner_id IS NULL OR o.id = p_owner_id;\n$function$\n",
+          "deps": [
+            {
+              "name": "adoption_report",
+              "type": "compositeType"
+            },
+            {
+              "name": "adoptions",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "categories",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "owners",
+              "schema": "public",
+              "type": "table"
+            },
+            {
+              "name": "pets",
+              "schema": "public",
+              "type": "table"
+            }
+          ],
+          "lang": "sql",
+          "name": "get_adoption_report",
+          "ret": {
+            "raw": "SETOF adoption_report",
+            "type": {
+              "T": "SETOF adoption_report",
+              "kind": "unknown"
+            }
+          },
+          "schema": "public"
+        }
+      ],
+      "name": "public",
+      "tables": [
+        {
+          "attrs": [
+            {
+              "V": 16423,
+              "kind": "oid"
+            },
+            {
+              "args": "'Adoption records linking pets to owners'",
+              "kind": "tag",
+              "name": "comment"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "audit"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "custom"
+            },
+            {
+              "args": "'Tracks each adoption event with timestamps and fees'",
+              "kind": "tag",
+              "name": "docs.description"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "adoptions_id_seq"
+                }
+              }
+            },
+            {
+              "name": "pet_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "name": "owner_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "'Timestamp when the adoption was finalized'",
+                  "kind": "tag",
+                  "name": "comment"
+                }
+              ],
+              "default": {
+                "X": "now()"
+              },
+              "name": "adopted_at",
+              "type": {
+                "raw": "timestamp without time zone",
+                "type": {
+                  "T": "timestamp without time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "0"
+              },
+              "name": "adoption_fee",
+              "type": {
+                "raw": "numeric",
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 10,
+                  "scale": 2
+                }
+              }
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["owner_id"],
+              "onDelete": "NO ACTION",
+              "onUpdate": "NO ACTION",
+              "refColumns": ["id"],
+              "refSchema": "public",
+              "refTable": "owners",
+              "symbol": "adoptions_owner_id_fkey"
+            },
+            {
+              "columns": ["pet_id"],
+              "onDelete": "NO ACTION",
+              "onUpdate": "NO ACTION",
+              "refColumns": ["id"],
+              "refSchema": "public",
+              "refTable": "pets",
+              "symbol": "adoptions_pet_id_fkey"
+            }
+          ],
+          "name": "adoptions",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "adoptions_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "adoptions_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16385,
+              "kind": "oid"
+            },
+            {
+              "args": "'Pet categories lookup table'",
+              "kind": "tag",
+              "name": "comment"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "pg.simpleCollections"
+            },
+            {
+              "args": "'Lookup table for pet species and breed categories'",
+              "kind": "tag",
+              "name": "docs.description"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "categories_id_seq"
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "'Category display name'",
+                  "kind": "tag",
+                  "name": "comment"
+                },
+                {
+                  "args": "",
+                  "kind": "tag",
+                  "name": "validate.notEmpty"
+                }
+              ],
+              "name": "name",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 100
+                }
+              }
+            },
+            {
+              "name": "description",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            }
+          ],
+          "name": "categories",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "categories_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "pets_category_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "categories_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16457,
+              "kind": "oid"
+            },
+            {
+              "args": "'pets'",
+              "kind": "tag",
+              "name": "deprecated.replace"
+            },
+            {
+              "args": "'audit.require-audit', 'Legacy table scheduled for removal'",
+              "kind": "tag",
+              "name": "lint.ignore"
+            },
+            {
+              "args": "false",
+              "kind": "tag",
+              "name": "docs.emit"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "legacy_inventory_id_seq"
+                }
+              }
+            },
+            {
+              "name": "item_name",
+              "type": {
+                "null": true,
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 200
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "'2025-12-01'",
+                  "kind": "tag",
+                  "name": "deprecated.remove"
+                }
+              ],
+              "name": "old_sku",
+              "type": {
+                "null": true,
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 50
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "0"
+              },
+              "name": "quantity",
+              "type": {
+                "null": true,
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            }
+          ],
+          "name": "legacy_inventory",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "legacy_inventory_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "legacy_inventory_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16442,
+              "kind": "oid"
+            },
+            {
+              "args": "'Veterinary medical records for pets'",
+              "kind": "tag",
+              "name": "comment"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "rls"
+            },
+            {
+              "args": "for: SELECT, to: PUBLIC, using: 'true'",
+              "kind": "tag",
+              "name": "rls.policy"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "medical_records_id_seq"
+                }
+              }
+            },
+            {
+              "name": "pet_id",
+              "type": {
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "CURRENT_DATE"
+              },
+              "name": "visit_date",
+              "type": {
+                "raw": "date",
+                "type": {
+                  "T": "date",
+                  "kind": "time"
+                }
+              }
+            },
+            {
+              "name": "diagnosis",
+              "type": {
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "treatment",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "name": "vet_name",
+              "type": {
+                "null": true,
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 150
+                }
+              }
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["pet_id"],
+              "onDelete": "NO ACTION",
+              "onUpdate": "NO ACTION",
+              "refColumns": ["id"],
+              "refSchema": "public",
+              "refTable": "pets",
+              "symbol": "medical_records_pet_id_fkey"
+            }
+          ],
+          "name": "medical_records",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "medical_records_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "medical_records_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16413,
+              "kind": "oid"
+            },
+            {
+              "args": "'Pet owners and customers'",
+              "kind": "tag",
+              "name": "comment"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "rls"
+            },
+            {
+              "args": "for: ALL, to: PUBLIC, using: 'true'",
+              "kind": "tag",
+              "name": "rls.policy"
+            },
+            {
+              "args": "'Customer'",
+              "kind": "tag",
+              "name": "pg.name"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "owners_id_seq"
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "",
+                  "kind": "tag",
+                  "name": "validate.notEmpty"
+                }
+              ],
+              "name": "name",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 150
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "'^[^@]+@[^@]+\\.[^@]+$'",
+                  "kind": "tag",
+                  "name": "validate.pattern"
+                }
+              ],
+              "name": "email",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 255
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "min: 7, max: 20",
+                  "kind": "tag",
+                  "name": "validate.length"
+                }
+              ],
+              "name": "phone",
+              "type": {
+                "null": true,
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 20
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "created_at",
+              "type": {
+                "null": true,
+                "raw": "timestamp without time zone",
+                "type": {
+                  "T": "timestamp without time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                },
+                {
+                  "kind": "constraint",
+                  "name": "owners_email_key",
+                  "type": "u"
+                }
+              ],
+              "name": "owners_email_key",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "email"
+                }
+              ],
+              "unique": true
+            }
+          ],
+          "name": "owners",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "owners_pkey",
+                "type": "p"
+              },
+              {
+                "kind": "constraint",
+                "name": "adoptions_owner_id_fkey",
+                "type": "f"
+              }
+            ],
+            "name": "owners_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16394,
+              "kind": "oid"
+            },
+            {
+              "args": "'Core pet inventory table'",
+              "kind": "tag",
+              "name": "comment"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "rls"
+            },
+            {
+              "args": "for: SELECT, to: PUBLIC, using: 'true'",
+              "kind": "tag",
+              "name": "rls.policy"
+            },
+            {
+              "args": "'Central registry of all pets available for adoption'",
+              "kind": "tag",
+              "name": "docs.description"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "pets_id_seq"
+                }
+              }
+            },
+            {
+              "name": "category_id",
+              "type": {
+                "null": true,
+                "raw": "integer",
+                "type": {
+                  "T": "integer",
+                  "kind": "integer"
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "",
+                  "kind": "tag",
+                  "name": "validate.notEmpty"
+                }
+              ],
+              "name": "name",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 100
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "'^[A-Z]{3}-[0-9]{4}$'",
+                  "kind": "tag",
+                  "name": "validate.pattern"
+                }
+              ],
+              "name": "sku",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 20
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "min: 0, max: 99999",
+                  "kind": "tag",
+                  "name": "validate.range"
+                }
+              ],
+              "default": {
+                "V": "0"
+              },
+              "name": "price",
+              "type": {
+                "raw": "numeric",
+                "type": {
+                  "T": "numeric",
+                  "kind": "decimal",
+                  "precision": 10,
+                  "scale": 2
+                }
+              }
+            },
+            {
+              "name": "internal_notes",
+              "type": {
+                "null": true,
+                "raw": "text",
+                "type": {
+                  "T": "text",
+                  "kind": "string"
+                }
+              }
+            },
+            {
+              "attrs": [
+                {
+                  "args": "'petStatus'",
+                  "kind": "tag",
+                  "name": "codegen.rename"
+                }
+              ],
+              "default": {
+                "V": "'available'"
+              },
+              "name": "status",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 20
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "now()"
+              },
+              "name": "created_at",
+              "type": {
+                "null": true,
+                "raw": "timestamp without time zone",
+                "type": {
+                  "T": "timestamp without time zone",
+                  "kind": "time",
+                  "precision": 6
+                }
+              }
+            }
+          ],
+          "foreignKeys": [
+            {
+              "columns": ["category_id"],
+              "onDelete": "NO ACTION",
+              "onUpdate": "NO ACTION",
+              "refColumns": ["id"],
+              "refSchema": "public",
+              "refTable": "categories",
+              "symbol": "pets_category_id_fkey"
+            }
+          ],
+          "indexes": [
+            {
+              "attrs": [
+                {
+                  "T": "btree",
+                  "kind": "index_type"
+                },
+                {
+                  "kind": "constraint",
+                  "name": "pets_sku_key",
+                  "type": "u"
+                }
+              ],
+              "name": "pets_sku_key",
+              "parts": [
+                {
+                  "attrs": [
+                    {
+                      "kind": "indexColumnProperty",
+                      "nullsFirst": false,
+                      "nullsLast": true
+                    }
+                  ],
+                  "column": "sku"
+                }
+              ],
+              "unique": true
+            }
+          ],
+          "name": "pets",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "adoptions_pet_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "medical_records_pet_id_fkey",
+                "type": "f"
+              },
+              {
+                "kind": "constraint",
+                "name": "pets_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "pets_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        },
+        {
+          "attrs": [
+            {
+              "V": 16465,
+              "kind": "oid"
+            },
+            {
+              "args": "'Internal staff members'",
+              "kind": "tag",
+              "name": "comment"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "pg.omit"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "codegen.skip"
+            },
+            {
+              "args": "",
+              "kind": "tag",
+              "name": "audit"
+            }
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "raw": "serial",
+                "type": {
+                  "T": "serial",
+                  "kind": "serial",
+                  "sequenceName": "staff_id_seq"
+                }
+              }
+            },
+            {
+              "name": "name",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 150
+                }
+              }
+            },
+            {
+              "default": {
+                "V": "'associate'"
+              },
+              "name": "role",
+              "type": {
+                "raw": "character varying",
+                "type": {
+                  "T": "character varying",
+                  "kind": "string",
+                  "size": 50
+                }
+              }
+            },
+            {
+              "default": {
+                "X": "CURRENT_DATE"
+              },
+              "name": "hired_at",
+              "type": {
+                "raw": "date",
+                "type": {
+                  "T": "date",
+                  "kind": "time"
+                }
+              }
+            }
+          ],
+          "name": "staff",
+          "primaryKey": {
+            "attrs": [
+              {
+                "T": "btree",
+                "kind": "index_type"
+              },
+              {
+                "kind": "constraint",
+                "name": "staff_pkey",
+                "type": "p"
+              }
+            ],
+            "name": "staff_pkey",
+            "parts": [
+              {
+                "attrs": [
+                  {
+                    "kind": "indexColumnProperty",
+                    "nullsFirst": false,
+                    "nullsLast": true
+                  }
+                ],
+                "column": "id"
+              }
+            ],
+            "unique": true
+          },
+          "schema": "public"
+        }
+      ]
+    }
+  ]
+}

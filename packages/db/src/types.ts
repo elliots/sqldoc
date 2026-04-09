@@ -28,7 +28,7 @@ export interface AtlasRenameCandidate {
  * Command sent to Atlas WASI module via stdin.
  */
 export interface AtlasCommand {
-  type: 'inspect' | 'diff' | 'apply'
+  type: 'inspect' | 'inspect_rich' | 'diff' | 'apply'
   dialect: 'postgres' | 'mysql' | 'sqlite'
   schema?: string
   defaultSchema?: string

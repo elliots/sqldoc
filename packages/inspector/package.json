@@ -1,0 +1,23 @@
+{
+  "type": "module",
+  "name": "@sqldoc/inspector",
+  "version": "0.0.1",
+  "description": "TypeScript port of Atlas schema inspector for sqldoc",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "!src/__tests__",
+    "NOTICE",
+    "package.json"
+  ],
+  "dependencies": {
+    "@sqldoc/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@sqldoc/db-pglite": "workspace:*"
+  }
+}

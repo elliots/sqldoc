@@ -42,6 +42,9 @@ export interface AtlasRunner {
   /** Execute SQL files and return parsed schema with tags */
   inspect(files: string[], options?: { schema?: string; fileNames?: string[] }): Promise<AtlasResult>
 
+  /** Execute SQL files and return rich internal schema (preserves full type hierarchy) */
+  inspectRich(files: string[], options?: { schema?: string; fileNames?: string[] }): Promise<AtlasResult>
+
   /** Compare two schema states. Each side can be SQL or a live database.
    * Live databases are only inspected, never written to. */
   diff(
@@ -248,6 +251,17 @@ export async function createAtlasRunner(options: AtlasRunnerOptions): Promise<At
     async inspect(files: string[], opts?: { schema?: string; fileNames?: string[] }): Promise<AtlasResult> {
       const command: AtlasCommand = {
         type: 'inspect',
+        dialect,
+        files,
+        fileNames: opts?.fileNames,
+        schema: opts?.schema,
+      }
+      return runCommand(wasmPath, db, command)
+    },
+
+    async inspectRich(files: string[], opts?: { schema?: string; fileNames?: string[] }): Promise<AtlasResult> {
+      const command: AtlasCommand = {
+        type: 'inspect_rich',
         dialect,
         files,
         fileNames: opts?.fileNames,

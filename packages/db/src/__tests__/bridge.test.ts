@@ -17,9 +17,9 @@ describe('bridge', () => {
       expect(buffers.control.byteLength).toBe(8)
     })
 
-    it('creates data buffer with default 8MB size', () => {
+    it('creates data buffer with default 1MB size', () => {
       const buffers = createBridgeBuffers()
-      expect(buffers.data.byteLength).toBe(8 * 1024 * 1024)
+      expect(buffers.data.byteLength).toBe(1024 * 1024)
     })
 
     it('creates data buffer with custom size', () => {

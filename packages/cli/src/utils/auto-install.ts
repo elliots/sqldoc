@@ -33,14 +33,8 @@ export function extractMissingPackages(errors: ImportError[]): string[] {
  * Returns true if user agrees (Enter or 'y'/'Y').
  */
 export async function promptInstall(packages: string[]): Promise<boolean> {
-  // Non-interactive (piped stdin) — auto-install known @sqldoc packages, skip unknown
-  if (!process.stdin.isTTY) {
-    if (packages.every((p) => p.startsWith('@sqldoc/'))) {
-      console.error(pc.dim(`Auto-installing ${packages.join(', ')}...`))
-      return true
-    }
-    return false
-  }
+  // Non-interactive (piped stdin) — skip prompt
+  if (!process.stdin.isTTY) return false
 
   const names = packages.map((p) => pc.cyan(p)).join(', ')
   const rl = readline.createInterface({ input: process.stdin, output: process.stderr })
