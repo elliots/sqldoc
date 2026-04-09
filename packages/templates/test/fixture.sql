@@ -59,3 +59,13 @@ CREATE VIEW active_users AS
 CREATE FUNCTION get_user_posts(p_user_id bigint) RETURNS SETOF content.posts AS $$
   SELECT * FROM content.posts WHERE user_id = p_user_id;
 $$ LANGUAGE sql;
+
+CREATE TYPE user_summary AS (user_id bigint, email varchar(255), post_count integer, latest_post_at timestamptz);
+
+CREATE FUNCTION get_user_summaries(p_min_posts integer DEFAULT 0) RETURNS SETOF user_summary
+  LANGUAGE sql STABLE AS $$
+  SELECT u.id, u.email, count(p.id)::integer, max(p.published_at)
+  FROM users u LEFT JOIN content.posts p ON p.user_id = u.id
+  GROUP BY u.id, u.email
+  HAVING count(p.id) >= p_min_posts;
+$$;

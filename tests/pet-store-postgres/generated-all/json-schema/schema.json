@@ -1,6 +1,34 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "AdoptionReport": {
+      "type": "object",
+      "properties": {
+        "pet_name": {
+          "type": "string"
+        },
+        "owner_name": {
+          "type": "string"
+        },
+        "adopted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "adoption_fee": {
+          "type": "number"
+        },
+        "category_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pet_name",
+        "owner_name",
+        "adopted_at",
+        "adoption_fee",
+        "category_name"
+      ]
+    },
     "Adoption": {
       "type": "object",
       "properties": {
@@ -281,6 +309,28 @@
         "operation",
         "changed_at"
       ]
+    },
+    "GetAdoptionReport": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "p_owner_id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "p_owner_id"
+          ]
+        },
+        "returnType": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AdoptionReport"
+          }
+        }
+      }
     }
   }
 }

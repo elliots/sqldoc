@@ -67,6 +67,14 @@ export default defineTemplate({
         }
       }
     }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
+        }
+      }
+    }
     for (const [name, fields] of composites) {
       const typeName = toPascalCase(name)
       lines.push(`export interface ${typeName} {`)
@@ -146,7 +154,11 @@ export default defineTemplate({
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
         const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
-        retType = table ? `${table.pascalName}Table[]` : `${pgToTs(tableName, false, options)}[]`
+        retType = table
+          ? `${table.pascalName}Table[]`
+          : composites.has(tableName)
+            ? `${toPascalCase(tableName)}[]`
+            : `${pgToTs(tableName, false, options)}[]`
       } else if (fn.returnType) {
         retType = pgToTs(fn.returnType.type, false, options, fn.returnType.category as any)
       } else {

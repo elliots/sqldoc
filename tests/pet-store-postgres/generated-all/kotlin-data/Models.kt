@@ -2,6 +2,16 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 
+data class AdoptionReport(
+
+    val petName: String,
+    val ownerName: String,
+    val adoptedAt: LocalDateTime,
+    val adoptionFee: BigDecimal,
+    val categoryName: String
+
+)
+
 data class Adoption(
 
     val id: Int,
@@ -106,3 +116,5 @@ data class StaffAuditLog(
     val changedAt: OffsetDateTime
 
 )
+
+typealias GetAdoptionReport = (pOwnerId: Int) -> List<AdoptionReport>

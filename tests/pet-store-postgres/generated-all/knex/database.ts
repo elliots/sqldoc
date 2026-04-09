@@ -8,6 +8,14 @@ export type JsonObject = { [key: string]: JsonValue | undefined }
 export type JsonValue = JsonPrimitive | JsonArray | JsonObject
 export type Json = JsonValue
 
+export interface AdoptionReport {
+  petName: string
+  ownerName: string
+  adoptedAt: Date
+  adoptionFee: string
+  categoryName: string
+}
+
 export interface AdoptionTable {
   id: number
   pet_id: number
@@ -107,3 +115,5 @@ declare module 'knex/types/tables' {
     'staff_audit_log': StaffAuditLogTable
   }
 }
+
+export type GetAdoptionReport = (pOwnerId: number) => AdoptionReport[]

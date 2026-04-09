@@ -5,6 +5,14 @@ package schema;
 
 import "google/protobuf/timestamp.proto";
 
+message AdoptionReport {
+  string pet_name = 1;
+  string owner_name = 2;
+  google.protobuf.Timestamp adopted_at = 3;
+  string adoption_fee = 4;
+  string category_name = 5;
+}
+
 message Adoption {
   int32 id = 1;
   int32 pet_id = 2;
@@ -88,4 +96,12 @@ message StaffAuditLog {
   optional string old_data = 4;
   optional string new_data = 5;
   google.protobuf.Timestamp changed_at = 6;
+}
+
+message GetAdoptionReportRequest {
+  int32 p_owner_id = 1;
+}
+
+message GetAdoptionReportResponse {
+  repeated AdoptionReport results = 1;
 }

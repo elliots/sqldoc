@@ -238,6 +238,14 @@ export default defineTemplate({
         }
       }
     }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
+        }
+      }
+    }
 
     if (config.mode === 'per-table') {
       const files = [
@@ -309,6 +317,8 @@ export default defineTemplate({
         const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
         if (table) {
           returnSchema = { type: 'array', items: { $ref: `#/$defs/${table.pascalName}` } }
+        } else if (composites.has(tableName)) {
+          returnSchema = { type: 'array', items: { $ref: `#/$defs/${toPascalCase(tableName)}` } }
         } else {
           returnSchema = { type: 'array', items: pgToJsonSchema(tableName) }
         }

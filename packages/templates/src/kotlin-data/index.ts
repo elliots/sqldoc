@@ -28,6 +28,14 @@ export default defineTemplate({
         }
       }
     }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
+        }
+      }
+    }
     for (const [name, fields] of composites) {
       const className = toPascalCase(name)
       const ktFields = fields.map((f) => {
@@ -106,7 +114,11 @@ export default defineTemplate({
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
         const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
-        retType = table ? `List<${table.pascalName}>` : `List<${pgToKotlin(tableName, false)}>`
+        retType = table
+          ? `List<${table.pascalName}>`
+          : composites.has(tableName)
+            ? `List<${toPascalCase(tableName)}>`
+            : `List<${pgToKotlin(tableName, false)}>`
       } else if (fn.returnType) {
         retType = pgToKotlin(fn.returnType.type, false, fn.returnType.category)
       } else {

@@ -4,6 +4,15 @@ import { z } from 'zod'
 
 const jsonSchema: z.ZodType<unknown> = z.lazy(() => z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonSchema), z.record(jsonSchema)]))
 
+export const adoptionReportSchema = z.object({
+  petName: z.string(),
+  ownerName: z.string(),
+  adoptedAt: z.date(),
+  adoptionFee: z.string(),
+  categoryName: z.string(),
+})
+export type AdoptionReport = z.infer<typeof adoptionReportSchema>
+
 export const adoptionSchema = z.object({
   id: z.number(),
   petId: z.number(),
@@ -108,3 +117,9 @@ export const staffauditlogSchema = z.object({
 })
 
 export type StaffAuditLog = z.infer<typeof staffauditlogSchema>
+
+export const getadoptionreportInputSchema = z.object({
+  pOwnerId: z.number(),
+})
+
+export const getadoptionreportOutputSchema = z.array(adoptionReportSchema)

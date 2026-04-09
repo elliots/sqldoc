@@ -99,7 +99,13 @@ export interface AtlasSchema {
   views?: AtlasView[]
   funcs?: AtlasFunc[]
   procs?: AtlasProc[]
+  composite_types?: AtlasCompositeType[]
   attrs?: AtlasAttr[]
+}
+
+export interface AtlasCompositeType {
+  name: string
+  fields: Array<{ name: string; type: string }>
 }
 
 /**

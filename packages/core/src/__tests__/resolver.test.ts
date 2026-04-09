@@ -10,12 +10,12 @@ import { resolveDirectives } from '../resolver.ts'
 
 const tmpDir = useTmpDir('sqldoc-resolver-')
 
-/** Helper to write a SQL file and return its absolute path */
+/** Helper to write a SQL file and return its real absolute path (symlinks resolved) */
 function writeFile(dir: string, relPath: string, content: string): string {
   const abs = path.join(dir, relPath)
   fs.mkdirSync(path.dirname(abs), { recursive: true })
   fs.writeFileSync(abs, content, 'utf8')
-  return abs
+  return fs.realpathSync(abs)
 }
 
 /** Helper readFile function for the resolver */
@@ -74,10 +74,8 @@ describe('resolveDirectives', () => {
   it('detects cycles without infinite loop', async () => {
     const dir = tmpDir()
     // A references B, B references A — A is a project file, B is external
-    writeFile(dir, 'a.sql', "-- @external './b.sql'\nCREATE TABLE a (id INT);")
-    writeFile(dir, 'b.sql', "-- @external './a.sql'\nCREATE TABLE b (id INT);")
-    const a = path.join(dir, 'a.sql')
-    const b = path.join(dir, 'b.sql')
+    const a = writeFile(dir, 'a.sql', "-- @external './b.sql'\nCREATE TABLE a (id INT);")
+    const b = writeFile(dir, 'b.sql', "-- @external './a.sql'\nCREATE TABLE b (id INT);")
 
     const result = await resolveDirectives([a], readFile)
     // b.sql should be external; a.sql remains project (it was passed as project file)

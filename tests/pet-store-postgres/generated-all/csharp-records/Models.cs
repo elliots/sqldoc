@@ -1,5 +1,15 @@
 namespace Generated;
 
+public record AdoptionReport(
+
+    string PetName,
+    string OwnerName,
+    DateTime AdoptedAt,
+    decimal AdoptionFee,
+    string CategoryName
+
+);
+
 public record Adoption(
 
     int Id,
@@ -104,3 +114,5 @@ public record StaffAuditLog(
     DateTimeOffset ChangedAt
 
 );
+
+public delegate IEnumerable<AdoptionReport> GetAdoptionReport(int pOwnerId);

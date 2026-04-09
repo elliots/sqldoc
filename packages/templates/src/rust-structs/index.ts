@@ -33,6 +33,14 @@ export default defineTemplate({
         }
       }
     }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
+        }
+      }
+    }
     for (const [name, fields] of composites) {
       const structName = toPascalCase(name)
       const rustFields = fields.map((f) => {
@@ -112,7 +120,11 @@ export default defineTemplate({
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
         const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
-        retType = table ? `Vec<${table.pascalName}>` : `Vec<${toPascalCase(tableName)}>`
+        retType = table
+          ? `Vec<${table.pascalName}>`
+          : composites.has(tableName)
+            ? `Vec<${toPascalCase(tableName)}>`
+            : `Vec<${pgToRust(tableName, false).type}>`
       } else if (fn.returnType) {
         const mapped = pgToRust(fn.returnType.type, false, fn.returnType.category)
         retType = mapped.type

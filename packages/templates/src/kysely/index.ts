@@ -56,12 +56,21 @@ export default defineTemplate({
       lines.push('')
     }
 
-    // Composite types (collected from columns)
+    // Composite types (collected from columns and function return types)
     const composites = new Map<string, Array<{ name: string; type: string }>>()
     for (const table of schema.tables) {
       for (const col of table.columns) {
         if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
           composites.set(col.pgType, col.compositeFields)
+        }
+      }
+    }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        // Strip "SETOF " prefix to get the actual composite type name
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
         }
       }
     }

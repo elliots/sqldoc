@@ -6,6 +6,15 @@ use serde_json::Value;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdoptionReport {
+    pub pet_name: String,
+    pub owner_name: String,
+    pub adopted_at: NaiveDateTime,
+    pub adoption_fee: bigdecimal::BigDecimal,
+    pub category_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct Adoption {
 
@@ -129,3 +138,5 @@ pub struct StaffAuditLog {
     pub changed_at: DateTime<Utc>,
 
 }
+
+pub type GetAdoptionReport = fn(i32) -> Vec<AdoptionReport>;

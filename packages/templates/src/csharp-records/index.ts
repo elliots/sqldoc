@@ -28,6 +28,14 @@ export default defineTemplate({
         }
       }
     }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
+        }
+      }
+    }
     for (const [name, fields] of composites) {
       const className = toPascalCase(name)
       const csFields = fields.map((f) => {
@@ -96,7 +104,11 @@ export default defineTemplate({
       if (retRaw.startsWith('setof ')) {
         const tableName = retRaw.replace('setof ', '')
         const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
-        retType = table ? `IEnumerable<${table.pascalName}>` : `IEnumerable<${toPascalCase(tableName)}>`
+        retType = table
+          ? `IEnumerable<${table.pascalName}>`
+          : composites.has(tableName)
+            ? `IEnumerable<${toPascalCase(tableName)}>`
+            : `IEnumerable<${pgToCsharp(tableName, false)}>`
       } else if (fn.returnType) {
         retType = pgToCsharp(fn.returnType.type, false, fn.returnType.category)
       } else {

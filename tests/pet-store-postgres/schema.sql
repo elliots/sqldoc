@@ -123,3 +123,23 @@ CREATE TABLE staff (
   role VARCHAR(50) NOT NULL DEFAULT 'associate',
   hired_at DATE NOT NULL DEFAULT CURRENT_DATE
 );
+
+-- ── Composite return type (only used by function, not in any column) ──
+
+CREATE TYPE adoption_report AS (
+  pet_name VARCHAR(100),
+  owner_name VARCHAR(150),
+  adopted_at TIMESTAMP,
+  adoption_fee NUMERIC(10,2),
+  category_name VARCHAR(100)
+);
+
+CREATE FUNCTION get_adoption_report(p_owner_id INTEGER DEFAULT NULL) RETURNS SETOF adoption_report
+  LANGUAGE sql STABLE AS $$
+  SELECT p.name, o.name, a.adopted_at, a.adoption_fee, c.name
+  FROM adoptions a
+  JOIN pets p ON p.id = a.pet_id
+  JOIN owners o ON o.id = a.owner_id
+  LEFT JOIN categories c ON c.id = p.category_id
+  WHERE p_owner_id IS NULL OR o.id = p_owner_id;
+$$;

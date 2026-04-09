@@ -1,6 +1,6 @@
 import { defineTemplate } from '@sqldoc/ns-codegen'
 import { activeTables, enrichRealm } from '../helpers/enrich.ts'
-import { toCamelCase } from '../helpers/naming.ts'
+import { toCamelCase, toPascalCase } from '../helpers/naming.ts'
 import { JSON_TYPE_DECLARATION, pgToTs, type TsTypeOptions } from '../types/pg-to-ts.ts'
 
 export const configSchema = {
@@ -73,6 +73,14 @@ export default defineTemplate({
       for (const col of table.columns) {
         if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
           composites.set(col.pgType, col.compositeFields)
+        }
+      }
+    }
+    for (const fn of schema.functions) {
+      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
+        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
+        if (!composites.has(typeName)) {
+          composites.set(typeName, fn.returnType.compositeFields)
         }
       }
     }
@@ -150,10 +158,14 @@ export default defineTemplate({
 
       let retType: string
       if (retRaw.startsWith('setof ')) {
-        // RETURNS SETOF tablename → Table[]
+        // RETURNS SETOF tablename → Table[] or CompositeType[]
         const tableName = retRaw.replace('setof ', '')
         const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
-        retType = table ? `${table.pascalName}[]` : `${pgToTs(tableName, false, options)}[]`
+        retType = table
+          ? `${table.pascalName}[]`
+          : composites.has(tableName)
+            ? `${toPascalCase(tableName)}[]`
+            : `${pgToTs(tableName, false, options)}[]`
       } else if (fn.returnType) {
         retType = pgToTs(fn.returnType.type, false, options, fn.returnType.category as any)
       } else {

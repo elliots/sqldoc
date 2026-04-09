@@ -49,3 +49,18 @@ COMMENT ON TABLE "public"."medical_records" IS 'Veterinary medical records for p
 CREATE POLICY "medical_records_public_select" ON "public"."medical_records" AS PERMISSIVE FOR SELECT TO public USING (true);
 CREATE TABLE "public"."reviews" ("id" serial NOT NULL, "pet_id" integer NOT NULL, "owner_id" integer NOT NULL, "rating" integer NOT NULL, "body" text NULL, "location_id" integer NULL, "created_at" timestamp NULL DEFAULT now(), PRIMARY KEY ("id"), CONSTRAINT "reviews_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "public"."locations" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
 COMMENT ON TABLE "public"."reviews" IS 'Customer reviews for pets';
+CREATE TYPE "adoption_report" AS ( "pet_name" character varying(100), "owner_name" character varying(150), "adopted_at" timestamp, "adoption_fee" numeric(10,2), "category_name" character varying(100) );
+
+CREATE OR REPLACE FUNCTION public.get_adoption_report(p_owner_id integer DEFAULT NULL::integer)
+ RETURNS SETOF public.adoption_report
+ LANGUAGE sql
+ STABLE
+AS $function$
+  SELECT p.name, o.name, a.adopted_at, a.adoption_fee, c.name
+  FROM adoptions a
+  JOIN pets p ON p.id = a.pet_id
+  JOIN owners o ON o.id = a.owner_id
+  LEFT JOIN categories c ON c.id = p.category_id
+  WHERE p_owner_id IS NULL OR o.id = p_owner_id;
+$function$
+;
