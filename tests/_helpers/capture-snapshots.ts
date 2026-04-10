@@ -104,7 +104,7 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
 
       fs.writeFileSync(
         outFile,
-        JSON.stringify(result.schema, (_key, value) => (typeof value === 'bigint' ? Number(value) : value), 2) + '\n',
+        `${JSON.stringify(result.schema, (_key, value) => (typeof value === 'bigint' ? Number(value) : value), 2)}\n`,
       )
       const schemas = result.schema.schemas ?? []
       const tables = schemas.flatMap((s) => s.tables ?? [])
@@ -131,7 +131,7 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
       console.log(`  SKIP (Docker not available): writing placeholder`)
       fs.writeFileSync(
         outFile,
-        JSON.stringify({ _note: 'Requires Docker - run with Docker available to capture' }, null, 2) + '\n',
+        `${JSON.stringify({ _note: 'Requires Docker - run with Docker available to capture' }, null, 2)}\n`,
       )
       return true
     }

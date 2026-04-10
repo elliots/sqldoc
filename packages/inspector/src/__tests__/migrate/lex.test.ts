@@ -1,6 +1,6 @@
-import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { Scanner, stmts, scanStmts, stmtDirective } from '../../migrate/lex.ts'
+import { describe, it } from 'node:test'
+import { Scanner, scanStmts, stmtDirective, stmts } from '../../migrate/lex.ts'
 
 describe('Scanner', () => {
   it('splits simple semicolon-delimited statements', () => {

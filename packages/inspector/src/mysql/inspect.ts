@@ -1,6 +1,9 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/inspect_oss.go
 
+import { isQuoted, mayWrap, validString } from '../internal/sqlx.ts'
+import type { ExecQuerier, InspectOptions, Inspector, InspectRealmOption } from '../schema/inspect.ts'
+import { InspectMode, NotExistError } from '../schema/inspect.ts'
 import type {
   Attr,
   Check,
@@ -8,7 +11,6 @@ import type {
   ColumnType,
   Func,
   FuncArg,
-  Index,
   IndexPart,
   Proc,
   Realm,
@@ -17,9 +19,6 @@ import type {
   Trigger,
   View,
 } from '../schema/schema.ts'
-import type { Inspector, InspectOptions, InspectRealmOption, ExecQuerier, QueryResult } from '../schema/inspect.ts'
-import { InspectMode, NotExistError } from '../schema/inspect.ts'
-import { validString } from '../internal/sqlx.ts'
 import {
   autoIncrement as autoIncrementConst,
   columnsExprQuery,
@@ -38,19 +37,14 @@ import {
   routinesQuery,
   schemasQuery,
   schemasQueryArgs,
-  systemSchemas,
+  TypeJSON,
+  TypeLongText,
   tablesQuery,
   tablesQueryArgs,
   triggersQuery,
-  TypeJSON,
-  TypeLongText,
-  unescape,
+  unescapeStr,
   viewsQuery,
-  stored,
-  virtual,
-  persistent,
 } from './driver.ts'
-import { isQuoted, mayWrap } from '../internal/sqlx.ts'
 
 // -- MySQL-specific attribute types --
 
@@ -188,7 +182,7 @@ function supportsIndexExpr(v: MysqlVersion): boolean {
 }
 
 /** Reports if MySQL supports index comments. */
-function supportsIndexComment(v: MysqlVersion): boolean {
+function supportsIndexComment(_v: MysqlVersion): boolean {
   // All MySQL 5.5+ and MariaDB support index comments
   return true
 }
@@ -412,7 +406,7 @@ export class MysqlInspector implements Inspector {
       }
 
       // MariaDB system-versioned table detection
-      if (this.v.maria && options && options.includes('system versioned')) {
+      if (this.v.maria && options?.includes('system versioned')) {
         attrs.push({ kind: 'system_versioned' } as unknown as Attr)
       }
 
@@ -478,7 +472,7 @@ export class MysqlInspector implements Inspector {
       if (genExpr && genExpr !== '') {
         let x = genExpr
         if (!this.v.maria) {
-          x = unescape(x)
+          x = unescapeStr(x)
         }
         attrs.push({
           kind: 'generated' as const,
@@ -525,7 +519,7 @@ export class MysqlInspector implements Inspector {
       if (colType.kind === 'time' && reCurrTimestamp.test(x)) {
         return { X: x }
       }
-      return { X: mayWrap(unescape(x)) }
+      return { X: mayWrap(unescapeStr(x)) }
     }
     switch (colType.kind) {
       case 'binary':
@@ -564,7 +558,7 @@ export class MysqlInspector implements Inspector {
       case 'integer':
       case 'decimal':
       case 'float':
-        if (!isNaN(parseFloat(x))) return { V: x }
+        if (!Number.isNaN(parseFloat(x))) return { V: x }
         break
       case 'time':
         if (x.toLowerCase() === currentTS) return { X: x }
@@ -599,7 +593,7 @@ export class MysqlInspector implements Inspector {
       const indexName = row.INDEX_NAME as string
       const columnName = row.COLUMN_NAME as string | null
       const nonUnique = row.NON_UNIQUE as boolean | number | null
-      const seqNo = row.SEQ_IN_INDEX as number
+      const _seqNo = row.SEQ_IN_INDEX as number
       const indexType = row.INDEX_TYPE as string
       const desc = row.DESC as boolean | number | null
       const comment = row.INDEX_COMMENT as string | null
@@ -621,7 +615,7 @@ export class MysqlInspector implements Inspector {
             part.attrs = [{ kind: 'sub_part', len: Number(subPart) } as unknown as Attr]
           }
         } else if (expr && validString(expr)) {
-          part.expr = unescape(expr)
+          part.expr = unescapeStr(expr)
         }
         if (desc) part.desc = true
         t.primaryKey.parts.push(part)
@@ -646,7 +640,7 @@ export class MysqlInspector implements Inspector {
 
       const part: IndexPart = {}
       if (expr && validString(expr)) {
-        part.expr = unescape(expr)
+        part.expr = unescapeStr(expr)
       } else if (columnName && validString(columnName)) {
         part.column = columnName
         if (subPart != null && String(subPart) !== '' && indexType !== 'SPATIAL') {
@@ -753,7 +747,7 @@ export class MysqlInspector implements Inspector {
     for (const row of result.rows) {
       const tableName = row.TABLE_NAME as string
       const checkName = row.CONSTRAINT_NAME as string
-      let clause = row.CHECK_CLAUSE as string
+      const clause = row.CHECK_CLAUSE as string
       const enforced = row.ENFORCED as string
 
       const t = tableMap.get(tableName)
@@ -784,7 +778,7 @@ export class MysqlInspector implements Inspector {
           continue
         }
       } else {
-        check.expr = unescape(clause)
+        check.expr = unescapeStr(clause)
         // The ENFORCED attribute is not supported by MariaDB.
         // Skip adding it if the CHECK is ENFORCED (default).
         if (enforced === 'NO') {

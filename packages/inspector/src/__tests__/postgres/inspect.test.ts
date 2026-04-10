@@ -1,10 +1,11 @@
 // PostgreSQL integration tests against PgLite
-import { describe, it, before, after } from 'node:test'
+
 import assert from 'node:assert/strict'
-import { createInspector } from '../../inspector.ts'
-import type { InspectorRunner } from '../../inspector.ts'
+import { after, before, describe, it } from 'node:test'
 import type { DatabaseAdapter } from '@sqldoc/db'
 import pglitePlugin from '@sqldoc/db-pglite'
+import type { InspectorRunner } from '../../inspector.ts'
+import { createInspector } from '../../inspector.ts'
 
 let db: DatabaseAdapter
 let inspector: InspectorRunner

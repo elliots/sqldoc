@@ -1,14 +1,16 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/diff.go
 
+import { findColumn, findForeignKey, findFunc, findIndex, findProc, findSequence, findTable } from '../schema/dsl.ts'
+import type { DiffOptions } from '../schema/inspect.ts'
+import type { Change } from '../schema/migrate.ts'
+import { ChangeKind } from '../schema/migrate.ts'
 import type {
   Attr,
   Check,
-  Column,
   ForeignKey,
   Func,
   Index,
-  IndexPart,
   Policy,
   Proc,
   Realm,
@@ -18,61 +20,7 @@ import type {
   Trigger,
   View,
 } from '../schema/schema.ts'
-import type {
-  Change,
-  AddCheck,
-  AddColumn,
-  AddForeignKey,
-  AddFunc,
-  AddIndex,
-  AddPolicy,
-  AddPrimaryKey,
-  AddProc,
-  AddSchema,
-  AddSequence,
-  AddTable,
-  AddTrigger,
-  AddView,
-  DropCheck,
-  DropColumn,
-  DropForeignKey,
-  DropFunc,
-  DropIndex,
-  DropPolicy,
-  DropPrimaryKey,
-  DropProc,
-  DropSchema,
-  DropSequence,
-  DropTable,
-  DropTrigger,
-  DropView,
-  ModifyColumn,
-  ModifyForeignKey,
-  ModifyFunc,
-  ModifyIndex,
-  ModifyPolicy,
-  ModifyPrimaryKey,
-  ModifyProc,
-  ModifySchema,
-  ModifySequence,
-  ModifyTable,
-  ModifyTrigger,
-  ModifyView,
-  RenameConstraint,
-} from '../schema/migrate.ts'
-import { ChangeKind } from '../schema/migrate.ts'
-import type { DiffOptions } from '../schema/inspect.ts'
 import type { DiffDriver } from './sqlx.ts'
-import {
-  findColumn,
-  findForeignKey,
-  findFunc,
-  findIndex,
-  findProc,
-  findSequence,
-  findTable,
-  findView,
-} from '../schema/dsl.ts'
 
 // -- Generic Diff Engine --
 
@@ -626,7 +574,7 @@ function triggerChanged(a: Trigger, b: Trigger): boolean {
 
 // -- View Diff --
 
-function viewDiff(driver: DiffDriver, from: View, to: View, opts?: DiffOptions): Change[] {
+function viewDiff(driver: DiffDriver, from: View, to: View, _opts?: DiffOptions): Change[] {
   const changes: Change[] = []
   const attrChanges = driver.viewAttrChanges(from, to)
   const defChanged = from.def !== to.def

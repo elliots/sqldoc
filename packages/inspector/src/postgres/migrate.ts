@@ -1,6 +1,10 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/migrate_oss.go
 
+import type { PlanDriver } from '../internal/plan.ts'
+import { Builder, mayWrap } from '../internal/sqlx.ts'
+import type { Change } from '../schema/migrate.ts'
+import { ChangeKind } from '../schema/migrate.ts'
 import type {
   Attr,
   Check,
@@ -16,11 +20,7 @@ import type {
   Trigger,
   View,
 } from '../schema/schema.ts'
-import type { Change } from '../schema/migrate.ts'
-import { ChangeKind } from '../schema/migrate.ts'
-import type { PlanDriver } from '../internal/plan.ts'
-import { Builder, mayWrap, isQuoted } from '../internal/sqlx.ts'
-import { typeDDL, quote } from './convert.ts'
+import { quote, typeDDL } from './convert.ts'
 import { IndexTypeBTree } from './driver.ts'
 
 // -- Helper: find attribute by kind --
@@ -30,7 +30,7 @@ function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | 
   return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
-function hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
+function _hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
   return findAttr(attrs, kind) !== undefined
 }
 
@@ -256,7 +256,7 @@ export class PostgresPlan implements PlanDriver {
   }
 
   /** Generate SQL for modifying a table (column/index/FK changes). */
-  modifyTable(from: Table, to: Table, changes: Change[]): string[] {
+  modifyTable(_from: Table, to: Table, changes: Change[]): string[] {
     const stmts: string[] = []
     const alterParts: string[] = []
 
@@ -457,7 +457,7 @@ export class PostgresPlan implements PlanDriver {
   }
 
   /** Generate ALTER COLUMN clauses for a column modification. */
-  private alterColumn(from: Column, to: Column, changeKind: ChangeKind): string[] {
+  private alterColumn(_from: Column, to: Column, changeKind: ChangeKind): string[] {
     const parts: string[] = []
     let k = changeKind
 

@@ -1,22 +1,18 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/tidb.go
 
-import type { Attr, Column, Index, Realm, Schema, Table, View } from '../schema/schema.ts'
+import type { InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
-import type { InspectOptions, InspectRealmOption, ExecQuerier } from '../schema/inspect.ts'
-import type { DiffOptions } from '../schema/inspect.ts'
-import type { DiffDriver } from '../internal/sqlx.ts'
-import type { PlanDriver } from '../internal/plan.ts'
-import { MysqlInspector } from './inspect.ts'
-import type { AutoIncrementAttr } from './inspect.ts'
+import type { Attr, Column, Realm, Schema, Table } from '../schema/schema.ts'
 import { MysqlDiff } from './diff.ts'
+import { MysqlInspector } from './inspect.ts'
 import { MysqlPlan } from './migrate.ts'
 
 // -- Helper: find attribute by kind --
 
-function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
+function _findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 // -- TiDB Priority Function --
@@ -79,10 +75,6 @@ export function flat(changes: Change[]): Change[] {
  * Patches schema objects after standard MySQL inspection.
  */
 export class TidbInspect extends MysqlInspector {
-  constructor(db: ExecQuerier, version?: string) {
-    super(db, version)
-  }
-
   async inspectSchema(name: string, opts?: InspectOptions): Promise<Schema> {
     const s = await super.inspectSchema(name, opts)
     await this.patchSchema(s)
@@ -154,9 +146,7 @@ export class TidbPlan extends MysqlPlan {
   /** Override modifyTable to produce one ALTER per change. */
   modifyTable(from: Table, to: Table, changes: Change[]): string[] {
     // Flatten and sort by priority
-    const flatChanges = flat(
-      changes.map(c => ({ type: 'modify_table' as const, T: to, changes: [c] })),
-    )
+    const flatChanges = flat(changes.map((c) => ({ type: 'modify_table' as const, T: to, changes: [c] })))
     const sorted = flatChanges.sort((a, b) => priority(a) - priority(b))
 
     // Generate one ALTER TABLE per atomic change

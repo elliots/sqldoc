@@ -1,37 +1,21 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/diff_oss.go
 
-import type { Attr, Column, Check, Index, Schema, Table, View } from '../schema/schema.ts'
+import type { DiffDriver } from '../internal/sqlx.ts'
+import { exprEqual, mayWrap, typesEqual } from '../internal/sqlx.ts'
+import type { DiffOptions } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
-import type { DiffOptions } from '../schema/inspect.ts'
-import type { DiffDriver } from '../internal/sqlx.ts'
-import { attrsEqual, exprEqual, typesEqual, valuesEqual, isQuoted, mayWrap } from '../internal/sqlx.ts'
-import { typeDDL, formatValues } from './convert.ts'
-import {
-  IndexTypeBTree,
-  IndexTypeFullText,
-  IndexTypeSpatial,
-  EngineInnoDB,
-  stored,
-  virtual,
-  persistent,
-  storedOrVirtual,
-} from './driver.ts'
-import type {
-  AutoIncrementAttr,
-  EngineAttr,
-  EnforcedAttr,
-  IndexTypeAttr,
-  SubPartAttr,
-  SystemVersionedAttr,
-} from './inspect.ts'
+import type { Attr, Column, Index, Schema, Table, View } from '../schema/schema.ts'
+import { typeDDL } from './convert.ts'
+import { EngineInnoDB, IndexTypeBTree, storedOrVirtual } from './driver.ts'
+import type { AutoIncrementAttr, EngineAttr, IndexTypeAttr, SubPartAttr } from './inspect.ts'
 
 // -- Helper: find attribute by kind --
 
-function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
+function findAttr<T>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 function hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
@@ -109,7 +93,12 @@ export class MysqlDiff implements DiffDriver {
     const toEngine = findAttr<EngineAttr>(to.attrs, 'engine')
     if (fromEngine && toEngine && fromEngine.V.toLowerCase() !== toEngine.V.toLowerCase()) {
       changes.push({ type: 'modify_attr', from: fromEngine as unknown as Attr, to: toEngine as unknown as Attr })
-    } else if (fromEngine && !toEngine && !fromEngine.default && fromEngine.V.toLowerCase() !== EngineInnoDB.toLowerCase()) {
+    } else if (
+      fromEngine &&
+      !toEngine &&
+      !fromEngine.default &&
+      fromEngine.V.toLowerCase() !== EngineInnoDB.toLowerCase()
+    ) {
       changes.push({
         type: 'modify_attr',
         from: fromEngine as unknown as Attr,
@@ -199,10 +188,10 @@ export class MysqlDiff implements DiffDriver {
     if (!idx.name || idx.parts.length === 0 || !idx.parts[0].column) return false
     const colName = idx.parts[0].column
     if (idx.name === colName) return true
-    if (idx.name.startsWith(colName + '_')) {
+    if (idx.name.startsWith(`${colName}_`)) {
       const suffix = idx.name.slice(colName.length + 1)
       const n = parseInt(suffix, 10)
-      return !isNaN(n) && n > 1
+      return !Number.isNaN(n) && n > 1
     }
     return false
   }
@@ -269,8 +258,7 @@ export class MysqlDiff implements DiffDriver {
     if (!fromGen && !toGen) return false
     if (!fromGen || !toGen) return true
     return (
-      mayWrap(fromGen.expr) !== mayWrap(toGen.expr) ||
-      storedOrVirtual(fromGen.type) !== storedOrVirtual(toGen.type)
+      mayWrap(fromGen.expr) !== mayWrap(toGen.expr) || storedOrVirtual(fromGen.type) !== storedOrVirtual(toGen.type)
     )
   }
 

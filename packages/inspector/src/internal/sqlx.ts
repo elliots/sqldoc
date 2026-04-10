@@ -1,26 +1,21 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/sqlx.go, sql/internal/sqlx/sqlx_oss.go
 
+import type { DiffOptions, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
+import type { Change } from '../schema/migrate.ts'
 import type {
   Attr,
-  Check,
   Column,
   ColumnType,
   Expr,
-  ForeignKey,
   Index,
   IndexPart,
   Realm,
   Schema,
   SchemaType,
-  Sequence,
   Table,
-  Trigger,
   View,
 } from '../schema/schema.ts'
-import type { Change, ChangeKind } from '../schema/migrate.ts'
-import type { DiffOptions, InspectMode, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
-import { findColumn, findForeignKey, findTable } from '../schema/dsl.ts'
 
 // -- Row Scanning Utilities --
 
@@ -447,7 +442,7 @@ export class Builder {
   /** Write a quoted identifier. */
   Ident(s: string): this {
     if (s !== '') {
-      this.buf += this.quoteOpening + s + this.quoteClosing + ' '
+      this.buf += `${this.quoteOpening + s + this.quoteClosing} `
     }
     return this
   }

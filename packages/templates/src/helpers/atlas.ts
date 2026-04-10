@@ -25,9 +25,27 @@ export function isNullable(column: Column): boolean {
   return column.type.null === true
 }
 
-/** Get the column type string, falling back to 'unknown' */
+/** Get the column type string with precision/size, falling back to 'unknown' */
 export function getColumnType(column: Column): string {
-  return column.type.raw ?? column.type.type.T ?? 'unknown'
+  const t = column.type.type
+
+  // For arrays, use T (e.g. "text[]") not raw ("ARRAY")
+  if (t.kind === 'array') return t.T ?? 'unknown'
+
+  // For composites/domains/enums, use T (e.g. "address") not raw ("USER-DEFINED" or "public.address")
+  if (t.kind === 'composite' || t.kind === 'domain' || t.kind === 'enum') return t.T ?? 'unknown'
+
+  const raw = column.type.raw ?? t.T ?? 'unknown'
+
+  // Append size/precision to produce full type string (e.g. "character varying(100)")
+  if (t.kind === 'string' && 'size' in t && (t as any).size > 0) {
+    return `${raw}(${(t as any).size})`
+  }
+  if (t.kind === 'decimal' && 'precision' in t && (t as any).precision > 0) {
+    const scale = (t as any).scale ?? 0
+    return scale > 0 ? `${raw}(${(t as any).precision},${scale})` : `${raw}(${(t as any).precision})`
+  }
+  return raw
 }
 
 /** Find all codegen tags for a given SQL object from allFileTags */

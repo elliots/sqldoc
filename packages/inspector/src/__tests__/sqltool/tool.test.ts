@@ -1,22 +1,21 @@
-import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-
+import { describe, it } from 'node:test'
+import { MemDir } from '../../migrate/dir.ts'
 import {
+  dbmateFormatter,
+  type FormatterInput,
+  flywayFormatter,
   golangMigrateFormatter,
   gooseFormatter,
-  flywayFormatter,
+  isHidden,
   liquibaseFormatter,
-  dbmateFormatter,
+  now,
+  scanDbmateDir,
+  scanFlywayDir,
   scanGolangMigrateDir,
   scanGooseDir,
-  scanFlywayDir,
   scanLiquibaseDir,
-  scanDbmateDir,
-  isHidden,
-  now,
-  type FormatterInput,
 } from '../../sqltool/tool.ts'
-import { MemDir } from '../../migrate/dir.ts'
 
 // -- Test Plan --
 

@@ -2,28 +2,26 @@
 // Source: cmd/atlas-wasi/main.go
 
 import type { DatabaseAdapter } from './adapter.ts'
-import type { Inspector } from './schema/inspect.ts'
-import type { DiffDriver } from './internal/sqlx.ts'
-import type { PlanDriver } from './internal/plan.ts'
-import type { Change } from './schema/migrate.ts'
-import type { ExecQuerier, QueryResult, ExecResult } from './schema/inspect.ts'
-import type { Column, Realm, Rename, RenameCandidate, Table } from './schema/schema.ts'
-import { PostgresInspector } from './postgres/inspect.ts'
-import { CrdbInspector } from './postgres/crdb.ts'
-import { MysqlInspector } from './mysql/inspect.ts'
-import { SqliteInspector } from './sqlite/inspect.ts'
-import { PostgresDiff } from './postgres/diff.ts'
-import { CrdbDiff } from './postgres/crdb.ts'
-import { MysqlDiff } from './mysql/diff.ts'
-import { SqliteDiff } from './sqlite/diff.ts'
-import { PostgresPlan } from './postgres/migrate.ts'
-import { MysqlPlan } from './mysql/migrate.ts'
-import { SqlitePlan } from './sqlite/migrate.ts'
-import { realmDiff } from './internal/diff.ts'
-import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
 import { createRestoreFunc, snapshot } from './internal/dev.ts'
+import { realmDiff } from './internal/diff.ts'
+import type { PlanDriver } from './internal/plan.ts'
+import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
+import type { DiffDriver } from './internal/sqlx.ts'
 import { scanStmts } from './migrate/lex.ts'
 import { extractTagsFromStmts } from './migrate/tag.ts'
+import { MysqlDiff } from './mysql/diff.ts'
+import { MysqlInspector } from './mysql/inspect.ts'
+import { MysqlPlan } from './mysql/migrate.ts'
+import { CrdbDiff, CrdbInspector } from './postgres/crdb.ts'
+import { PostgresDiff } from './postgres/diff.ts'
+import { PostgresInspector } from './postgres/inspect.ts'
+import { PostgresPlan } from './postgres/migrate.ts'
+import type { ExecQuerier, ExecResult, Inspector, QueryResult } from './schema/inspect.ts'
+import type { Change } from './schema/migrate.ts'
+import type { Column, Realm, Rename, RenameCandidate, Table } from './schema/schema.ts'
+import { SqliteDiff } from './sqlite/diff.ts'
+import { SqliteInspector } from './sqlite/inspect.ts'
+import { SqlitePlan } from './sqlite/migrate.ts'
 // -- Types --
 
 export interface InspectorOptions {
@@ -127,7 +125,7 @@ function filterSystemSchemas(realm: Realm, dialect: string): Realm {
  * Extract tags from SQL file comments and apply them to the inspected realm.
  * Tags are extracted before SQL execution (since comments are lost on execution).
  */
-function applyTags(realm: Realm, files: string[], fileNames?: string[]): void {
+function applyTags(realm: Realm, files: string[], _fileNames?: string[]): void {
   for (let i = 0; i < files.length; i++) {
     const sql = files[i]
     if (!sql.trim()) continue

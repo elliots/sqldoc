@@ -1,54 +1,24 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/convert.go
 
-import type { SchemaType } from '../schema/schema.ts'
 import { isQuoted } from '../internal/sqlx.ts'
+import type { SchemaType } from '../schema/schema.ts'
 import {
+  TypeBinary,
   TypeBit,
   TypeBool,
   TypeBoolean,
-  TypeTinyInt,
-  TypeSmallInt,
-  TypeMediumInt,
-  TypeInt,
-  TypeBigInt,
-  TypeDecimal,
-  TypeNumeric,
-  TypeFloat,
-  TypeDouble,
-  TypeReal,
-  TypeBinary,
-  TypeVarBinary,
-  TypeTinyBlob,
-  TypeBlob,
-  TypeMediumBlob,
-  TypeLongBlob,
   TypeChar,
-  TypeVarchar,
-  TypeTinyText,
-  TypeText,
-  TypeMediumText,
-  TypeLongText,
-  TypeEnum,
+  TypeDecimal,
+  TypeDouble,
+  TypeFloat,
+  TypeInt,
+  TypeNumeric,
+  TypeReal,
   TypeSet,
-  TypeJSON,
-  TypeDate,
-  TypeDateTime,
-  TypeTime,
-  TypeTimestamp,
-  TypeYear,
-  TypePoint,
-  TypeMultiPoint,
-  TypeLineString,
-  TypeMultiLineString,
-  TypePolygon,
-  TypeMultiPolygon,
-  TypeGeometry,
-  TypeGeoCollection,
-  TypeGeometryCollection,
-  TypeUUID,
-  TypeInet4,
-  TypeInet6,
+  TypeTinyInt,
+  TypeVarBinary,
+  TypeVarchar,
 } from './driver.ts'
 
 /**
@@ -176,7 +146,7 @@ export function typeDDL(t: SchemaType): string {
       return t.T.toLowerCase()
 
     case 'enum': {
-      const values = (t.values ?? []).map(v => {
+      const values = (t.values ?? []).map((v) => {
         if (isQuoted(v, '"', "'")) return v
         return `'${v}'`
       })
@@ -205,7 +175,7 @@ export function typeDDL(t: SchemaType): string {
  */
 export function formatValues(vs: string[]): string {
   return vs
-    .map(v => {
+    .map((v) => {
       if (isQuoted(v, '"', "'")) return v
       return `'${v}'`
     })

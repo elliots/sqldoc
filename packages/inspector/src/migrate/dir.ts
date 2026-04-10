@@ -2,7 +2,7 @@
 // Source: sql/migrate/dir.go
 
 import type { Tag } from '../schema/schema.ts'
-import { type Stmt, Scanner, directive } from './lex.ts'
+import { directive, Scanner, type Stmt } from './lex.ts'
 import { parseTags } from './tag.ts'
 
 // -- File Interface --

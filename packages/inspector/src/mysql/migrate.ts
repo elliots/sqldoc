@@ -1,50 +1,22 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/migrate_oss.go
 
-import type {
-  Attr,
-  Check,
-  Column,
-  ForeignKey,
-  Func,
-  Index,
-  Proc,
-  Schema,
-  Table,
-  Trigger,
-  View,
-} from '../schema/schema.ts'
-import type { Change } from '../schema/migrate.ts'
 import type { PlanDriver } from '../internal/plan.ts'
-import { Builder, mayWrap, isQuoted } from '../internal/sqlx.ts'
-import { typeDDL, formatValues } from './convert.ts'
-import {
-  IndexTypeBTree,
-  IndexTypeHash,
-  IndexTypeFullText,
-  IndexTypeSpatial,
-  quote,
-  storedOrVirtual,
-  stored,
-  virtual,
-} from './driver.ts'
-import type {
-  AutoIncrementAttr,
-  EngineAttr,
-  EnforcedAttr,
-  IndexTypeAttr,
-  SubPartAttr,
-  OnUpdateAttr,
-} from './inspect.ts'
+import { Builder, mayWrap } from '../internal/sqlx.ts'
+import type { Change } from '../schema/migrate.ts'
+import type { Attr, Check, Column, ForeignKey, Func, Index, Proc, Table, Trigger, View } from '../schema/schema.ts'
+import { typeDDL } from './convert.ts'
+import { IndexTypeBTree, IndexTypeFullText, IndexTypeHash, IndexTypeSpatial, quote } from './driver.ts'
+import type { AutoIncrementAttr, EngineAttr, IndexTypeAttr, OnUpdateAttr, SubPartAttr } from './inspect.ts'
 
 // -- Helper: find attribute by kind --
 
-function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
+function findAttr<T>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
-function hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
+function _hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
   return findAttr(attrs, kind) !== undefined
 }
 
@@ -164,7 +136,10 @@ export class MysqlPlan implements PlanDriver {
   /** Generate SQL for adding a view. */
   addView(view: View): string[] {
     const b = mysqlBuilder()
-    b.P('CREATE VIEW').View(view).P('AS').P(view.def ?? '')
+    b.P('CREATE VIEW')
+      .View(view)
+      .P('AS')
+      .P(view.def ?? '')
     return [b.toString()]
   }
 
@@ -178,7 +153,10 @@ export class MysqlPlan implements PlanDriver {
   /** Generate SQL for modifying a view. */
   modifyView(_from: View, to: View): string[] {
     const b = mysqlBuilder()
-    b.P('CREATE OR REPLACE VIEW').View(to).P('AS').P(to.def ?? '')
+    b.P('CREATE OR REPLACE VIEW')
+      .View(to)
+      .P('AS')
+      .P(to.def ?? '')
     return [b.toString()]
   }
 
@@ -287,14 +265,17 @@ export class MysqlPlan implements PlanDriver {
         break
 
       case 'rename_index':
-        b.P('RENAME INDEX').Ident(change.from.name ?? '').P('TO').Ident(change.to.name ?? '')
+        b.P('RENAME INDEX')
+          .Ident(change.from.name ?? '')
+          .P('TO')
+          .Ident(change.to.name ?? '')
         break
     }
   }
 
   // -- Internal: column definition --
 
-  protected columnDef(b: Builder, table: Table, col: Column): void {
+  protected columnDef(b: Builder, _table: Table, col: Column): void {
     let typ: string
     try {
       typ = typeDDL(col.type.type)
@@ -335,7 +316,7 @@ export class MysqlPlan implements PlanDriver {
           // Already handled above
           break
         case 'collation': {
-          const collation = (a as { kind: 'collation'; V: string })
+          const collation = a as { kind: 'collation'; V: string }
           b.P('COLLATE', collation.V)
           break
         }
@@ -427,11 +408,11 @@ export class MysqlPlan implements PlanDriver {
     }
     b.P('FOREIGN KEY')
     b.raw('(')
-    b.raw(fk.columns.map(c => '`' + c + '`').join(', '))
+    b.raw(fk.columns.map((c) => `\`${c}\``).join(', '))
     b.raw(')')
     b.P('REFERENCES').Ident(fk.refTable)
     b.raw('(')
-    b.raw(fk.refColumns.map(c => '`' + c + '`').join(', '))
+    b.raw(fk.refColumns.map((c) => `\`${c}\``).join(', '))
     b.raw(')')
     if (fk.onUpdate) b.P('ON UPDATE', fk.onUpdate)
     if (fk.onDelete) b.P('ON DELETE', fk.onDelete)
@@ -470,17 +451,17 @@ export class MysqlPlan implements PlanDriver {
         break
       }
       case 'charset': {
-        const cs = (a as { kind: 'charset'; V: string })
+        const cs = a as { kind: 'charset'; V: string }
         b.P('CHARSET', cs.V)
         break
       }
       case 'collation': {
-        const co = (a as { kind: 'collation'; V: string })
+        const co = a as { kind: 'collation'; V: string }
         b.P('COLLATE', co.V)
         break
       }
       case 'comment': {
-        const cm = (a as { kind: 'comment'; text: string })
+        const cm = a as { kind: 'comment'; text: string }
         b.P('COMMENT', quote(cm.text))
         break
       }
@@ -529,7 +510,7 @@ function buildMySQLFuncDDL(f: Func): string {
 
 // -- Build MySQL PROCEDURE DDL --
 
-function buildMySQLProcDDL(p: Proc): string {
+function _buildMySQLProcDDL(p: Proc): string {
   let result = 'CREATE PROCEDURE '
   if (p.schema) result += `\`${p.schema}\`.`
   result += `\`${p.name}\`(`
@@ -537,7 +518,7 @@ function buildMySQLProcDDL(p: Proc): string {
     if (i > 0) result += ', '
     const a = p.args![i]
     if (a.mode && a.mode !== 'IN') {
-      result += a.mode + ' '
+      result += `${a.mode} `
     }
     if (a.name) result += `\`${a.name}\` `
     if (a.type) {

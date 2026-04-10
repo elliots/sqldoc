@@ -7,8 +7,6 @@ import type {
   BoolType,
   CurrencyType,
   DecimalType,
-  DomainType,
-  EnumType,
   FloatType,
   IntegerType,
   IntervalType,
@@ -24,6 +22,8 @@ import type {
   UnsupportedType,
   UUIDType,
 } from '../schema/schema.ts'
+import { Scanner } from '../migrate/lex.ts'
+import type { Stmt } from '../migrate/lex.ts'
 
 // -- Standard PostgreSQL column types and their aliases --
 
@@ -770,7 +770,7 @@ export function nArgs(offset: number, count: number): string {
 /** Parse server version from SHOW server_version_num output (e.g., "150000" for PG 15). */
 export function parseVersion(versionStr: string): number {
   const n = parseInt(versionStr, 10)
-  if (isNaN(n)) {
+  if (Number.isNaN(n)) {
     throw new Error(`postgres: malformed version: ${versionStr}`)
   }
   return n
@@ -985,7 +985,7 @@ export function arrayElementType(typeName: string): string {
   if (t.startsWith('_')) return t.slice(1)
   // Standard notation: integer[], text[2], etc.
   const matches = reArray.exec(t)
-  if (matches && matches[1]) return matches[1].trim()
+  if (matches?.[1]) return matches[1].trim()
   return t
 }
 
@@ -1118,7 +1118,7 @@ function parseColumnDesc(s: string): ColumnDesc {
       }
       desc.timePrecision = p
       // Normalize "with time zone" / "without time zone" variants
-      const joined = (lower0 + ' ' + rest.join(' ')).toLowerCase().trim()
+      const joined = `${lower0} ${rest.join(' ')}`.toLowerCase().trim()
       desc.typ = timeAlias(joined)
       break
     }
@@ -1389,7 +1389,7 @@ export function parseFuncArgs(
  * e.g. "SETOF public.posts" -> "SETOF posts" when ownSchema is "public".
  */
 export function stripOwnSchemaFromType(t: string, ownSchema: string): string {
-  const prefix = ownSchema + '.'
+  const prefix = `${ownSchema}.`
   const lower = t.toLowerCase()
   const lowerPrefix = prefix.toLowerCase()
 
@@ -1473,3 +1473,13 @@ WHERE
 ORDER BY
   n.nspname, p.proname
 `
+
+/** Postgres-specific statement scanner. Matches Go Driver.ScanStmts. */
+export function postgresScanStmts(input: string): Stmt[] {
+  return new Scanner({
+    matchBegin: true,
+    matchBeginAtomic: true,
+    matchDollarQuote: true,
+    escapedStringExt: true,
+  }).scan(input)
+}

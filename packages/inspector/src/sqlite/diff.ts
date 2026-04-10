@@ -1,22 +1,13 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/sqlite/diff.go
 
-import type { Attr, Column, ForeignKey, Index, Realm, Schema, Table, View } from '../schema/schema.ts'
+import type { DiffDriver } from '../internal/sqlx.ts'
+import { defaultValue, isUint, mayWrap } from '../internal/sqlx.ts'
+import type { DiffOptions } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
-import type { DiffOptions } from '../schema/inspect.ts'
-import type { DiffDriver } from '../internal/sqlx.ts'
-import { defaultValue, isQuoted, isUint, mayWrap } from '../internal/sqlx.ts'
-import {
-  type AutoIncrement,
-  type CreateStmt,
-  type IndexOrigin,
-  type IndexPredicate,
-  type Strict,
-  type WithoutRowID,
-  hasAttr,
-  storedOrVirtual,
-} from './driver.ts'
+import type { Attr, Column, ForeignKey, Index, Realm, Schema, Table, View } from '../schema/schema.ts'
+import { hasAttr, type IndexOrigin, type IndexPredicate, storedOrVirtual } from './driver.ts'
 
 // -- SQLite DiffDriver Implementation --
 
@@ -139,7 +130,7 @@ export class SqliteDiff implements DiffDriver {
   /** Reports if the column is a generated/virtual column. */
   isGeneratedColumn(col: Column): boolean {
     if (!col.attrs) return false
-    return col.attrs.some(a => 'kind' in a && (a as any).kind === 'generated')
+    return col.attrs.some((a) => 'kind' in a && (a as any).kind === 'generated')
   }
 
   /**
@@ -193,10 +184,10 @@ export class SqliteDiff implements DiffDriver {
 
   /** Reports if the generated expression of a column was changed. */
   private generatedChanged(from: Column, to: Column): boolean {
-    const fromGen = from.attrs?.find(a => 'kind' in a && (a as any).kind === 'generated') as
+    const fromGen = from.attrs?.find((a) => 'kind' in a && (a as any).kind === 'generated') as
       | { expr: string; type?: string }
       | undefined
-    const toGen = to.attrs?.find(a => 'kind' in a && (a as any).kind === 'generated') as
+    const toGen = to.attrs?.find((a) => 'kind' in a && (a as any).kind === 'generated') as
       | { expr: string; type?: string }
       | undefined
 
@@ -207,8 +198,7 @@ export class SqliteDiff implements DiffDriver {
     if (!fromHas || !fromGen || !toGen) return false
 
     return (
-      mayWrap(fromGen.expr) !== mayWrap(toGen.expr) ||
-      storedOrVirtual(fromGen.type) !== storedOrVirtual(toGen.type)
+      mayWrap(fromGen.expr) !== mayWrap(toGen.expr) || storedOrVirtual(fromGen.type) !== storedOrVirtual(toGen.type)
     )
   }
 }

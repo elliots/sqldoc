@@ -108,42 +108,42 @@ export function newExprPart(expr: string): IndexPart {
 
 /** Finds a table by name in a schema. Returns undefined if not found. */
 export function findTable(schema: Schema, name: string): Table | undefined {
-  return schema.tables?.find(t => t.name === name)
+  return schema.tables?.find((t) => t.name === name)
 }
 
 /** Finds a column by name in a table. Returns undefined if not found. */
 export function findColumn(table: Table, name: string): Column | undefined {
-  return table.columns.find(c => c.name === name)
+  return table.columns.find((c) => c.name === name)
 }
 
 /** Finds an index by name in a table. Returns undefined if not found. */
 export function findIndex(table: Table, name: string): Index | undefined {
-  return table.indexes?.find(i => i.name === name)
+  return table.indexes?.find((i) => i.name === name)
 }
 
 /** Finds a foreign key by symbol in a table. Returns undefined if not found. */
 export function findForeignKey(table: Table, symbol: string): ForeignKey | undefined {
-  return table.foreignKeys?.find(fk => fk.symbol === symbol)
+  return table.foreignKeys?.find((fk) => fk.symbol === symbol)
 }
 
 /** Finds a view by name in a schema. Returns undefined if not found. */
 export function findView(schema: Schema, name: string): View | undefined {
-  return schema.views?.find(v => v.name === name)
+  return schema.views?.find((v) => v.name === name)
 }
 
 /** Finds a function by name in a schema. Returns undefined if not found. */
 export function findFunc(schema: Schema, name: string): Func | undefined {
-  return schema.funcs?.find(f => f.name === name)
+  return schema.funcs?.find((f) => f.name === name)
 }
 
 /** Finds a procedure by name in a schema. Returns undefined if not found. */
 export function findProc(schema: Schema, name: string): Proc | undefined {
-  return schema.procs?.find(p => p.name === name)
+  return schema.procs?.find((p) => p.name === name)
 }
 
 /** Finds a sequence by name in a schema. Returns undefined if not found. */
 export function findSequence(schema: Schema, name: string): Sequence | undefined {
-  return schema.sequences?.find(s => s.name === name)
+  return schema.sequences?.find((s) => s.name === name)
 }
 
 // -- Attribute Helpers --
@@ -154,7 +154,7 @@ export function findSequence(schema: Schema, name: string): Sequence | undefined
  */
 export function hasAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 /**
@@ -165,7 +165,7 @@ export function setAttr(attrs: Attr[] | undefined, attr: Attr): Attr[] {
   const result = attrs ? [...attrs] : []
   if ('kind' in attr) {
     const kind = (attr as any).kind
-    const idx = result.findIndex(a => 'kind' in a && (a as any).kind === kind)
+    const idx = result.findIndex((a) => 'kind' in a && (a as any).kind === kind)
     if (idx !== -1) {
       result[idx] = attr
       return result
@@ -178,7 +178,7 @@ export function setAttr(attrs: Attr[] | undefined, attr: Attr): Attr[] {
 /** Removes an attribute by kind. */
 export function removeAttr(attrs: Attr[] | undefined, kind: string): Attr[] {
   if (!attrs) return []
-  return attrs.filter(a => !('kind' in a) || (a as any).kind !== kind)
+  return attrs.filter((a) => !('kind' in a) || (a as any).kind !== kind)
 }
 
 /** Extracts the comment text from an attribute list. Returns undefined if no comment. */

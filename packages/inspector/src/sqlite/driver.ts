@@ -1,8 +1,10 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/sqlite/driver.go, sql/sqlite/driver_oss.go, sql/sqlite/inspect.go
 
+import { isLiteralBool, isLiteralNumber, isQuoted, isUint } from '../internal/sqlx.ts'
+import { Scanner } from '../migrate/lex.ts'
+import type { Stmt } from '../migrate/lex.ts'
 import type { Attr, SchemaType } from '../schema/schema.ts'
-import { isLiteralBool, isLiteralNumber, isQuoted, isUint, mayWrap } from '../internal/sqlx.ts'
 
 // -- SQLite Standard Data Types --
 // https://www.sqlite.org/datatype3.html
@@ -23,7 +25,7 @@ export const mainFile = 'main'
 
 /** Query to list attached database files. */
 export const databasesQuery = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` <> 'temp'"
-export const databasesQueryArgs = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` IN (%s)"
+export const databasesQueryArgs = 'SELECT `name`, `file` FROM pragma_database_list() WHERE `name` IN (%s)'
 
 /** Query to list database tables. */
 export const tablesQuery = `
@@ -39,16 +41,19 @@ WHERE
 `
 
 /** Query to list table column information (extended, with hidden columns). */
-export const columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `cid`"
+export const columnsQuery =
+  "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `cid`"
 
 /** Query to list table indexes. */
-export const indexesQuery = "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
+export const indexesQuery =
+  "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
 
 /** Query to list index columns. */
 export const indexColumnsQuery = "SELECT name, desc FROM pragma_index_xinfo('%s') WHERE key = 1 ORDER BY seqno"
 
 /** Query to list table foreign-keys. */
-export const fksQuery = "SELECT `id`, `from`, `to`, `table`, `on_update`, `on_delete` FROM pragma_foreign_key_list('%s') ORDER BY id, seq"
+export const fksQuery =
+  "SELECT `id`, `from`, `to`, `table`, `on_update`, `on_delete` FROM pragma_foreign_key_list('%s') ORDER BY id, seq"
 
 /** Query to list database views. */
 export const viewsQuery = "SELECT name, sql FROM sqlite_master WHERE type = 'view' ORDER BY name"
@@ -114,7 +119,7 @@ export type SqliteAttr = CreateStmt | AutoIncrement | WithoutRowID | Strict | In
 /** Check if an attribute array contains an attribute of the given kind. */
 export function hasAttr<T extends SqliteAttr>(attrs: Attr[] | undefined, kind: T['kind']): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 // -- Type Parsing --
@@ -129,7 +134,7 @@ function columnParts(t: string): string[] {
   for (let k = 0; k < 2; k++) {
     // Join the type back if it was separated with space (e.g. 'varying character').
     if (parts.length > 1 && !isUint(parts[0]) && !isUint(parts[1])) {
-      parts[1] = parts[0] + ' ' + parts[1]
+      parts[1] = `${parts[0]} ${parts[1]}`
       parts.splice(0, 1)
     }
   }
@@ -331,4 +336,14 @@ export function storedOrVirtual(typ: string | undefined): string {
   const upper = typ.toUpperCase().trim()
   if (upper === 'STORED') return GeneratedStored
   return GeneratedVirtual
+}
+
+/** SQLite-specific statement scanner. Matches Go Driver.ScanStmts. */
+export function sqliteScanStmts(input: string): Stmt[] {
+  return new Scanner({
+    matchBegin: true,
+    // SQLite does NOT support these:
+    matchBeginAtomic: false,
+    matchDollarQuote: false,
+  }).scan(input)
 }

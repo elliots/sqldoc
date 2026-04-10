@@ -1,10 +1,9 @@
 // SQLite integration tests against real SQLite database
-import { describe, it, before, after } from 'node:test'
+
 import assert from 'node:assert/strict'
-import { createInspector } from '../../inspector.ts'
-import type { InspectorRunner } from '../../inspector.ts'
-import type { DatabaseAdapter } from '@sqldoc/db'
+import { describe, it } from 'node:test'
 import { createSqliteAdapter } from '@sqldoc/db'
+import { createInspector } from '../../inspector.ts'
 
 describe('SQLite Inspector', () => {
   it('inspects a basic table with columns and PK', async () => {

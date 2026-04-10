@@ -1,7 +1,7 @@
-import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseTags, parseStmtTags, parseTableName, stmtTags, extractTagsFromStmts } from '../../migrate/tag.ts'
+import { describe, it } from 'node:test'
 import { scanStmts } from '../../migrate/lex.ts'
+import { extractTagsFromStmts, parseStmtTags, parseTableName, parseTags, stmtTags } from '../../migrate/tag.ts'
 
 describe('parseTags', () => {
   it('returns empty for no comments', () => {

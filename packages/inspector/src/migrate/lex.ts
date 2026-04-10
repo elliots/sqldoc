@@ -253,7 +253,7 @@ export class Scanner {
       }
 
       // End term (T-SQL)
-      if (this.endterm !== null && this.endterm.test(this.input.slice(0, this.pos))) {
+      if (this.endterm?.test(this.input.slice(0, this.pos))) {
         text = this.input.slice(0, this.pos)
         break
       }

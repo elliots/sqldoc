@@ -131,7 +131,7 @@ export interface UnsupportedType {
 export interface ArrayType {
   kind: 'array'
   T: string
-  type: SchemaType
+  type?: SchemaType
 }
 
 export interface CompositeType {
@@ -210,6 +210,36 @@ export type SchemaType =
   | CurrencyType
   | TextSearchType
   | IntervalType
+  | UnknownType
+  | XMLType
+  | OIDType
+  | BitType
+
+/** An unknown/user-defined type. */
+export interface UnknownType {
+  kind: 'unknown'
+  T: string
+  class?: string
+}
+
+/** An XML type. */
+export interface XMLType {
+  kind: 'xml'
+  T: string
+}
+
+/** An OID type. */
+export interface OIDType {
+  kind: 'oid'
+  T: string
+}
+
+/** A bit/varbit type. */
+export interface BitType {
+  kind: 'bit'
+  T: string
+  size?: number
+}
 
 // -- Column Type Wrapper --
 

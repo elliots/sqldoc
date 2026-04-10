@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property ?array $metadata
  * @property mixed $address
  * @property string $created_at
- * @property mixed $tags
+ * @property ?array $tags
  * @property ?string $avatar
  * @property ?float $balance
  * @property ?string $external_id
@@ -46,7 +46,8 @@ class User extends Model
         'age' => 'integer',
         'is_active' => 'boolean',
         'metadata' => 'array',
-        'balance' => 'decimal',
+        'tags' => 'array',
+        'balance' => 'decimal:2',
     ];
 
     public function posts(): HasMany

@@ -5,34 +5,22 @@ import type { SchemaType } from '../schema/schema.ts'
 import {
   TypeBigInt,
   TypeBigSerial,
-  TypeBit,
-  TypeBitVar,
   TypeBool,
   TypeBoolean,
   TypeBPChar,
-  TypeBytea,
   TypeChar,
   TypeCharacter,
   TypeCharVar,
-  TypeCIDR,
-  TypeDate,
   TypeDecimal,
   TypeDouble,
   TypeFloat,
   TypeFloat4,
   TypeFloat8,
-  TypeInet,
   TypeInt,
   TypeInt2,
   TypeInt4,
   TypeInt8,
   TypeInteger,
-  TypeInterval,
-  TypeJSON,
-  TypeJSONB,
-  TypeMACAddr,
-  TypeMACAddr8,
-  TypeMoney,
   TypeName,
   TypeNumeric,
   TypeReal,
@@ -44,14 +32,13 @@ import {
   TypeSmallSerial,
   TypeText,
   TypeTime,
-  TypeTimeTZ,
   TypeTimestamp,
   TypeTimestampTZ,
   TypeTimestampWOTZ,
   TypeTimestampWTZ,
+  TypeTimeTZ,
   TypeTimeWOTZ,
   TypeTimeWTZ,
-  TypeUUID,
   TypeVarChar,
   TypeXID,
   TypeXID8,
@@ -317,7 +304,7 @@ export function quote(s: string): string {
   if (s.length >= 2 && s[0] === "'" && s[s.length - 1] === "'") {
     return s
   }
-  return "'" + s.replace(/'/g, "''") + "'"
+  return `'${s.replace(/'/g, "''")}'`
 }
 
 /** Schema-qualify a type name if it has a schema. */

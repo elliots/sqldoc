@@ -2,6 +2,13 @@
 
 import Foundation
 
+struct Address: Codable {
+    let street: String
+    let city: String
+    let zip: String
+    let country: String
+}
+
 struct Post: Codable {
     let id: Int64
     let userId: Int64
@@ -57,9 +64,9 @@ struct User: Codable {
     let age: Int?
     let isActive: Bool
     let metadata: String?
-    let address: Any?
+    let address: Address?
     let createdAt: Date
-    let tags: Any?
+    let tags: [String]?
     let avatar: Data?
     let balance: Decimal?
     let externalId: UUID?

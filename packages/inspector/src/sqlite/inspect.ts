@@ -1,6 +1,9 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/sqlite/inspect.go, sql/sqlite/driver_oss.go
 
+import { modeInspectRealm, modeInspectSchema, validString } from '../internal/sqlx.ts'
+import type { ExecQuerier, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
+import { InspectMode, NotExistError } from '../schema/inspect.ts'
 import type {
   Attr,
   Check,
@@ -15,33 +18,30 @@ import type {
   Trigger,
   View,
 } from '../schema/schema.ts'
-import type { ExecQuerier, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
-import { InspectMode, NotExistError } from '../schema/inspect.ts'
-import { modeInspectRealm, modeInspectSchema, validString } from '../internal/sqlx.ts'
 import {
   type AutoIncrement,
   type CreateStmt,
-  type FileAttr,
-  type IndexOrigin,
-  type IndexPredicate,
-  type Strict,
-  type WithoutRowID,
   columnsQuery,
   databasesQuery,
   databasesQueryArgs,
   defaultExpr,
+  type FileAttr,
   fksQuery,
   hasAttr,
+  type IndexOrigin,
+  type IndexPredicate,
   indexColumnsQuery,
   indexesQuery,
   mainFile,
-  parseType,
   parseTriggerMeta,
+  parseType,
+  type Strict,
   scanExpr,
   tablesQuery,
   triggersQuery,
   viewDef,
   viewsQuery,
+  type WithoutRowID,
 } from './driver.ts'
 
 // -- SQLite Inspector --
@@ -420,7 +420,7 @@ export class SqliteInspector {
     const args: unknown[] = []
 
     if (opts?.tables && opts.tables.length > 0) {
-      query += ' AND sqlite_master.name IN (' + opts.tables.map(() => '?').join(', ') + ')'
+      query += ` AND sqlite_master.name IN (${opts.tables.map(() => '?').join(', ')})`
       args.push(...opts.tables)
     }
 
@@ -444,11 +444,11 @@ export class SqliteInspector {
   // -- Regex patterns for FK and CHECK constraint extraction --
 
   private static reFKC =
-    /(?:[(,]\s*)[\"`]*(\w+)[\"`]*[^,]*\s+CONSTRAINT\s+[\"`]*(\w+)[\"`]*\s+REFERENCES\s+[\"`]*(\w+)[\"`]*\s*\(([,\"` \w]+)\)/gi
+    /(?:[(,]\s*)["`]*(\w+)["`]*[^,]*\s+CONSTRAINT\s+["`]*(\w+)["`]*\s+REFERENCES\s+["`]*(\w+)["`]*\s*\(([,"` \w]+)\)/gi
   private static reFKT =
-    /CONSTRAINT\s+[\"`]*(\w+)[\"`]*\s+FOREIGN\s+KEY\s*\(([,\"` \w]+)\)\s+REFERENCES\s+[\"`]*(\w+)[\"`]*\s*\(([,\"` \w]+)\)/gi
-  private static reCheck = /(?:CONSTRAINT\s+[\"`]?(\w+)[\"`]?\s+)?CHECK\s*\(/gi
-  private static reAutoinc = /(?:[(,]\s*)[\"`]?(\w+)[\"`]?\s+INTEGER\s+[^,]*PRIMARY\s+KEY\s+[^,]*AUTOINCREMENT/i
+    /CONSTRAINT\s+["`]*(\w+)["`]*\s+FOREIGN\s+KEY\s*\(([,"` \w]+)\)\s+REFERENCES\s+["`]*(\w+)["`]*\s*\(([,"` \w]+)\)/gi
+  private static reCheck = /(?:CONSTRAINT\s+["`]?(\w+)["`]?\s+)?CHECK\s*\(/gi
+  private static reAutoinc = /(?:[(,]\s*)["`]?(\w+)["`]?\s+INTEGER\s+[^,]*PRIMARY\s+KEY\s+[^,]*AUTOINCREMENT/i
 
   /** Fill FK constraint names from CREATE TABLE statement. */
   private fillConstName(t: Table): void {
@@ -496,7 +496,7 @@ export class SqliteInspector {
     const createStmt = hasAttr<CreateStmt>(t.attrs, 'create_stmt')
     if (!createStmt) return
 
-    let sql = createStmt.S
+    const sql = createStmt.S
     SqliteInspector.reCheck.lastIndex = 0
 
     for (let i = 0; i < sql.length; ) {

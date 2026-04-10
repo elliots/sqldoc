@@ -8,6 +8,7 @@ class User < ApplicationRecord
   has_many :comments
 
   attribute :metadata, :json
+  attribute :tags, :array
   attribute :avatar, :binary
   attribute :balance, :decimal
 

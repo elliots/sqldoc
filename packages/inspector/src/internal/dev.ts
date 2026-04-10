@@ -1,9 +1,23 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/dev.go
 
-import type { ExecQuerier } from '../schema/inspect.ts'
-import type { Inspector } from '../schema/inspect.ts'
-import { scanStmts } from '../migrate/lex.ts'
+import type { Stmt } from '../migrate/lex.ts'
+import { postgresScanStmts } from '../postgres/driver.ts'
+import { mysqlScanStmts } from '../mysql/driver.ts'
+import { sqliteScanStmts } from '../sqlite/driver.ts'
+
+/** Get the dialect-specific statement scanner. Matches Go Driver.ScanStmts per dialect. */
+function dialectScanner(dialect?: string): (input: string) => Stmt[] {
+  switch (dialect) {
+    case 'mysql':
+      return mysqlScanStmts
+    case 'sqlite':
+      return sqliteScanStmts
+    default:
+      return postgresScanStmts
+  }
+}
+import type { ExecQuerier, Inspector } from '../schema/inspect.ts'
 import type { Realm } from '../schema/schema.ts'
 
 /** A function that restores the dev database to its pre-snapshot state. */
@@ -100,13 +114,25 @@ export async function snapshot(
   files: string[],
   opts: SnapshotOptions & { restore: RestoreFunc },
 ): Promise<Realm> {
-  // Execute each SQL file's statements against the dev database
+  // Execute each SQL file's statements against the dev database.
+  // Uses dialect-specific scanner (matches Go Driver.ScanStmts per dialect).
+  // Batches up to 50 statements per exec call, falls back to one-by-one on failure.
+  const dialectScan = dialectScanner(opts.dialect)
   for (const sql of files) {
     if (sql.trim() === '') continue
-    const statements = scanStmts(sql)
-    for (const stmt of statements) {
-      if (stmt.text.trim() === '') continue
-      await db.exec(stmt.text)
+    const statements = dialectScan(sql).filter((s) => s.text.trim() !== '')
+    const BATCH_SIZE = 50
+    for (let i = 0; i < statements.length; i += BATCH_SIZE) {
+      const batch = statements.slice(i, i + BATCH_SIZE)
+      const batchSQL = batch.map((s) => s.text).join(';\n') + ';'
+      try {
+        await db.exec(batchSQL)
+      } catch {
+        // On batch failure, fall back to one-by-one for precise errors
+        for (const stmt of batch) {
+          await db.exec(stmt.text)
+        }
+      }
     }
   }
 

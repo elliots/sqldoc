@@ -196,17 +196,17 @@ describe('renderChanges', () => {
     expect(lines[6]).toBe('    - legacy_id')
   })
 
-  it('renders add_column without type info', () => {
+  it('renders add_column with type info', () => {
     const changes: Change[] = [
       {
         type: 'modify_table',
         T: { name: 'users', columns: [] },
-        changes: [{ type: 'add_column', C: { name: 'status' } }],
+        changes: [{ type: 'add_column', C: { name: 'status', type: { type: { kind: 'string', T: 'text' } } } }],
       },
     ]
     const lines = renderChanges(changes).map(stripAnsi)
     expect(lines).toHaveLength(2)
-    expect(lines[1]).toBe('    + status')
+    expect(lines[1]).toBe('    + status (text)')
   })
 
   it('renders modify_column with only nullability change', () => {

@@ -2,6 +2,8 @@
 // Source: sql/mysql/driver_oss.go, sql/mysql/inspect_oss.go
 
 import type { SchemaType } from '../schema/schema.ts'
+import { Scanner } from '../migrate/lex.ts'
+import type { Stmt } from '../migrate/lex.ts'
 
 // -- MySQL Type Constants --
 
@@ -81,8 +83,7 @@ export const systemSchemas = ['information_schema', 'innodb', 'mysql', 'performa
 
 // -- SQL Queries for MySQL information_schema inspection --
 
-export const variablesQuery =
-  'SELECT @@version, @@collation_server, @@character_set_server, @@lower_case_table_names'
+export const variablesQuery = 'SELECT @@version, @@collation_server, @@character_set_server, @@lower_case_table_names'
 
 export const schemasQuery =
   "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` NOT IN ('information_schema','innodb','mysql','performance_schema','sys') ORDER BY `SCHEMA_NAME`"
@@ -301,7 +302,7 @@ export function parseColumn(typ: string): { parts: string[]; size: number; unsig
     typ = typ.slice(0, commentIdx).trim()
   }
 
-  const parts = typ.split(/[() ,]+/).filter(p => p !== '')
+  const parts = typ.split(/[() ,]+/).filter((p) => p !== '')
   if (parts.length === 0) {
     throw new Error(`unexpected or empty type "${typ}"`)
   }
@@ -417,7 +418,7 @@ export function parseType(raw: string): SchemaType {
       if (!rv) {
         throw new Error(`unexpected enum type: "${raw}"`)
       }
-      const values = rv.split("','").map(v => v.replace(/^'|'$/g, ''))
+      const values = rv.split("','").map((v) => v.replace(/^'|'$/g, ''))
       if (t === TypeEnum) {
         return { kind: 'enum', T: TypeEnum, values }
       }
@@ -465,7 +466,7 @@ export function parseType(raw: string): SchemaType {
 
 // -- Helper: unescape backslash-escaped strings from information_schema --
 
-export function unescape(s: string): string {
+export function unescapeStr(s: string): string {
   let result = ''
   for (let i = 0; i < s.length; i++) {
     const c = s[i]
@@ -508,4 +509,16 @@ export function storedOrVirtual(typ: string | undefined): string {
   const upper = typ.toUpperCase()
   if (upper === stored || upper === persistent) return stored
   return virtual
+}
+
+/** MySQL-specific statement scanner. Matches Go Driver.ScanStmts. */
+export function mysqlScanStmts(input: string): Stmt[] {
+  return new Scanner({
+    matchBegin: true,
+    backslashEscapes: true,
+    hashComments: true,
+    // MySQL/MariaDB do NOT support these:
+    matchBeginAtomic: false,
+    matchDollarQuote: false,
+  }).scan(input)
 }

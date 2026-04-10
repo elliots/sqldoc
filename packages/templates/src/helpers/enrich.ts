@@ -149,7 +149,7 @@ export interface EnrichedFunction {
  * Schema-aware: multi-schema realms get schema-prefixed pascalNames (e.g. AuthUser),
  * single-schema realms produce identical output to pre-multi-schema behavior.
  */
-export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
+export function enrichRealm(ctx: TemplateContext): EnrichedSchema {
   const rawTables = getTablesFromRealm(ctx.realm)
 
   // ── Schema detection ──────────────────────────────────────────
@@ -325,12 +325,14 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
       })),
       returnType: fn.ret
         ? {
-            type: fn.ret.type.T ?? fn.ret.raw ?? 'unknown',
+            type: fn.ret.raw ?? fn.ret.type.T ?? 'unknown',
             category: typeCategory(fn.ret.type),
-            compositeFields:
-              fn.ret.type.kind === 'composite' && 'fields' in fn.ret.type
-                ? fn.ret.type.fields.map((f) => ({ name: f.name, type: f.type.T }))
-                : undefined,
+            compositeFields: (() => {
+              if (fn.ret.type.kind !== 'composite') return undefined
+              const fields = (fn.ret.type as any).fields ?? (fn.ret.type as any).compositeFields
+              if (!fields?.length) return undefined
+              return fields.map((f: any) => ({ name: f.name, type: f.type?.T ?? 'unknown' }))
+            })(),
           }
         : undefined,
       language: fn.lang,
@@ -397,7 +399,7 @@ function enrichColumn(
   col: Column,
   parentName: string,
   templateName: string,
-  allFileTags: TemplateContext<any>['allFileTags'],
+  allFileTags: TemplateContext['allFileTags'],
   pkColumns?: Set<string>,
   fkMap?: Map<string, { table: string; column: string; schema: string }>,
 ): EnrichedColumn {
@@ -418,8 +420,11 @@ function enrichColumn(
 
   // Extract composite fields from SchemaType
   let compositeFields: Array<{ name: string; type: string }> | undefined
-  if (col.type.type.kind === 'composite' && 'fields' in col.type.type) {
-    compositeFields = col.type.type.fields.map((f) => ({ name: f.name, type: f.type.T }))
+  if (col.type.type.kind === 'composite') {
+    const fields = (col.type.type as any).fields ?? (col.type.type as any).compositeFields
+    if (fields?.length) {
+      compositeFields = fields.map((f: any) => ({ name: f.name, type: f.type?.T ?? 'unknown' }))
+    }
   }
 
   return {

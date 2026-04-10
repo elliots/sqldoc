@@ -7,15 +7,14 @@
 // We compare STRUCTURAL equivalence: same schemas, tables, columns, types, indexes, FKs --
 // not exact JSON equality, since the two formats differ in shape.
 
-import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import { createInspector } from '../inspector.ts'
-import type { InspectorRunner } from '../inspector.ts'
-import type { AtlasRealm, AtlasSchema, AtlasTable, AtlasColumn, AtlasForeignKey } from '@sqldoc/db'
-import pglitePlugin from '@sqldoc/db-pglite'
+import { describe, it } from 'node:test'
+import type { AtlasRealm } from '@sqldoc/db'
 import { createSqliteAdapter } from '@sqldoc/db'
+import pglitePlugin from '@sqldoc/db-pglite'
+import { createInspector } from '../inspector.ts'
 
 // -- Snapshot Loading --
 
@@ -92,57 +91,54 @@ function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResul
   let columnsCompared = 0
 
   // Compare schema count and names
-  const actualSchemaNames = actual.schemas.map(s => s.name).sort()
-  const snapSchemaNames = snapshot.schemas.map(s => s.name).sort()
+  const actualSchemaNames = actual.schemas.map((s) => s.name).sort()
+  const snapSchemaNames = snapshot.schemas.map((s) => s.name).sort()
 
   if (actualSchemaNames.length !== snapSchemaNames.length) {
     differences.push(
       `Schema count: actual=${actualSchemaNames.length} snapshot=${snapSchemaNames.length} ` +
-      `(actual: [${actualSchemaNames}], snapshot: [${snapSchemaNames}])`,
+        `(actual: [${actualSchemaNames}], snapshot: [${snapSchemaNames}])`,
     )
   }
 
   // Compare each schema
   for (const snapSchema of snapshot.schemas) {
-    const actualSchema = actual.schemas.find(s => s.name === snapSchema.name)
+    const actualSchema = actual.schemas.find((s) => s.name === snapSchema.name)
     if (!actualSchema) {
       differences.push(`Missing schema: "${snapSchema.name}"`)
       continue
     }
 
     // Compare tables
-    const snapTableNames = (snapSchema.tables ?? []).map(t => t.name).sort()
-    const actualTableNames = (actualSchema.tables ?? []).map(t => t.name).sort()
+    const snapTableNames = (snapSchema.tables ?? []).map((t) => t.name).sort()
+    const actualTableNames = (actualSchema.tables ?? []).map((t) => t.name).sort()
 
     if (snapTableNames.join(',') !== actualTableNames.join(',')) {
-      const missing = snapTableNames.filter(n => !actualTableNames.includes(n))
-      const extra = actualTableNames.filter(n => !snapTableNames.includes(n))
+      const missing = snapTableNames.filter((n) => !actualTableNames.includes(n))
+      const extra = actualTableNames.filter((n) => !snapTableNames.includes(n))
       if (missing.length) differences.push(`Missing tables in "${snapSchema.name}": [${missing}]`)
       if (extra.length) differences.push(`Extra tables in "${snapSchema.name}": [${extra}]`)
     }
 
     // Compare each table
     for (const snapTable of snapSchema.tables ?? []) {
-      const actualTable = (actualSchema.tables ?? []).find(t => t.name === snapTable.name)
+      const actualTable = (actualSchema.tables ?? []).find((t) => t.name === snapTable.name)
       if (!actualTable) continue
 
       tablesCompared++
       const tablePath = `${snapSchema.name}.${snapTable.name}`
 
       // Compare columns
-      const snapColNames = snapTable.columns.map(c => c.name)
-      const actualColNames = (actualTable.columns ?? []).map(c => c.name!)
+      const snapColNames = snapTable.columns.map((c) => c.name)
+      const actualColNames = (actualTable.columns ?? []).map((c) => c.name!)
 
       if (snapColNames.join(',') !== actualColNames.join(',')) {
-        differences.push(
-          `Column mismatch in ${tablePath}: ` +
-          `snapshot=[${snapColNames}] actual=[${actualColNames}]`,
-        )
+        differences.push(`Column mismatch in ${tablePath}: ` + `snapshot=[${snapColNames}] actual=[${actualColNames}]`)
       }
 
       // Compare each column's type
       for (const snapCol of snapTable.columns) {
-        const actualCol = (actualTable.columns ?? []).find(c => c.name === snapCol.name)
+        const actualCol = (actualTable.columns ?? []).find((c) => c.name === snapCol.name)
         if (!actualCol) continue
 
         columnsCompared++
@@ -172,21 +168,16 @@ function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResul
       const snapFkCount = (snapTable.foreign_keys ?? []).length
       const actualFkCount = (actualTable.foreign_keys ?? []).length
       if (snapFkCount !== actualFkCount) {
-        differences.push(
-          `Foreign key count mismatch on ${tablePath}: snapshot=${snapFkCount} actual=${actualFkCount}`,
-        )
+        differences.push(`Foreign key count mismatch on ${tablePath}: snapshot=${snapFkCount} actual=${actualFkCount}`)
       }
 
       // Compare FK details
       for (const snapFk of snapTable.foreign_keys ?? []) {
         const actualFk = (actualTable.foreign_keys ?? []).find(
-          fk => fk.ref_table === snapFk.ref_table &&
-            arraysEqual(fk.columns ?? [], snapFk.columns ?? []),
+          (fk) => fk.ref_table === snapFk.ref_table && arraysEqual(fk.columns ?? [], snapFk.columns ?? []),
         )
         if (!actualFk) {
-          differences.push(
-            `Missing FK on ${tablePath}: columns=[${snapFk.columns}] -> ${snapFk.ref_table}`,
-          )
+          differences.push(`Missing FK on ${tablePath}: columns=[${snapFk.columns}] -> ${snapFk.ref_table}`)
         }
       }
 
@@ -194,41 +185,37 @@ function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResul
       const snapIdxCount = (snapTable.indexes ?? []).length
       const actualIdxCount = (actualTable.indexes ?? []).length
       if (snapIdxCount !== actualIdxCount) {
-        differences.push(
-          `Index count mismatch on ${tablePath}: snapshot=${snapIdxCount} actual=${actualIdxCount}`,
-        )
+        differences.push(`Index count mismatch on ${tablePath}: snapshot=${snapIdxCount} actual=${actualIdxCount}`)
       }
     }
 
     // Compare views
-    const snapViewNames = (snapSchema.views ?? []).map(v => v.name).sort()
-    const actualViewNames = (actualSchema.views ?? []).map(v => v.name).sort()
+    const snapViewNames = (snapSchema.views ?? []).map((v) => v.name).sort()
+    const actualViewNames = (actualSchema.views ?? []).map((v) => v.name).sort()
     if (snapViewNames.join(',') !== actualViewNames.join(',')) {
-      const missing = snapViewNames.filter(n => !actualViewNames.includes(n))
-      const extra = actualViewNames.filter(n => !snapViewNames.includes(n))
+      const missing = snapViewNames.filter((n) => !actualViewNames.includes(n))
+      const extra = actualViewNames.filter((n) => !snapViewNames.includes(n))
       if (missing.length) differences.push(`Missing views in "${snapSchema.name}": [${missing}]`)
       if (extra.length) differences.push(`Extra views in "${snapSchema.name}": [${extra}]`)
     }
 
     // Compare functions
-    const snapFuncNames = (snapSchema.funcs ?? []).map(f => f.name).sort()
-    const actualFuncNames = (actualSchema.funcs ?? []).map(f => f.name).sort()
+    const snapFuncNames = (snapSchema.funcs ?? []).map((f) => f.name).sort()
+    const actualFuncNames = (actualSchema.funcs ?? []).map((f) => f.name).sort()
     if (snapFuncNames.join(',') !== actualFuncNames.join(',')) {
-      const missing = snapFuncNames.filter(n => !actualFuncNames.includes(n))
-      const extra = actualFuncNames.filter(n => !snapFuncNames.includes(n))
+      const missing = snapFuncNames.filter((n) => !actualFuncNames.includes(n))
+      const extra = actualFuncNames.filter((n) => !snapFuncNames.includes(n))
       if (missing.length) differences.push(`Missing funcs in "${snapSchema.name}": [${missing}]`)
       if (extra.length) differences.push(`Extra funcs in "${snapSchema.name}": [${extra}]`)
     }
 
     // Compare composite types (only if snapshot has them -- WASI snapshots may omit composites)
-    const snapCompNames = (snapSchema.composite_types ?? []).map(c => c.name).sort()
-    const actualCompNames = (actualSchema.composite_types ?? []).map(c => c.name).sort()
+    const snapCompNames = (snapSchema.composite_types ?? []).map((c) => c.name).sort()
+    const actualCompNames = (actualSchema.composite_types ?? []).map((c) => c.name).sort()
     if (snapCompNames.length > 0 && snapCompNames.join(',') !== actualCompNames.join(',')) {
-      const missing = snapCompNames.filter(n => !actualCompNames.includes(n))
+      const missing = snapCompNames.filter((n) => !actualCompNames.includes(n))
       if (missing.length) {
-        differences.push(
-          `Missing composite types in "${snapSchema.name}": [${missing}]`,
-        )
+        differences.push(`Missing composite types in "${snapSchema.name}": [${missing}]`)
       }
     }
   }
@@ -253,15 +240,15 @@ function normalizeTypeName(t: string): string {
   }
   // Common aliases
   const aliases: Record<string, string> = {
-    'int': 'integer',
-    'int4': 'integer',
-    'int8': 'bigint',
-    'float4': 'real',
-    'float8': 'double precision',
-    'bool': 'boolean',
-    'varchar': 'character varying',
-    'timestamp': 'timestamp without time zone',
-    'timestamptz': 'timestamp with time zone',
+    int: 'integer',
+    int4: 'integer',
+    int8: 'bigint',
+    float4: 'real',
+    float8: 'double precision',
+    bool: 'boolean',
+    varchar: 'character varying',
+    timestamp: 'timestamp without time zone',
+    timestamptz: 'timestamp with time zone',
   }
   return aliases[lower] ?? lower
 }
@@ -319,8 +306,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
         }
       }
 
-      assert.ok(comparison.pass,
-        `Structural differences found:\n${comparison.differences.join('\n')}`)
+      assert.ok(comparison.pass, `Structural differences found:\n${comparison.differences.join('\n')}`)
     } finally {
       await inspector.close()
     }
@@ -334,7 +320,10 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
 
     const schemaSql = fs.readFileSync(path.join(testsDir, 'pet-store-sqlite/schema.sql'), 'utf-8')
     const includeReviewsSql = fs.readFileSync(path.join(testsDir, 'pet-store-sqlite/include/reviews.sql'), 'utf-8')
-    const externalLocationsSql = fs.readFileSync(path.join(testsDir, 'pet-store-sqlite/external/locations.sql'), 'utf-8')
+    const externalLocationsSql = fs.readFileSync(
+      path.join(testsDir, 'pet-store-sqlite/external/locations.sql'),
+      'utf-8',
+    )
 
     const db = await createSqliteAdapter(':memory:')
     const inspector = await createInspector({ db, dialect: 'sqlite' })
@@ -356,8 +345,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
         }
       }
 
-      assert.ok(comparison.pass,
-        `Structural differences found:\n${comparison.differences.join('\n')}`)
+      assert.ok(comparison.pass, `Structural differences found:\n${comparison.differences.join('\n')}`)
     } finally {
       await inspector.close()
     }
@@ -398,8 +386,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
         }
       }
 
-      assert.ok(comparison.pass,
-        `Structural differences found:\n${comparison.differences.join('\n')}`)
+      assert.ok(comparison.pass, `Structural differences found:\n${comparison.differences.join('\n')}`)
     } finally {
       await inspector.close()
     }
@@ -437,8 +424,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
         }
       }
 
-      assert.ok(comparison.pass,
-        `Structural differences found:\n${comparison.differences.join('\n')}`)
+      assert.ok(comparison.pass, `Structural differences found:\n${comparison.differences.join('\n')}`)
     } catch (err: any) {
       // Kitchen-sink uses extensions (tablefunc, etc.) that PgLite may not support.
       // If the SQL execution fails due to missing extensions, skip rather than fail.

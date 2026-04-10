@@ -1,8 +1,9 @@
 // MySQL integration tests against Docker/testcontainers
 // Opt-in via MYSQL_TEST=1 (container startup is slow ~30s)
 // Usage: MYSQL_TEST=1 bun test packages/inspector/src/__tests__/mysql/
-import { describe, it, before, after } from 'node:test'
+
 import assert from 'node:assert/strict'
+import { after, before, describe, it } from 'node:test'
 
 // MySQL tests are slow (container startup ~30s). Opt-in via MYSQL_TEST=1.
 const optIn = process.env.MYSQL_TEST === '1'
@@ -49,16 +50,16 @@ if (!optIn) {
       const schemas = result.schema!.schemas
       assert.ok(schemas.length > 0, 'should have at least one schema')
 
-      let usersTable = undefined
+      let usersTable
       for (const schema of schemas) {
-        usersTable = schema.tables?.find(t => t.name === 'users')
+        usersTable = schema.tables?.find((t) => t.name === 'users')
         if (usersTable) break
       }
       assert.ok(usersTable, 'should find users table')
       assert.ok(usersTable!.columns, 'users should have columns')
       assert.equal(usersTable!.columns!.length, 5, 'users should have 5 columns')
 
-      const colNames = usersTable!.columns!.map(c => c.name)
+      const colNames = usersTable!.columns!.map((c) => c.name)
       assert.deepEqual(colNames, ['id', 'name', 'email', 'age', 'active'])
 
       assert.ok(usersTable!.primary_key, 'should have primary key')
@@ -74,15 +75,20 @@ if (!optIn) {
       const result = await inspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      let tableNames: string[] = []
+      const tableNames: string[] = []
       for (const schema of result.schema!.schemas) {
-        tableNames.push(...(schema.tables ?? []).map(t => t.name))
+        tableNames.push(...(schema.tables ?? []).map((t) => t.name))
       }
       tableNames.sort()
 
       const expectedTables = [
-        'adoptions', 'categories', 'legacy_inventory', 'medical_records',
-        'owners', 'pets', 'staff',
+        'adoptions',
+        'categories',
+        'legacy_inventory',
+        'medical_records',
+        'owners',
+        'pets',
+        'staff',
       ].sort()
       assert.deepEqual(tableNames, expectedTables, 'should have all 7 pet store tables')
     })
@@ -100,18 +106,17 @@ if (!optIn) {
       const result = await inspector.inspect([sql])
       assert.ok(result.schema, 'inspect should return schema')
 
-      let featuresTable = undefined
+      let featuresTable
       for (const schema of result.schema!.schemas) {
-        featuresTable = schema.tables?.find(t => t.name === 'features')
+        featuresTable = schema.tables?.find((t) => t.name === 'features')
         if (featuresTable) break
       }
       assert.ok(featuresTable, 'should find features table')
 
-      const statusCol = featuresTable!.columns!.find(c => c.name === 'status')
+      const statusCol = featuresTable!.columns!.find((c) => c.name === 'status')
       assert.ok(statusCol?.type?.T, 'status should have type T')
 
-      assert.ok(featuresTable!.indexes && featuresTable!.indexes.length > 0,
-        'should have indexes')
+      assert.ok(featuresTable!.indexes && featuresTable!.indexes.length > 0, 'should have indexes')
     })
 
     it('diffs two MySQL schemas', async () => {
@@ -133,8 +138,7 @@ if (!optIn) {
 
       const hasStatements = result.statements && result.statements.length > 0
       const hasChanges = result.changes && result.changes.length > 0
-      assert.ok(hasStatements || hasChanges,
-        'diff should produce statements or changes for added columns')
+      assert.ok(hasStatements || hasChanges, 'diff should produce statements or changes for added columns')
     })
   })
 }

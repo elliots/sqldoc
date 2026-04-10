@@ -7,30 +7,16 @@ import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 import { validatePostgresExtensions } from './extensions.ts'
 
-export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
-export type { OnMissingPlugin } from './db/plugin-resolver.ts'
-export { extractScheme, registerBuiltin, resolveAdapterPlugin, schemeToPackage } from './db/plugin-resolver.ts'
-export { createPostgresDockerAdapter } from './db/postgres-docker.ts'
-export { createSqliteAdapter } from './db/sqlite.ts'
-export type {
-  AdapterPluginContext,
-  DatabaseAdapterPlugin,
-} from './db/types.ts'
-export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
-export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
-
 // Re-export schema types from @sqldoc/inspector
 export type {
-  // Database adapter interface (canonical definition)
-  DatabaseAdapter,
-  ExecResult,
-  QueryResult,
   // Schema types
   ArrayType,
   Attr,
   BinaryType,
   BoolType,
   Cast,
+  // Change types
+  Change,
   Charset,
   Check,
   Collation,
@@ -39,10 +25,19 @@ export type {
   Comment,
   CompositeType,
   CurrencyType,
+  // Database adapter interface (canonical definition)
+  DatabaseAdapter,
   DecimalType,
+  // Inspect interfaces
+  Differ,
+  DiffOptions,
+  // Inspector API
+  DiffSource,
   DomainType,
   EnumType,
   EventTrigger,
+  ExecQuerier,
+  ExecResult,
   Expr,
   Extension,
   FloatType,
@@ -52,15 +47,25 @@ export type {
   GeneratedExpr,
   Index,
   IndexPart,
+  InspectOptions,
+  Inspector,
+  InspectorOptions,
+  InspectorResult,
+  InspectorRunner,
+  InspectRealmOption,
   IntegerType,
   IntervalType,
   JSONType,
   Literal,
   NetworkType,
+  Normalizer,
   ObjectRef,
   Operator,
+  Plan,
+  PlanApplier,
   Policy,
   Proc,
+  QueryResult,
   RangeType,
   RawExpr,
   Realm,
@@ -82,38 +87,34 @@ export type {
   UnsupportedType,
   UUIDType,
   View,
-  // Inspector API
-  DiffSource,
-  InspectorOptions,
-  InspectorResult,
-  InspectorRunner,
-  // Inspect interfaces
-  Differ,
-  DiffOptions,
-  ExecQuerier,
-  Inspector,
-  InspectOptions,
-  InspectRealmOption,
-  Normalizer,
-  // Change types
-  Change,
-  Plan,
-  PlanApplier,
 } from '@sqldoc/inspector'
-
 export {
-  // Inspector factory
-  createInspector,
-  // Type utilities
-  isCustomType,
-  typeCategory,
+  ChangeKind,
+  Changes,
   // DSL builder functions
   commentFor,
+  // Inspector factory
+  createInspector,
+  // Inspect enums/classes
+  DiffMode,
   enumValues,
+  // Exclusion filtering
+  excludeRealm,
+  excludeSchema,
   findColumn,
   findIndex,
   findTable,
+  // Tag helpers
+  findTag,
+  findTags,
   hasAttr,
+  hasTag,
+  InspectMode,
+  // Type utilities
+  isCustomType,
+  isNotExistError,
+  matchPattern,
+  NotExistError,
   newCheck,
   newColumn,
   newForeignKey,
@@ -125,22 +126,19 @@ export {
   newTrigger,
   newView,
   setAttr,
-  // Tag helpers
-  findTag,
-  findTags,
-  hasTag,
-  // Inspect enums/classes
-  DiffMode,
-  InspectMode,
-  isNotExistError,
-  NotExistError,
-  ChangeKind,
-  Changes,
-  // Exclusion filtering
-  excludeRealm,
-  excludeSchema,
-  matchPattern,
+  typeCategory,
 } from '@sqldoc/inspector'
+export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
+export type { OnMissingPlugin } from './db/plugin-resolver.ts'
+export { extractScheme, registerBuiltin, resolveAdapterPlugin, schemeToPackage } from './db/plugin-resolver.ts'
+export { createPostgresDockerAdapter } from './db/postgres-docker.ts'
+export { createSqliteAdapter } from './db/sqlite.ts'
+export type {
+  AdapterPluginContext,
+  DatabaseAdapterPlugin,
+} from './db/types.ts'
+export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
+export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
 
 export interface CreateRunnerConfig {
   /** SQL dialect (required) */

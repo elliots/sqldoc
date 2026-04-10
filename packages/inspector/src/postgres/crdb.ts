@@ -1,24 +1,21 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/crdb_oss.go
 
-import type { DatabaseAdapter } from '../adapter.ts'
-import type { InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
-import type { Attr, Column, Index, Realm, Schema, Table } from '../schema/schema.ts'
-import type { Change } from '../schema/migrate.ts'
-import type { DiffOptions } from '../schema/inspect.ts'
-import { PostgresInspector } from './inspect.ts'
+import type { DiffOptions, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
+import type { Attr, Column, Realm, Schema, Table } from '../schema/schema.ts'
 import { PostgresDiff } from './diff.ts'
 import {
   TypeBigInt,
   TypeInt,
+  TypeInt2,
   TypeInt8,
   TypeInt64,
   TypeInteger,
-  TypeInt2,
-  TypeSmallInt,
   TypeJSON,
   TypeJSONB,
+  TypeSmallInt,
 } from './driver.ts'
+import { PostgresInspector } from './inspect.ts'
 
 // -- Helper: find attribute by kind --
 
@@ -38,10 +35,6 @@ function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | 
  * - JSON is aliased to JSONB
  */
 export class CrdbInspector extends PostgresInspector {
-  constructor(db: DatabaseAdapter) {
-    super(db)
-  }
-
   /** Inspect a single schema, applying CRDB-specific patches. */
   async inspectSchema(name: string, opts?: InspectOptions): Promise<Schema> {
     const schema = await super.inspectSchema(name, opts)
@@ -95,10 +88,6 @@ export class CrdbInspector extends PostgresInspector {
  * - JSON is aliased to JSONB
  */
 export class CrdbDiff extends PostgresDiff {
-  constructor(schemaName?: string) {
-    super(schemaName)
-  }
-
   /**
    * Override column change to handle CRDB-specific serial type behavior.
    * All serial types in CockroachDB are implemented as bigint.

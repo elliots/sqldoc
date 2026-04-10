@@ -1,28 +1,13 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/sqlite/migrate.go, sql/sqlite/driver_oss.go
 
-import type {
-  Check,
-  Column,
-  ForeignKey,
-  Index,
-  Table,
-  Trigger,
-  View,
-} from '../schema/schema.ts'
-import type { Change } from '../schema/migrate.ts'
-import { ChangeKind } from '../schema/migrate.ts'
 import type { PlanDriver } from '../internal/plan.ts'
 import { Builder, mayWrap } from '../internal/sqlx.ts'
-import {
-  type AutoIncrement,
-  type IndexOrigin,
-  type IndexPredicate,
-  type Strict,
-  type WithoutRowID,
-  hasAttr,
-} from './driver.ts'
+import type { Change } from '../schema/migrate.ts'
+import { ChangeKind } from '../schema/migrate.ts'
+import type { Check, Column, ForeignKey, Index, Table, Trigger, View } from '../schema/schema.ts'
 import { formatType } from './convert.ts'
+import { type AutoIncrement, hasAttr, type IndexPredicate, type Strict, type WithoutRowID } from './driver.ts'
 
 // -- SQLite PlanDriver Implementation --
 
@@ -45,7 +30,7 @@ export class SqlitePlan implements PlanDriver {
     // Primary key (unless auto-increment, which is inlined on column).
     if (table.primaryKey && !autoincPK(table.primaryKey)) {
       const parts = table.primaryKey.parts
-        .map(p => {
+        .map((p) => {
           let s = quoteIdent(p.column ?? '')
           if (p.desc) s += ' DESC'
           return s
@@ -64,7 +49,7 @@ export class SqlitePlan implements PlanDriver {
       columnDefs.push(checkDef(chk))
     }
 
-    const body = columnDefs.map(d => `  ${d}`).join(',\n')
+    const body = columnDefs.map((d) => `  ${d}`).join(',\n')
     let sql = `${b.toString()} (\n${body}\n)`
 
     // Table options.
@@ -76,7 +61,7 @@ export class SqlitePlan implements PlanDriver {
       options.push('STRICT')
     }
     if (options.length > 0) {
-      sql += ' ' + options.join(', ')
+      sql += ` ${options.join(', ')}`
     }
 
     stmts.push(sql)
@@ -118,10 +103,7 @@ export class SqlitePlan implements PlanDriver {
 
   /** Generate SQL for modifying a view (drop + recreate). */
   modifyView(from: View, to: View): string[] {
-    return [
-      `DROP VIEW ${quoteIdent(from.name)}`,
-      `CREATE VIEW ${quoteIdent(to.name)} AS ${to.def ?? ''}`,
-    ]
+    return [`DROP VIEW ${quoteIdent(from.name)}`, `CREATE VIEW ${quoteIdent(to.name)} AS ${to.def ?? ''}`]
   }
 
   /** Generate SQL for creating a trigger. */
@@ -192,7 +174,7 @@ export class SqlitePlan implements PlanDriver {
    */
   private rebuildTable(from: Table, to: Table, changes: Change[]): string[] {
     const stmts: string[] = []
-    const tmpName = 'new_' + to.name
+    const tmpName = `new_${to.name}`
 
     // Step 1: Disable foreign keys.
     stmts.push('PRAGMA foreign_keys = off')
@@ -205,12 +187,16 @@ export class SqlitePlan implements PlanDriver {
     // Step 3: Copy rows from old table to new.
     const { fromCols, toCols } = computeCopyColumns(to, changes)
     if (toCols.length > 0) {
-      const toColsStr = toCols.map(c => quoteIdent(c)).join(', ')
-      const fromColsStr = fromCols.map(c => {
-        if (c.startsWith('IFNULL(')) return c
-        return quoteIdent(c)
-      }).join(', ')
-      stmts.push(`INSERT INTO ${quoteIdent(tmpName)} (${toColsStr}) SELECT ${fromColsStr} FROM ${quoteIdent(from.name)}`)
+      const toColsStr = toCols.map((c) => quoteIdent(c)).join(', ')
+      const fromColsStr = fromCols
+        .map((c) => {
+          if (c.startsWith('IFNULL(')) return c
+          return quoteIdent(c)
+        })
+        .join(', ')
+      stmts.push(
+        `INSERT INTO ${quoteIdent(tmpName)} (${toColsStr}) SELECT ${fromColsStr} FROM ${quoteIdent(from.name)}`,
+      )
     }
 
     // Step 4: Drop old table.
@@ -256,7 +242,7 @@ function isAlterable(changes: Change[]): boolean {
           }
         }
         // Only VIRTUAL generated columns can be added using ALTER TABLE.
-        const gen = col.attrs?.find(a => 'kind' in a && (a as any).kind === 'generated') as
+        const gen = col.attrs?.find((a) => 'kind' in a && (a as any).kind === 'generated') as
           | { type?: string }
           | undefined
         if (gen && (gen.type ?? '').toUpperCase() === 'STORED') {
@@ -288,16 +274,13 @@ function autoincPK(pk: Index): boolean {
  * Compute which columns to copy from old table to new table during rebuild.
  * Returns parallel arrays of from/to column names.
  */
-function computeCopyColumns(
-  to: Table,
-  changes: Change[],
-): { fromCols: string[]; toCols: string[] } {
+function computeCopyColumns(to: Table, changes: Change[]): { fromCols: string[]; toCols: string[] } {
   const fromCols: string[] = []
   const toCols: string[] = []
 
   for (const column of to.columns) {
     // Skip generated columns (computed automatically).
-    if (column.attrs?.some(a => 'kind' in a && (a as any).kind === 'generated')) {
+    if (column.attrs?.some((a) => 'kind' in a && (a as any).kind === 'generated')) {
       continue
     }
 
@@ -367,7 +350,7 @@ function addIndex(table: Table, idx: Index): string[] {
   sql += ` ON ${quoteIdent(table.name)}`
 
   const parts = idx.parts
-    .map(p => {
+    .map((p) => {
       let s = ''
       if (p.column) {
         s = quoteIdent(p.column)
@@ -412,8 +395,8 @@ function columnDef(c: Column): string {
   }
 
   // AUTOINCREMENT.
-  const inc = c.attrs?.find(a => 'kind' in a && (a as any).kind === 'autoincrement')
-  const gen = c.attrs?.find(a => 'kind' in a && (a as any).kind === 'generated') as
+  const inc = c.attrs?.find((a) => 'kind' in a && (a as any).kind === 'autoincrement')
+  const gen = c.attrs?.find((a) => 'kind' in a && (a as any).kind === 'generated') as
     | { expr: string; type?: string }
     | undefined
 
@@ -433,9 +416,9 @@ function fkDef(fk: ForeignKey): string {
     parts.push(`CONSTRAINT ${quoteIdent(fk.symbol)}`)
   }
   parts.push('FOREIGN KEY')
-  parts.push(`(${fk.columns.map(c => quoteIdent(c)).join(', ')})`)
+  parts.push(`(${fk.columns.map((c) => quoteIdent(c)).join(', ')})`)
   parts.push(`REFERENCES ${quoteIdent(fk.refTable)}`)
-  parts.push(`(${fk.refColumns.map(c => quoteIdent(c)).join(', ')})`)
+  parts.push(`(${fk.refColumns.map((c) => quoteIdent(c)).join(', ')})`)
   if (fk.onUpdate) parts.push(`ON UPDATE ${fk.onUpdate}`)
   if (fk.onDelete) parts.push(`ON DELETE ${fk.onDelete}`)
   return parts.join(' ')
@@ -476,13 +459,13 @@ function formatDefault(c: Column): string | undefined {
 
 /** Quote an identifier with backticks (SQLite style). */
 function quoteIdent(name: string): string {
-  return '`' + name + '`'
+  return `\`${name}\``
 }
 
 /** Wrap a string in single quotes if not already quoted. */
 function singleQuote(s: string): string {
   if (s.length >= 2 && s[0] === "'" && s[s.length - 1] === "'") return s
-  return "'" + s.replace(/'/g, "''") + "'"
+  return `'${s.replace(/'/g, "''")}'`
 }
 
 /** Create a new Builder configured for SQLite (backtick quoting). */

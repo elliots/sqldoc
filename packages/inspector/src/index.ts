@@ -1,91 +1,69 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 
-// Main API
-export { createInspector } from './inspector.ts'
-export type { DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
-
 // Database adapter interface
 export type { DatabaseAdapter, ExecResult, QueryResult } from './adapter.ts'
+export type { DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
+// Main API
+export { createInspector } from './inspector.ts'
 
 // Type utilities
 export { isCustomType, typeCategory } from './marshal.ts'
-
-// Schema types
+export type { Dir, File } from './migrate/dir.ts'
+// Migrate: Dir
+export { LocalFile, MemDir } from './migrate/dir.ts'
+export type { ScannerOptions, Stmt } from './migrate/lex.ts'
+// Migrate: Lexer
+export { directive, Scanner, scanStmts, stmtDirective, stmts } from './migrate/lex.ts'
+// Migrate: Types
 export type {
-  ArrayType,
-  Attr,
-  BinaryType,
-  BoolType,
-  Cast,
-  Charset,
-  Check,
-  Collation,
-  Column,
-  ColumnType,
-  Comment,
-  CompositeType,
-  CurrencyType,
-  DecimalType,
-  DomainType,
-  EnumType,
-  EventTrigger,
-  Expr,
-  Extension,
-  FloatType,
-  ForeignKey,
-  Func,
-  FuncArg,
-  GeneratedExpr,
-  Index,
-  IndexPart,
-  IntegerType,
-  IntervalType,
-  JSONType,
-  Literal,
-  NetworkType,
-  ObjectRef,
-  Operator,
-  Policy,
-  Proc,
-  RangeType,
-  RawExpr,
-  Realm,
-  ReferenceAction,
-  Rename,
-  RenameCandidate,
-  Schema,
-  SchemaType,
-  Sequence,
-  SerialType,
-  SpatialType,
-  StringType,
-  Table,
-  Tag,
-  TextSearchType,
-  TimeType,
-  Trigger,
-  TypeCategory,
-  UnsupportedType,
-  UUIDType,
-  View,
-} from './schema/schema.ts'
-
-// Inspect interfaces
-export { DiffMode, InspectMode, isNotExistError, NotExistError } from './schema/inspect.ts'
+  Differ as MigrateDiffer,
+  Driver,
+  ExecQuerier as MigrateExecQuerier,
+  Inspector as MigrateInspector,
+  Normalizer as MigrateNormalizer,
+  Plan as MigratePlan,
+  PlanApplier as MigratePlanApplier,
+  PlanChange,
+  Snapshoter,
+} from './migrate/migrate.ts'
+export type { TagIndex } from './migrate/tag.ts'
+// Migrate: Tags
+export { extractTagsFromStmts, parseStmtTags, parseTableName, parseTags, stmtTags } from './migrate/tag.ts'
+// DSL builder functions
+export {
+  commentFor,
+  enumValues,
+  findColumn,
+  findIndex,
+  findTable,
+  hasAttr,
+  newCheck,
+  newColumn,
+  newForeignKey,
+  newFunc,
+  newIndex,
+  newProc,
+  newSequence,
+  newTable,
+  newTrigger,
+  newView,
+  setAttr,
+} from './schema/dsl.ts'
+// Exclusion filtering
+export { excludeRealm, excludeSchema, matchPattern } from './schema/exclude.ts'
 export type {
   Differ,
   DiffOptions,
   ExecQuerier,
   ExecResult as InspectExecResult,
-  Inspector,
   InspectOptions,
+  Inspector,
   InspectRealmOption,
   Normalizer,
   QueryResult as InspectQueryResult,
 } from './schema/inspect.ts'
-
-// Migration / Change types
-export { ChangeKind, Changes } from './schema/migrate.ts'
+// Inspect interfaces
+export { DiffMode, InspectMode, isNotExistError, NotExistError } from './schema/inspect.ts'
 export type {
   AddAttr,
   AddCheck,
@@ -148,65 +126,75 @@ export type {
   RenameTrigger,
   RenameView,
 } from './schema/migrate.ts'
-
-// DSL builder functions
-export {
-  commentFor,
-  enumValues,
-  findColumn,
-  findIndex,
-  findTable,
-  hasAttr,
-  newCheck,
-  newColumn,
-  newForeignKey,
-  newFunc,
-  newIndex,
-  newProc,
-  newSequence,
-  newTable,
-  newTrigger,
-  newView,
-  setAttr,
-} from './schema/dsl.ts'
-
+// Migration / Change types
+export { ChangeKind, Changes } from './schema/migrate.ts'
+// Schema types
+export type {
+  ArrayType,
+  Attr,
+  BinaryType,
+  BoolType,
+  Cast,
+  Charset,
+  Check,
+  Collation,
+  Column,
+  ColumnType,
+  Comment,
+  CompositeType,
+  CurrencyType,
+  DecimalType,
+  DomainType,
+  EnumType,
+  EventTrigger,
+  Expr,
+  Extension,
+  FloatType,
+  ForeignKey,
+  Func,
+  FuncArg,
+  GeneratedExpr,
+  Index,
+  IndexPart,
+  IntegerType,
+  IntervalType,
+  JSONType,
+  Literal,
+  NetworkType,
+  ObjectRef,
+  Operator,
+  Policy,
+  Proc,
+  RangeType,
+  RawExpr,
+  Realm,
+  ReferenceAction,
+  Rename,
+  RenameCandidate,
+  Schema,
+  SchemaType,
+  Sequence,
+  SerialType,
+  SpatialType,
+  StringType,
+  Table,
+  Tag,
+  TextSearchType,
+  TimeType,
+  Trigger,
+  TypeCategory,
+  UnsupportedType,
+  UUIDType,
+  View,
+} from './schema/schema.ts'
 // Tag helpers
 export { findTag, findTags, hasTag } from './schema/tag.ts'
-
-// Exclusion filtering
-export { excludeRealm, excludeSchema, matchPattern } from './schema/exclude.ts'
-
-// Migrate: Lexer
-export { directive, Scanner, scanStmts, stmtDirective, stmts } from './migrate/lex.ts'
-export type { ScannerOptions, Stmt } from './migrate/lex.ts'
-
-// Migrate: Tags
-export { extractTagsFromStmts, parseStmtTags, parseTableName, parseTags, stmtTags } from './migrate/tag.ts'
-export type { TagIndex } from './migrate/tag.ts'
-
-// Migrate: Dir
-export { LocalFile, MemDir } from './migrate/dir.ts'
-export type { Dir, File } from './migrate/dir.ts'
-
-// Migrate: Types
-export type {
-  Driver,
-  Normalizer as MigrateNormalizer,
-  PlanChange,
-  Snapshoter,
-  Inspector as MigrateInspector,
-  Differ as MigrateDiffer,
-  ExecQuerier as MigrateExecQuerier,
-  PlanApplier as MigratePlanApplier,
-  Plan as MigratePlan,
-} from './migrate/migrate.ts'
-
+export type { Formatter, MigrationFile } from './sqltool/tool.ts'
 // sqltool formatters
 export {
+  dbmateFormatter,
+  flywayFormatter,
   golangMigrateFormatter,
   gooseFormatter,
-  flywayFormatter,
   liquibaseFormatter,
-  dbmateFormatter,
 } from './sqltool/tool.ts'
-export type { Formatter, MigrationFile } from './sqltool/tool.ts'

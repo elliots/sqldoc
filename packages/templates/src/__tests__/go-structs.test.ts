@@ -17,7 +17,7 @@ const testRealm: Realm = {
             { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
             {
               name: 'email',
-              type: { type: { kind: 'string', T: 'character varying', raw: 'varchar(255)' }, null: false },
+              type: { type: { kind: 'string', T: 'character varying' }, raw: 'varchar(255)', null: false },
             },
             { name: 'name', type: { type: { kind: 'string', T: 'text' }, null: true } },
             { name: 'age', type: { type: { kind: 'integer', T: 'integer' }, null: true } },

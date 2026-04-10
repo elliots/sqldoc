@@ -1,8 +1,18 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/inspect_oss.go
 
-import type { DatabaseAdapter, QueryResult } from '../adapter.ts'
-import type { Inspector, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
+import type { DatabaseAdapter } from '../adapter.ts'
+import {
+  linkForeignKeys,
+  modeInspectRealm,
+  modeInspectSchema,
+  scanBigInt,
+  scanBool,
+  scanNumber,
+  scanString,
+  validString,
+} from '../internal/sqlx.ts'
+import type { InspectOptions, Inspector, InspectRealmOption } from '../schema/inspect.ts'
 import { InspectMode } from '../schema/inspect.ts'
 import type {
   Check,
@@ -31,19 +41,9 @@ import type {
   View,
 } from '../schema/schema.ts'
 import {
-  scanBigInt,
-  scanBool,
-  scanNumber,
-  scanString,
-  validString,
-  linkForeignKeys,
-  modeInspectRealm,
-  modeInspectSchema,
-} from '../internal/sqlx.ts'
-import {
   aggregatesQuery,
-  columnsQuery,
   checksQuery,
+  columnsQuery,
   compositesQuery,
   depsQuery,
   domainChecksQuery,
@@ -55,10 +55,10 @@ import {
   funcsQuery,
   indexesQuery as indexesQueryForVersion,
   nArgs,
+  parseFuncArgs,
   parseReferenceAction,
   parseType,
   parseVersion,
-  parseFuncArgs,
   policiesQuery,
   rangeTypesQuery,
   schemasQuery,
@@ -70,7 +70,6 @@ import {
   triggersQuery,
   viewColumnsQuery,
   viewsQuery,
-  extractFuncBody,
 } from './driver.ts'
 
 // -- PostgreSQL Inspector --
@@ -809,6 +808,15 @@ export class PostgresInspector implements Inspector {
             }
           }
           f.ret = { type: retSchemaType, raw: cleanRet }
+
+          // Resolve SETOF <composite> — look up composite fields from realm
+          if (retSchemaType.kind === 'unknown' && cleanRet.toLowerCase().startsWith('setof ')) {
+            const innerName = cleanRet.slice(6).trim()
+            const resolved = this.resolveUserDefinedType(s, innerName, '', realm)
+            if (resolved && resolved.kind === 'composite') {
+              f.ret.type = resolved
+            }
+          }
         }
 
         if (!s.funcs) s.funcs = []
@@ -887,7 +895,7 @@ export class PostgresInspector implements Inspector {
       const s = schemaMap.get(ns)
       if (!s) continue
 
-      let typ = parseType(baseType || '')
+      const typ = parseType(baseType || '')
       // Apply time alias to match Go's ParseType → parseColumn → timeAlias behavior
       applyTimeAlias(typ)
       const domain: DomainType = {
@@ -1388,7 +1396,6 @@ export class PostgresInspector implements Inspector {
     const result = await this.db.query(depsQuery)
 
     // Build lookup maps
-    type ObjKey = { schema: string; name: string }
     const tables = new Map<string, Table>()
     const views = new Map<string, View>()
     const funcs = new Map<string, Func>()
@@ -1504,10 +1511,10 @@ export class PostgresInspector implements Inspector {
   /** Detect dependencies by scanning function bodies and view definitions for object references. */
   private detectBodyDeps(
     realm: Realm,
-    tables: Map<string, Table>,
-    funcs: Map<string, Func>,
-    procs: Map<string, Proc>,
-    views: Map<string, View>,
+    _tables: Map<string, Table>,
+    _funcs: Map<string, Func>,
+    _procs: Map<string, Proc>,
+    _views: Map<string, View>,
   ): void {
     for (const s of realm.schemas) {
       // Functions: scan bodies for table and function references
@@ -1770,7 +1777,7 @@ function applyTimeAlias(t: SchemaType): void {
 function applyColumnMetadata(
   t: SchemaType,
   numPrecision: number | null,
-  dtPrecision: number | null,
+  _dtPrecision: number | null,
   maxLen: number | null,
   numScale: number | null,
 ): void {
@@ -1847,7 +1854,7 @@ function isLiteralNumber(s: string): boolean {
   if (s.startsWith('0x') || s.startsWith('0X')) {
     return /^[0-9a-fA-F]+$/.test(s.slice(2))
   }
-  return !isNaN(Number(s)) && s.trim() !== ''
+  return !Number.isNaN(Number(s)) && s.trim() !== ''
 }
 
 /**

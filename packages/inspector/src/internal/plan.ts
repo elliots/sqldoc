@@ -678,7 +678,7 @@ export function dependsOn(c1: Change, c2: Change): boolean {
             const ct = col.type?.type
             if (!ct) return false
             // Direct match: column type T matches object name
-            if (ct.T === objName && (!objSchema || ct.schema === objSchema)) return true
+            if (ct.T === objName && (!objSchema || (ct as any).schema === objSchema)) return true
             // Qualified match: column type T is schema.name
             if (objSchema && ct.T === `${objSchema}.${objName}`) return true
             // Match raw type name
@@ -822,8 +822,8 @@ export function dependsOn(c1: Change, c2: Change): boolean {
       if (c2.type === 'add_table') {
         const trig = c1.T
         // Check if trigger body references the table
-        if (trig.body && trig.body.includes(` ON ${c2.T.schema ? c2.T.schema + '.' : ''}${c2.T.name} `)) return true
-        if (trig.body && trig.body.includes(` ON "${c2.T.schema}"."${c2.T.name}" `)) return true
+        if (trig.body?.includes(` ON ${c2.T.schema ? `${c2.T.schema}.` : ''}${c2.T.name} `)) return true
+        if (trig.body?.includes(` ON "${c2.T.schema}"."${c2.T.name}" `)) return true
         // Check trigger table field
         if (trig.table === c2.T.name) return true
       }
@@ -836,7 +836,7 @@ export function dependsOn(c1: Change, c2: Change): boolean {
       }
       // Also depends on referenced functions
       if (c2.type === 'add_func' && c1.T.body) {
-        const funcRef = `${c2.F.schema ? c2.F.schema + '.' : ''}${c2.F.name}()`
+        const funcRef = `${c2.F.schema ? `${c2.F.schema}.` : ''}${c2.F.name}()`
         if (c1.T.body.includes(funcRef)) return true
       }
       return depOfAdd(c1.T.deps, c2)

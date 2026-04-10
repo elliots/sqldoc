@@ -309,7 +309,7 @@ function flywayVersionCompare(v1: string, v2: string): number {
       .split('.')
       .map((p) => {
         const n = parseInt(p, 10)
-        return isNaN(n) ? 0 : n
+        return Number.isNaN(n) ? 0 : n
       })
   const a = parse(v1)
   const b = parse(v2)

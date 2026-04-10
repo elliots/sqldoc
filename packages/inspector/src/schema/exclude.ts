@@ -18,8 +18,8 @@ export function matchPattern(name: string, pattern: string): boolean {
       regex += '.*'
     } else if (ch === '?') {
       regex += '.'
-    } else if ('.+^${}()|[]\\'.includes(ch)) {
-      regex += '\\' + ch
+    } else if (/[.+^${}()|[\]\\]/.test(ch)) {
+      regex += `\\${ch}`
     } else {
       regex += ch
     }
@@ -88,27 +88,27 @@ function splitPatterns(patterns: string[]): string[][] {
 function excludeTable(table: Table, pattern: string): void {
   const col = excludeType('column', pattern)
   if (col.exclude) {
-    table.columns = table.columns.filter(c => !matchPattern(c.name, col.glob))
+    table.columns = table.columns.filter((c) => !matchPattern(c.name, col.glob))
   }
 
   const idx = excludeType('index', pattern)
   if (idx.exclude && table.indexes) {
-    table.indexes = table.indexes.filter(i => !i.name || !matchPattern(i.name, idx.glob))
+    table.indexes = table.indexes.filter((i) => !i.name || !matchPattern(i.name, idx.glob))
   }
 
   const fk = excludeType('fk', pattern)
   if (fk.exclude && table.foreignKeys) {
-    table.foreignKeys = table.foreignKeys.filter(f => !f.symbol || !matchPattern(f.symbol, fk.glob))
+    table.foreignKeys = table.foreignKeys.filter((f) => !f.symbol || !matchPattern(f.symbol, fk.glob))
   }
 
   const tg = excludeType('trigger', pattern)
   if (tg.exclude && table.triggers) {
-    table.triggers = table.triggers.filter(t => !matchPattern(t.name, tg.glob))
+    table.triggers = table.triggers.filter((t) => !matchPattern(t.name, tg.glob))
   }
 
   const ck = excludeType('check', pattern)
   if (ck.exclude && table.checks) {
-    table.checks = table.checks.filter(c => !c.name || !matchPattern(c.name, ck.glob))
+    table.checks = table.checks.filter((c) => !c.name || !matchPattern(c.name, ck.glob))
   }
 }
 
@@ -117,7 +117,7 @@ function excludeTable(table: Table, pattern: string): void {
 function excludeView(view: View, pattern: string): void {
   const col = excludeType('column', pattern)
   if (col.exclude && view.columns) {
-    view.columns = view.columns.filter(c => !matchPattern(c.name, col.glob))
+    view.columns = view.columns.filter((c) => !matchPattern(c.name, col.glob))
   }
 
   const tg = excludeType('trigger', pattern)
@@ -131,7 +131,7 @@ function excludeView(view: View, pattern: string): void {
 function excludeSchemaObjects(schema: Schema, glob: string[]): void {
   const tbl = excludeType('table', glob[0])
   if (tbl.exclude && schema.tables) {
-    schema.tables = schema.tables.filter(t => {
+    schema.tables = schema.tables.filter((t) => {
       if (!matchPattern(t.name, tbl.glob)) return true
       if (glob.length === 1) return false // exclude the whole table
       excludeTable(t, glob[1])
@@ -141,7 +141,7 @@ function excludeSchemaObjects(schema: Schema, glob: string[]): void {
 
   const vw = excludeType('view', glob[0])
   if (vw.exclude && schema.views) {
-    schema.views = schema.views.filter(v => {
+    schema.views = schema.views.filter((v) => {
       if (!matchPattern(v.name, vw.glob)) return true
       if (glob.length === 1) return false
       excludeView(v, glob[1])
@@ -152,12 +152,12 @@ function excludeSchemaObjects(schema: Schema, glob: string[]): void {
   if (glob.length === 1) {
     const fn = excludeType('function', glob[0])
     if (fn.exclude && schema.funcs) {
-      schema.funcs = schema.funcs.filter(f => !matchPattern(f.name, fn.glob))
+      schema.funcs = schema.funcs.filter((f) => !matchPattern(f.name, fn.glob))
     }
 
     const pr = excludeType('procedure', glob[0])
     if (pr.exclude && schema.procs) {
-      schema.procs = schema.procs.filter(p => !matchPattern(p.name, pr.glob))
+      schema.procs = schema.procs.filter((p) => !matchPattern(p.name, pr.glob))
     }
   }
 }
@@ -189,7 +189,7 @@ export function excludeRealm(realm: Realm, patterns: string[]): Realm {
     }
   }
 
-  realm.schemas = realm.schemas.filter(schema => {
+  realm.schemas = realm.schemas.filter((schema) => {
     for (const glob of globs) {
       const s = excludeType('schema', glob[0])
       if (!s.exclude) continue

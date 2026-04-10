@@ -1,13 +1,13 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/diff_oss.go
 
-import type { Attr, Column, Index, Realm, Schema, Table, View } from '../schema/schema.ts'
+import type { DiffDriver } from '../internal/sqlx.ts'
+import { exprEqual, mayWrap } from '../internal/sqlx.ts'
+import type { DiffOptions } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
-import type { DiffOptions } from '../schema/inspect.ts'
-import type { DiffDriver } from '../internal/sqlx.ts'
-import { exprEqual, mayWrap, isQuoted } from '../internal/sqlx.ts'
-import { typeDDL, convertType, normalizeDefault } from './convert.ts'
+import type { Attr, Column, Index, Realm, Schema, Table, View } from '../schema/schema.ts'
+import { normalizeDefault, typeDDL } from './convert.ts'
 import { IndexTypeBTree } from './driver.ts'
 
 // -- Helper: find attribute by kind --
@@ -463,7 +463,7 @@ export class PostgresDiff implements DiffDriver {
     const suffix = index.name.slice(expected.length)
     if (suffix.length > 0) {
       const n = parseInt(suffix, 10)
-      return !isNaN(n) && n > 0
+      return !Number.isNaN(n) && n > 0
     }
 
     return false
