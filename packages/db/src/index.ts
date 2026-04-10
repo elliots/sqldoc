@@ -1,15 +1,11 @@
-// @sqldoc/db -- Atlas WASI integration for sqldoc
-// Schema types, database adapters, and WASI runner
+// @sqldoc/db -- Database adapters and schema types for sqldoc
+// Schema types are re-exported from @sqldoc/inspector.
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 import type { OnMissingPlugin } from './db/plugin-resolver.ts'
 import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 import { validatePostgresExtensions } from './extensions.ts'
-import { createAtlasRunner } from './runner.ts'
 
 export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 export type { OnMissingPlugin } from './db/plugin-resolver.ts'
@@ -18,16 +14,133 @@ export { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 export { createSqliteAdapter } from './db/sqlite.ts'
 export type {
   AdapterPluginContext,
-  DatabaseAdapter,
   DatabaseAdapterPlugin,
-  ExecResult,
-  QueryResult,
 } from './db/types.ts'
 export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
 export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
-export type { AtlasRunner, AtlasRunnerOptions, DiffSource } from './runner.ts'
-export { createAtlasRunner } from './runner.ts'
-export * from './types.ts'
+
+// Re-export schema types from @sqldoc/inspector
+export type {
+  // Database adapter interface (canonical definition)
+  DatabaseAdapter,
+  ExecResult,
+  QueryResult,
+  // Schema types
+  ArrayType,
+  Attr,
+  BinaryType,
+  BoolType,
+  Cast,
+  Charset,
+  Check,
+  Collation,
+  Column,
+  ColumnType,
+  Comment,
+  CompositeType,
+  CurrencyType,
+  DecimalType,
+  DomainType,
+  EnumType,
+  EventTrigger,
+  Expr,
+  Extension,
+  FloatType,
+  ForeignKey,
+  Func,
+  FuncArg,
+  GeneratedExpr,
+  Index,
+  IndexPart,
+  IntegerType,
+  IntervalType,
+  JSONType,
+  Literal,
+  NetworkType,
+  ObjectRef,
+  Operator,
+  Policy,
+  Proc,
+  RangeType,
+  RawExpr,
+  Realm,
+  ReferenceAction,
+  Rename,
+  RenameCandidate,
+  Schema,
+  SchemaType,
+  Sequence,
+  SerialType,
+  SpatialType,
+  StringType,
+  Table,
+  Tag,
+  TextSearchType,
+  TimeType,
+  Trigger,
+  TypeCategory,
+  UnsupportedType,
+  UUIDType,
+  View,
+  // Inspector API
+  DiffSource,
+  InspectorOptions,
+  InspectorResult,
+  InspectorRunner,
+  // Inspect interfaces
+  Differ,
+  DiffOptions,
+  ExecQuerier,
+  Inspector,
+  InspectOptions,
+  InspectRealmOption,
+  Normalizer,
+  // Change types
+  Change,
+  Plan,
+  PlanApplier,
+} from '@sqldoc/inspector'
+
+export {
+  // Inspector factory
+  createInspector,
+  // Type utilities
+  isCustomType,
+  typeCategory,
+  // DSL builder functions
+  commentFor,
+  enumValues,
+  findColumn,
+  findIndex,
+  findTable,
+  hasAttr,
+  newCheck,
+  newColumn,
+  newForeignKey,
+  newFunc,
+  newIndex,
+  newProc,
+  newSequence,
+  newTable,
+  newTrigger,
+  newView,
+  setAttr,
+  // Tag helpers
+  findTag,
+  findTags,
+  hasTag,
+  // Inspect enums/classes
+  DiffMode,
+  InspectMode,
+  isNotExistError,
+  NotExistError,
+  ChangeKind,
+  Changes,
+  // Exclusion filtering
+  excludeRealm,
+  excludeSchema,
+  matchPattern,
+} from '@sqldoc/inspector'
 
 export interface CreateRunnerConfig {
   /** SQL dialect (required) */
@@ -40,33 +153,6 @@ export interface CreateRunnerConfig {
   sqldocDir?: string
   /** Called when a plugin package is missing. CLI provides auto-install. */
   onMissingPlugin?: OnMissingPlugin
-}
-
-/**
- * Resolve the atlas.wasm binary.
- */
-function resolveWasm(): string {
-  if (process.env.ATLAS_WASM_PATH) {
-    return process.env.ATLAS_WASM_PATH
-  }
-
-  let dir = path.dirname(fileURLToPath(import.meta.url))
-  while (true) {
-    for (const candidate of [
-      path.join(dir, 'wasm', 'atlas.wasm'),
-      path.join(dir, '..', 'wasm', 'atlas.wasm'),
-      path.join(dir, 'node_modules', '@sqldoc', 'db', 'wasm', 'atlas.wasm'),
-      path.join(dir, 'packages', 'db', 'wasm', 'atlas.wasm'),
-    ]) {
-      if (fs.existsSync(candidate)) return candidate
-    }
-    const parent = path.dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
-  throw new Error(
-    'atlas.wasm not found. Set ATLAS_WASM_PATH or build: cd atlas/cmd/atlas-wasi && GOOS=wasip1 GOARCH=wasm go build -o atlas.wasm .',
-  )
 }
 
 function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
@@ -90,7 +176,7 @@ function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
  * Docker is the only special case — it orchestrates a container, then
  * delegates to the plugin system for the actual DB connection.
  */
-export async function createAdapter(config: CreateRunnerConfig): Promise<import('./db/types').DatabaseAdapter> {
+export async function createAdapter(config: CreateRunnerConfig): Promise<import('./db/types.ts').DatabaseAdapter> {
   const dialect = config.dialect
   const devUrl = config.devUrl ?? defaultDevUrl(dialect)
   const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
@@ -100,7 +186,7 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
     onMissingPlugin: config.onMissingPlugin,
   }
 
-  let db: import('./db/types').DatabaseAdapter
+  let db: import('./db/types.ts').DatabaseAdapter
 
   if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
     if (dialect === 'mysql') {
@@ -130,14 +216,14 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
 }
 
 /**
- * Create an Atlas runner with sensible defaults.
- * Uses createAdapter() internally, then wraps the adapter in the Atlas WASI runner.
+ * Create an inspector with sensible defaults.
+ * Uses createAdapter() internally, then wraps the adapter in the inspector.
  */
-export async function createRunner(config: CreateRunnerConfig): Promise<import('./runner').AtlasRunner> {
-  const wasmPath = resolveWasm()
+export async function createRunner(config: CreateRunnerConfig): Promise<import('@sqldoc/inspector').InspectorRunner> {
+  const { createInspector } = await import('@sqldoc/inspector')
   const db = await createAdapter(config)
   try {
-    return await createAtlasRunner({ wasmPath, db, dialect: config.dialect })
+    return await createInspector({ db, dialect: config.dialect })
   } catch (err) {
     try {
       await db.close()

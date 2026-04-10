@@ -30,42 +30,41 @@ import type {
   TagOutput,
 } from './types.ts'
 
-// ── Internal Atlas types (mirrors @sqldoc/db without importing) ────
-// Core must NOT depend on @sqldoc/db. These mirror the shapes for internal use.
-// Schema fields use lowercase (matching marshal.go json tags).
-// Attr variants (Tag, Comment, Check) use PascalCase (map[string]string in Go).
+// ── Internal schema types (mirrors @sqldoc/inspector without importing) ──
+// Core must NOT depend on @sqldoc/inspector. These mirror the shapes for internal use.
+// Uses inspector's camelCase fields and kind-discriminated attrs.
 
-interface InternalAtlasRealm {
-  schemas: InternalAtlasSchema[]
-  attrs?: InternalAtlasAttr[]
+interface InternalRealm {
+  schemas: InternalSchema[]
+  attrs?: InternalAttr[]
 }
 
-interface InternalAtlasSchema {
+interface InternalSchema {
   name: string
-  tables?: InternalAtlasTable[]
-  views?: InternalAtlasView[]
-  attrs?: InternalAtlasAttr[]
+  tables?: InternalTable[]
+  views?: InternalView[]
+  attrs?: InternalAttr[]
 }
 
-interface InternalAtlasTable {
+interface InternalTable {
   name: string
-  columns?: InternalAtlasColumn[]
-  attrs?: InternalAtlasAttr[]
+  columns: InternalColumn[]
+  attrs?: InternalAttr[]
 }
 
-interface InternalAtlasView {
+interface InternalView {
   name: string
-  columns?: InternalAtlasColumn[]
-  attrs?: InternalAtlasAttr[]
+  columns?: InternalColumn[]
+  attrs?: InternalAttr[]
 }
 
-interface InternalAtlasColumn {
+interface InternalColumn {
   name: string
-  type?: { raw?: string; null?: boolean; T?: string }
-  attrs?: InternalAtlasAttr[]
+  type: { type: { T: string }; raw?: string; null?: boolean }
+  attrs?: InternalAttr[]
 }
 
-type InternalAtlasAttr = { Name: string; Args: string } | Record<string, unknown>
+type InternalAttr = { kind: 'tag'; name: string; args: string } | Record<string, unknown>
 
 // ── Plugin compatibility ─────────────────────────────────────────────
 
@@ -106,15 +105,7 @@ export function compile(options: CompileOptions): CompilerOutput {
 
   // Tier 2: Atlas realm provided — use Atlas tag-to-object matching
   if (atlasRealm) {
-    const result = compileAtlas(
-      atlasRealm as InternalAtlasRealm,
-      filePath,
-      plugins,
-      statements,
-      config,
-      source,
-      adapter,
-    )
+    const result = compileWithRealm(atlasRealm as InternalRealm, filePath, plugins, statements, config, source, adapter)
     // Merge parser-derived tags that Atlas doesn't see (e.g. @lint.ignore)
     // These tags have no SQL output so Atlas never encounters them
     const tags = parse(source).tags
@@ -247,8 +238,8 @@ function compileTier1(
 
 // ── Tier 2: Atlas realm compilation ───────────────────────────────────
 
-function compileAtlas(
-  realm: InternalAtlasRealm,
+function compileWithRealm(
+  realm: InternalRealm,
   filePath: string,
   plugins: Map<string, NamespacePlugin>,
   statements: SqlStatement[],
@@ -279,7 +270,7 @@ function compileAtlas(
 
   const skippedPlugins = new Set<string>()
   const missingNamespaces = new Set<string>()
-  const actx: AtlasObjectContext = {
+  const actx: RealmObjectContext = {
     realm,
     filePath,
     plugins,
@@ -298,20 +289,20 @@ function compileAtlas(
     // Process tables
     if (schema.tables) {
       for (const table of schema.tables) {
-        processAtlasObject(table, 'table', table.name, actx)
+        processRealmObject(table, 'table', table.name, actx)
       }
     }
 
     // Process views
     if (schema.views) {
       for (const view of schema.views) {
-        processAtlasObject(view, 'view', view.name, actx)
+        processRealmObject(view, 'view', view.name, actx)
       }
     }
   }
 
   // Build fileTags from collected tag occurrences
-  const fileTags = buildAtlasFileTags(allTagOccurrences)
+  const fileTags = buildFileTags2(allTagOccurrences)
 
   // Build merged SQL output
   const mergedSql = buildMergedOutput(source, sqlOutputs, adapter, config.dialect)
@@ -319,9 +310,9 @@ function compileAtlas(
   return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
 }
 
-/** Shared context for processAtlasObject — same for every object in a file */
-interface AtlasObjectContext {
-  realm: InternalAtlasRealm
+/** Shared context for processRealmObject — same for every object in a file */
+interface RealmObjectContext {
+  realm: InternalRealm
   filePath: string
   plugins: Map<string, NamespacePlugin>
   statements: SqlStatement[]
@@ -343,11 +334,11 @@ interface AtlasObjectContext {
 }
 
 /** Process a single Atlas object (table or view) and its columns for tag invocation */
-function processAtlasObject(
-  obj: InternalAtlasTable | InternalAtlasView,
+function processRealmObject(
+  obj: InternalTable | InternalView,
   target: SqlTarget,
   objectName: string,
-  actx: AtlasObjectContext,
+  actx: RealmObjectContext,
 ): void {
   const {
     realm,
@@ -365,28 +356,28 @@ function processAtlasObject(
     fileNamespaces,
   } = actx
   // Extract tags from object-level attrs
-  const objectTags = findAtlasTags(obj.attrs)
+  const objectTags = findTags(obj.attrs)
 
   // Collect all tags on this object (object-level + column-level) for siblingTags
   const allObjectTagsParsed = objectTags.map((t) => {
-    const split = splitTagName(t.Name)
-    return { namespace: split.namespace, tag: split.tag, argsStr: t.Args }
+    const split = splitTagName(t.name)
+    return { namespace: split.namespace, tag: split.tag, argsStr: t.args }
   })
 
   // Also collect column tags for sibling awareness
   if (obj.columns) {
     for (const col of obj.columns) {
-      const colTags = findAtlasTags(col.attrs)
+      const colTags = findTags(col.attrs)
       for (const ct of colTags) {
-        const split = splitTagName(ct.Name)
-        allObjectTagsParsed.push({ namespace: split.namespace, tag: split.tag, argsStr: ct.Args })
+        const split = splitTagName(ct.name)
+        allObjectTagsParsed.push({ namespace: split.namespace, tag: split.tag, argsStr: ct.args })
       }
     }
   }
 
   // Process object-level tags (table/view level)
   for (const atag of objectTags) {
-    const { namespace, tag: tagName } = splitTagName(atag.Name)
+    const { namespace, tag: tagName } = splitTagName(atag.name)
     const plugin = plugins.get(namespace)
     if (!plugin) {
       if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
@@ -415,18 +406,18 @@ function processAtlasObject(
     const tagHandler = plugin.onTag ?? plugin.generateSQL
     if (!tagHandler && !plugin.generateCode) continue
 
-    const args = parseAtlasArgs(atag.Args)
+    const args = parseTagArgs(atag.args)
 
     // Build namespaceTags: all tags from same namespace on this object
     const namespaceTags = allObjectTagsParsed
       .filter((t) => t.namespace === namespace)
-      .map((t) => ({ tag: t.tag, args: parseAtlasArgs(t.argsStr) }))
+      .map((t) => ({ tag: t.tag, args: parseTagArgs(t.argsStr) }))
 
     // Build siblingTags: all tags from ALL namespaces on this object
     const siblingTags = allObjectTagsParsed.map((t) => ({
       namespace: t.namespace,
       tag: t.tag,
-      args: parseAtlasArgs(t.argsStr),
+      args: parseTagArgs(t.argsStr),
     }))
 
     // Track for fileTags
@@ -452,7 +443,7 @@ function processAtlasObject(
       plugin,
       tagHandler,
       ctx,
-      { namespace, tag: tagName, rawArgs: atag.Args },
+      { namespace, tag: tagName, rawArgs: atag.args },
       sqlOutputs,
       codeOutputs,
       docsMeta,
@@ -463,9 +454,9 @@ function processAtlasObject(
   // Process column-level tags
   if (obj.columns) {
     for (const col of obj.columns) {
-      const colTags = findAtlasTags(col.attrs)
+      const colTags = findTags(col.attrs)
       for (const atag of colTags) {
-        const { namespace, tag: tagName } = splitTagName(atag.Name)
+        const { namespace, tag: tagName } = splitTagName(atag.name)
         const plugin = plugins.get(namespace)
         if (!plugin) {
           if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
@@ -494,19 +485,19 @@ function processAtlasObject(
         const tagHandler = plugin.onTag ?? plugin.generateSQL
         if (!tagHandler && !plugin.generateCode) continue
 
-        const args = parseAtlasArgs(atag.Args)
-        const columnType = col.type?.raw ?? col.type?.T
+        const args = parseTagArgs(atag.args)
+        const columnType = col.type.raw ?? col.type.type.T
 
         // Build namespaceTags
         const namespaceTags = allObjectTagsParsed
           .filter((t) => t.namespace === namespace)
-          .map((t) => ({ tag: t.tag, args: parseAtlasArgs(t.argsStr) }))
+          .map((t) => ({ tag: t.tag, args: parseTagArgs(t.argsStr) }))
 
         // Build siblingTags
         const siblingTags = allObjectTagsParsed.map((t) => ({
           namespace: t.namespace,
           tag: t.tag,
-          args: parseAtlasArgs(t.argsStr),
+          args: parseTagArgs(t.argsStr),
         }))
 
         // Track for fileTags — use table.column as objectName so templates can look up per-column
@@ -541,7 +532,7 @@ function processAtlasObject(
           plugin,
           tagHandler,
           ctx,
-          { namespace, tag: tagName, rawArgs: atag.Args },
+          { namespace, tag: tagName, rawArgs: atag.args },
           sqlOutputs,
           codeOutputs,
           docsMeta,
@@ -729,30 +720,28 @@ function splitTagName(name: string): { namespace: string; tag: string | null } {
 }
 
 /**
- * Type guard: check if an Atlas attr is a tag (has Name + Args, no Expr).
- * Mirrors isTag from @sqldoc/db without importing.
+ * Type guard: check if an attr is a tag (has kind: 'tag').
+ * Mirrors the Tag interface from @sqldoc/inspector without importing.
  */
-function isAtlasTag(attr: InternalAtlasAttr): attr is { Name: string; Args: string } {
+function isTag(attr: InternalAttr): attr is { kind: 'tag'; name: string; args: string } {
   if (typeof attr !== 'object' || attr === null) return false
-  if (!('Name' in attr) || !('Args' in attr) || 'Expr' in attr) return false
-  const record = attr as Record<string, unknown>
-  return typeof record.Name === 'string' && typeof record.Args === 'string'
+  return 'kind' in attr && (attr as any).kind === 'tag'
 }
 
 /** Extract all tag attrs from a mixed Attrs array */
-function findAtlasTags(attrs?: InternalAtlasAttr[]): Array<{ Name: string; Args: string }> {
+function findTags(attrs?: InternalAttr[]): Array<{ kind: 'tag'; name: string; args: string }> {
   if (!attrs) return []
-  return attrs.filter(isAtlasTag)
+  return attrs.filter(isTag)
 }
 
 /** Parse Atlas tag args string into parsed values using the parser's parseArgs */
-function parseAtlasArgs(argsStr: string): Record<string, unknown> | unknown[] {
+function parseTagArgs(argsStr: string): Record<string, unknown> | unknown[] {
   if (!argsStr) return {}
   return parseArgs(argsStr).values
 }
 
 /** Build fileTags from collected Atlas tag occurrences */
-function buildAtlasFileTags(
+function buildFileTags2(
   occurrences: Array<{
     objectName: string
     target: SqlTarget

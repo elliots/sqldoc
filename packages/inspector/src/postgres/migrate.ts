@@ -27,7 +27,7 @@ import { IndexTypeBTree } from './driver.ts'
 
 function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 function hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
@@ -36,8 +36,8 @@ function hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
 
 // -- PostgreSQL Builder Factory --
 
-function pgBuilder(schema?: string): Builder {
-  return new Builder({ quoteOpening: '"', quoteClosing: '"', schema, indent: '  ' })
+function pgBuilder(stripSchema?: string): Builder {
+  return new Builder({ quoteOpening: '"', quoteClosing: '"', schema: stripSchema, indent: '  ' })
 }
 
 // -- PostgresPlan --
@@ -47,7 +47,6 @@ function pgBuilder(schema?: string): Builder {
  * Implements PlanDriver for use with the generic plan engine.
  */
 export class PostgresPlan implements PlanDriver {
-
   /** Generate SQL for creating a schema. */
   addSchema(schema: Schema): string[] {
     const stmts: string[] = []
@@ -74,13 +73,115 @@ export class PostgresPlan implements PlanDriver {
     return [`DROP SCHEMA "${schema.name}" CASCADE`]
   }
 
+  /** Generate SQL for adding a schema-level object (enum, domain, composite, extension, sequence). */
+  addObject(obj: any): string[] {
+    if (!obj) return []
+    switch (obj.kind) {
+      case 'enum':
+        return this.addEnum(obj.T, obj.values ?? [], obj.schema)
+      case 'composite':
+        return this.addCompositeType(obj)
+      case 'domain':
+        return this.addDomainType(obj)
+      case 'range_type': {
+        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        const subtype = obj.subtype ? formatTypeRef(obj.subtype) : 'integer'
+        return [`CREATE TYPE ${ident} AS RANGE (SUBTYPE = ${subtype})`]
+      }
+      case 'aggregate': {
+        const argList = (obj.args ?? []).join(', ')
+        const ident = obj.schema ? `"${obj.schema}"."${obj.name}"` : `"${obj.name}"`
+        // Schema-qualify function references
+        const sfunc = obj.stateFunc?.includes('.')
+          ? `"${obj.stateFunc.split('.')[0]}"."${obj.stateFunc.split('.')[1]}"`
+          : obj.schema
+            ? `"${obj.schema}"."${obj.stateFunc}"`
+            : `"${obj.stateFunc}"`
+        let sql = `CREATE AGGREGATE ${ident}(${argList}) (SFUNC = ${sfunc}, STYPE = ${obj.stateType}`
+        if (obj.finalFunc) {
+          const ffunc = obj.finalFunc.includes('.')
+            ? `"${obj.finalFunc.split('.')[0]}"."${obj.finalFunc.split('.')[1]}"`
+            : obj.schema
+              ? `"${obj.schema}"."${obj.finalFunc}"`
+              : `"${obj.finalFunc}"`
+          sql += `, FINALFUNC = ${ffunc}`
+        }
+        if (obj.initVal != null && obj.initVal !== '') sql += `, INITCOND = '${obj.initVal}'`
+        if (obj.sortOp) sql += `, SORTOP = ${obj.sortOp}`
+        if (obj.parallel && obj.parallel !== 'UNSAFE') sql += `, PARALLEL = ${obj.parallel}`
+        sql += ')'
+        return [sql]
+      }
+      default:
+        // Extension, sequence, and other objects
+        if (obj.name && obj.version !== undefined) {
+          // Extension
+          return [`CREATE EXTENSION IF NOT EXISTS "${obj.name}"`]
+        }
+        if (obj.name && obj.increment !== undefined) {
+          // Sequence
+          return this.addSequence(obj)
+        }
+        return []
+    }
+  }
+
+  /** Generate SQL for dropping a schema-level object. */
+  dropObject(obj: any): string[] {
+    if (!obj) return []
+    switch (obj.kind) {
+      case 'enum':
+        return this.dropEnum(obj.T, obj.schema)
+      case 'composite': {
+        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        return [`DROP TYPE ${ident}`]
+      }
+      case 'domain': {
+        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        return [`DROP DOMAIN ${ident}`]
+      }
+      default:
+        if (obj.name && obj.version !== undefined) {
+          return [`DROP EXTENSION IF EXISTS "${obj.name}"`]
+        }
+        return []
+    }
+  }
+
+  /** Generate SQL for creating a composite type. */
+  private addCompositeType(obj: any): string[] {
+    const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+    const fields = (obj.fields ?? obj.compositeFields ?? [])
+      .map((f: any) => `"${f.name}" ${formatTypeRef(f.type?.T || 'text')}`)
+      .join(', ')
+    return [`CREATE TYPE ${ident} AS (${fields})`]
+  }
+
+  /** Generate SQL for creating a domain type. */
+  private addDomainType(obj: any): string[] {
+    const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+    const baseType = obj.type?.T || 'text'
+    const stmts = [`CREATE DOMAIN ${ident} AS ${baseType}`]
+    if (obj.null === false) {
+      stmts[0] += ' NOT NULL'
+    }
+    if (obj.default) {
+      const dflt = obj.default.V ?? obj.default.X ?? ''
+      if (dflt) stmts[0] += ` DEFAULT ${dflt}`
+    }
+    for (const c of obj.checks ?? []) {
+      stmts.push(`ALTER DOMAIN ${ident} ADD CONSTRAINT "${c.name}" ${c.expr}`)
+    }
+    return stmts
+  }
+
   /** Generate SQL for adding a table. */
   addTable(table: Table): string[] {
     if (table.columns.length === 0) {
       throw new Error(`table "${table.name}" has no columns`)
     }
     const stmts: string[] = []
-    const b = pgBuilder(table.schema)
+    const b = pgBuilder()
     b.P('CREATE TABLE').Table(table)
     b.WrapIndent((b) => {
       // Columns
@@ -143,17 +244,13 @@ export class PostgresPlan implements PlanDriver {
       }
     }
 
-    // Triggers
-    for (const trigger of table.triggers ?? []) {
-      stmts.push(...this.addTrigger(trigger))
-    }
-
+    // Triggers are emitted as separate add_trigger changes, not in addTable
     return stmts
   }
 
   /** Generate SQL for dropping a table. */
   dropTable(table: Table): string[] {
-    const b = pgBuilder(table.schema)
+    const b = pgBuilder()
     b.P('DROP TABLE').Table(table)
     return [b.toString()]
   }
@@ -369,26 +466,32 @@ export class PostgresPlan implements PlanDriver {
         const typeStr = typeDDL(to.type.type)
         parts.push(`ALTER COLUMN "${to.name}" TYPE ${typeStr}`)
         k &= ~ChangeKind.ChangeType
-      } else if ((k & ChangeKind.ChangeNull) && to.type.null) {
+      } else if (k & ChangeKind.ChangeNull && to.type.null) {
         parts.push(`ALTER COLUMN "${to.name}" DROP NOT NULL`)
         k &= ~ChangeKind.ChangeNull
-      } else if ((k & ChangeKind.ChangeNull) && !to.type.null) {
+      } else if (k & ChangeKind.ChangeNull && !to.type.null) {
         parts.push(`ALTER COLUMN "${to.name}" SET NOT NULL`)
         k &= ~ChangeKind.ChangeNull
-      } else if ((k & ChangeKind.ChangeDefault) && to.default === undefined) {
+      } else if (k & ChangeKind.ChangeDefault && to.default === undefined) {
         parts.push(`ALTER COLUMN "${to.name}" DROP DEFAULT`)
         k &= ~ChangeKind.ChangeDefault
-      } else if ((k & ChangeKind.ChangeDefault) && to.default !== undefined) {
+      } else if (k & ChangeKind.ChangeDefault && to.default !== undefined) {
         const def = formatDefault(to)
         parts.push(`ALTER COLUMN "${to.name}" SET ${def}`)
         k &= ~ChangeKind.ChangeDefault
       } else if (k & ChangeKind.ChangeAttr) {
         // Identity changes
-        const toId = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(to.attrs, 'identity')
+        const toId = findAttr<{
+          kind: 'identity'
+          generation: string
+          sequence?: { start: number; increment: number }
+        }>(to.attrs, 'identity')
         if (toId) {
           const gen = toId.generation || 'BY DEFAULT'
           const seq = toId.sequence ?? { start: 1, increment: 1 }
-          parts.push(`ALTER COLUMN "${to.name}" SET GENERATED ${gen} SET START WITH ${seq.start} SET INCREMENT BY ${seq.increment}`)
+          parts.push(
+            `ALTER COLUMN "${to.name}" SET GENERATED ${gen} SET START WITH ${seq.start} SET INCREMENT BY ${seq.increment}`,
+          )
         }
         k &= ~ChangeKind.ChangeAttr
       } else if (k & ChangeKind.ChangeGenerated) {
@@ -417,7 +520,7 @@ export class PostgresPlan implements PlanDriver {
   /** Generate SQL for adding a view. */
   addView(view: View): string[] {
     const stmts: string[] = []
-    const b = pgBuilder(view.schema)
+    const b = pgBuilder()
     if (view.materialized) {
       b.P('CREATE MATERIALIZED VIEW').View(view)
     } else {
@@ -439,7 +542,7 @@ export class PostgresPlan implements PlanDriver {
     // Materialized view indexes
     if (view.materialized && view.indexes) {
       for (const idx of view.indexes) {
-        const ib = pgBuilder(view.schema)
+        const ib = pgBuilder()
         ib.P('CREATE')
         if (idx.unique) ib.P('UNIQUE')
         ib.P('INDEX')
@@ -455,7 +558,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a view. */
   dropView(view: View): string[] {
-    const b = pgBuilder(view.schema)
+    const b = pgBuilder()
     if (view.materialized) {
       b.P('DROP MATERIALIZED VIEW').View(view)
     } else {
@@ -482,7 +585,13 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a function. */
   addFunc(func: Func): string[] {
-    const b = pgBuilder(func.schema)
+    // Body contains the full CREATE [OR REPLACE] FUNCTION statement
+    // from pg_get_functiondef — use it directly (matches Go Atlas).
+    if (func.body) {
+      return [func.body]
+    }
+    // Fallback: build CREATE FUNCTION from parts
+    const b = pgBuilder()
     b.P('CREATE FUNCTION').Func(func)
     b.raw('(')
     if (func.args) {
@@ -504,15 +613,12 @@ export class PostgresPlan implements PlanDriver {
     if (func.lang) {
       b.P('LANGUAGE').P(func.lang)
     }
-    if (func.body) {
-      b.P('AS').P(func.body)
-    }
     return [b.toString()]
   }
 
   /** Generate SQL for dropping a function. */
   dropFunc(func: Func): string[] {
-    const b = pgBuilder(func.schema)
+    const b = pgBuilder()
     b.P('DROP FUNCTION').Func(func)
     // Include arg types for overloaded functions
     if (func.args && func.args.length > 0) {
@@ -565,6 +671,11 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a trigger. */
   addTrigger(trigger: Trigger): string[] {
+    // Trigger body from Postgres is the full CREATE TRIGGER DDL
+    if (trigger.body) {
+      return [trigger.body]
+    }
+    // Fallback: reconstruct from parts
     const b = pgBuilder()
     b.P('CREATE TRIGGER').Ident(trigger.name)
     if (trigger.timing) b.P(trigger.timing)
@@ -576,9 +687,6 @@ export class PostgresPlan implements PlanDriver {
     }
     if (trigger.forEach) {
       b.P('FOR EACH').P(trigger.forEach)
-    }
-    if (trigger.body) {
-      b.P('EXECUTE FUNCTION').P(trigger.body)
     }
     return [b.toString()]
   }
@@ -593,7 +701,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a sequence. */
   addSequence(seq: Sequence): string[] {
-    const b = pgBuilder(seq.schema)
+    const b = pgBuilder()
     b.P('CREATE SEQUENCE')
     if (seq.schema) {
       b.SchemaResource(seq.schema, seq.name)
@@ -612,7 +720,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a sequence. */
   dropSequence(seq: Sequence): string[] {
-    const b = pgBuilder(seq.schema)
+    const b = pgBuilder()
     b.P('DROP SEQUENCE')
     if (seq.schema) {
       b.SchemaResource(seq.schema, seq.name)
@@ -624,7 +732,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for modifying a sequence. */
   modifySequence(from: Sequence, to: Sequence): string[] {
-    const b = pgBuilder(to.schema)
+    const b = pgBuilder()
     b.P('ALTER SEQUENCE')
     if (to.schema) {
       b.SchemaResource(to.schema, to.name)
@@ -656,7 +764,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for creating an enum type. */
   addEnum(name: string, values: string[], schema?: string): string[] {
-    const b = pgBuilder(schema)
+    const b = pgBuilder()
     b.P('CREATE TYPE')
     if (schema) {
       b.SchemaResource(schema, name)
@@ -674,7 +782,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping an enum type. */
   dropEnum(name: string, schema?: string): string[] {
-    const b = pgBuilder(schema)
+    const b = pgBuilder()
     b.P('DROP TYPE')
     if (schema) {
       b.SchemaResource(schema, name)
@@ -710,7 +818,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate CREATE INDEX statement. */
   private createIndex(table: Table | View, idx: Index): string[] {
-    const b = pgBuilder(table.schema)
+    const b = pgBuilder()
     b.P('CREATE')
     if (idx.unique) b.P('UNIQUE')
     b.P('INDEX')
@@ -736,7 +844,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate DROP INDEX statement. */
   private dropIndex(table: Table | View, idx: Index): string[] {
-    const b = pgBuilder(table.schema)
+    const b = pgBuilder()
     b.P('DROP INDEX')
     if (table.schema) {
       b.SchemaResource(table.schema, idx.name ?? '')
@@ -802,7 +910,10 @@ function columnDef(b: Builder, col: Column): void {
   }
 
   // Identity
-  const identity = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(col.attrs, 'identity')
+  const identity = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(
+    col.attrs,
+    'identity',
+  )
   if (identity) {
     const gen = identity.generation || 'BY DEFAULT'
     b.P('GENERATED').P(gen).P('AS IDENTITY')
@@ -926,4 +1037,15 @@ function enableRLS(table: Table): string {
 /** Generate DROP POLICY statement. */
 function dropPolicy(table: Table, policy: Policy): string {
   return `DROP POLICY "${policy.name}" ON ${tableRef(table)}`
+}
+
+/** Format a type reference, quoting schema-qualified names (e.g., b.color → "b"."color"). */
+function formatTypeRef(t: string): string {
+  if (t.includes('.')) {
+    const dot = t.lastIndexOf('.')
+    const ns = t.slice(0, dot)
+    const name = t.slice(dot + 1)
+    return `"${ns}"."${name}"`
+  }
+  return t
 }

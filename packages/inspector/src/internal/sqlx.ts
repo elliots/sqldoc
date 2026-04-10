@@ -40,6 +40,18 @@ export function scanNumber(row: unknown[], col: number): number | null {
   return Number.isNaN(n) ? null : n
 }
 
+/** Extract a bigint value from a query row. Uses BigInt to preserve precision for large values. */
+export function scanBigInt(row: unknown[], col: number): bigint | null {
+  const v = row[col]
+  if (v == null) return null
+  if (typeof v === 'bigint') return v
+  try {
+    return BigInt(v as any)
+  } catch {
+    return null
+  }
+}
+
 /** Extract a boolean value from a query row. Returns null if null. */
 export function scanBool(row: unknown[], col: number): boolean | null {
   const v = row[col]
@@ -193,7 +205,11 @@ export function typeFromString(typeName: string): SchemaType {
     return { kind: 'string', T: typeName }
   }
   // Time types
-  if (/^(timestamp|timestamptz|date|time|timetz|datetime|timestamp with(out)? time zone|time with(out)? time zone)$/i.test(lower)) {
+  if (
+    /^(timestamp|timestamptz|date|time|timetz|datetime|timestamp with(out)? time zone|time with(out)? time zone)$/i.test(
+      lower,
+    )
+  ) {
     return { kind: 'time', T: typeName }
   }
   // Binary types
@@ -424,7 +440,7 @@ export class Builder {
   }
 
   /** Write a number. */
-  Int(v: number): this {
+  Int(v: number | bigint): this {
     return this.P(String(v))
   }
 

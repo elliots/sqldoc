@@ -1,10 +1,9 @@
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 
 /**
- * Generate a Mermaid erDiagram string from an Atlas schema realm.
- * Replaces the `{{ mermaid . }}` Atlas Go template.
+ * Generate a Mermaid erDiagram string from a schema realm.
  */
-export function generateMermaidERD(realm: AtlasRealm): string {
+export function generateMermaidERD(realm: Realm): string {
   const lines: string[] = ['erDiagram']
 
   for (const schema of realm.schemas) {
@@ -14,25 +13,25 @@ export function generateMermaidERD(realm: AtlasRealm): string {
 
       // Determine PK and FK columns
       const pkCols = new Set<string>()
-      if (table.primary_key?.parts) {
-        for (const part of table.primary_key.parts) {
+      if (table.primaryKey?.parts) {
+        for (const part of table.primaryKey.parts) {
           if (part.column) pkCols.add(part.column)
         }
       }
       const fkCols = new Set<string>()
-      for (const fk of table.foreign_keys ?? []) {
-        for (const col of fk.columns ?? []) {
+      for (const fk of table.foreignKeys ?? []) {
+        for (const col of fk.columns) {
           fkCols.add(col)
         }
       }
 
-      for (const col of (table.columns ?? []).filter((c) => c.name != null)) {
-        const typeName = col.type?.raw ?? col.type?.T ?? 'unknown'
+      for (const col of table.columns) {
+        const typeName = col.type.raw ?? col.type.type.T ?? 'unknown'
         const constraints: string[] = []
-        if (pkCols.has(col.name!)) constraints.push('PK')
-        if (fkCols.has(col.name!)) constraints.push('FK')
+        if (pkCols.has(col.name)) constraints.push('PK')
+        if (fkCols.has(col.name)) constraints.push('FK')
         const constraintStr = constraints.length > 0 ? ` ${constraints.join(',')}` : ''
-        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name!)}${constraintStr}`)
+        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name)}${constraintStr}`)
       }
       lines.push('    }')
     }
@@ -40,20 +39,18 @@ export function generateMermaidERD(realm: AtlasRealm): string {
     // Views (entity name with columns)
     for (const view of schema.views ?? []) {
       lines.push(`    ${escapeMermaid(view.name)} {`)
-      for (const col of (view.columns ?? []).filter((c) => c.name != null)) {
-        const typeName = col.type?.raw ?? col.type?.T ?? 'unknown'
-        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name!)}`)
+      for (const col of view.columns ?? []) {
+        const typeName = col.type.raw ?? col.type.type.T ?? 'unknown'
+        lines.push(`        ${escapeMermaid(typeName)} ${escapeMermaid(col.name)}`)
       }
       lines.push('    }')
     }
 
     // Foreign key relationships
     for (const table of schema.tables ?? []) {
-      for (const fk of table.foreign_keys ?? []) {
-        if (fk.ref_table) {
-          // Determine cardinality (default: many-to-one)
-          lines.push(`    ${escapeMermaid(table.name)} }o--|| ${escapeMermaid(fk.ref_table)} : "${fk.symbol ?? 'fk'}"`)
-        }
+      for (const fk of table.foreignKeys ?? []) {
+        // Determine cardinality (default: many-to-one)
+        lines.push(`    ${escapeMermaid(table.name)} }o--|| ${escapeMermaid(fk.refTable)} : "${fk.symbol ?? 'fk'}"`)
       }
     }
   }

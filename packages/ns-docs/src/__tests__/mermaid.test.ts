@@ -1,9 +1,8 @@
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { generateMermaidERD } from '../mermaid.ts'
 
-// Minimal mock AtlasRealm matching the actual lowercase JSON from marshal.go
-const realm: AtlasRealm = {
+const realm: Realm = {
   schemas: [
     {
       name: 'public',
@@ -11,26 +10,26 @@ const realm: AtlasRealm = {
         {
           name: 'users',
           columns: [
-            { name: 'id', type: { raw: 'bigint', T: 'bigint', null: false } },
-            { name: 'email', type: { raw: 'text', T: 'text', null: false } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigint' }, raw: 'bigint', null: false } },
+            { name: 'email', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [],
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [],
         },
         {
           name: 'posts',
           columns: [
-            { name: 'id', type: { raw: 'bigint', T: 'bigint', null: false } },
-            { name: 'user_id', type: { raw: 'bigint', T: 'bigint', null: false } },
-            { name: 'title', type: { raw: 'text', T: 'text', null: true } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigint' }, raw: 'bigint', null: false } },
+            { name: 'user_id', type: { type: { kind: 'integer', T: 'bigint' }, raw: 'bigint', null: false } },
+            { name: 'title', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: true } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [
             {
               symbol: 'posts_user_id_fkey',
               columns: ['user_id'],
-              ref_table: 'users',
-              ref_columns: ['id'],
+              refTable: 'users',
+              refColumns: ['id'],
             },
           ],
         },
@@ -38,7 +37,7 @@ const realm: AtlasRealm = {
       views: [
         {
           name: 'active_users',
-          columns: [{ name: 'email', type: { raw: 'text', T: 'text' } }],
+          columns: [{ name: 'email', type: { type: { kind: 'string', T: 'text' }, raw: 'text' } }],
         },
       ],
     },
@@ -60,15 +59,12 @@ describe('generateMermaidERD', () => {
 
   it('PK column marked with PK constraint', () => {
     const result = generateMermaidERD(realm)
-    // users.id is PK
     expect(result).toMatch(/bigint id PK/)
   })
 
   it('FK column marked with FK constraint and produces relationship line', () => {
     const result = generateMermaidERD(realm)
-    // posts.user_id is FK
     expect(result).toMatch(/bigint user_id FK/)
-    // Relationship line
     expect(result).toMatch(/posts\s+\}o--\|\|\s+users/)
   })
 
@@ -79,18 +75,14 @@ describe('generateMermaidERD', () => {
   })
 
   it('empty realm produces just "erDiagram"', () => {
-    const emptyRealm: AtlasRealm = { schemas: [] }
+    const emptyRealm: Realm = { schemas: [] }
     const result = generateMermaidERD(emptyRealm)
     expect(result).toBe('erDiagram')
   })
 
   it('posts.id is both PK (not FK)', () => {
     const result = generateMermaidERD(realm)
-    // posts.id should be PK only, not FK
     const lines = result.split('\n')
-    const _postIdLine = lines.find((l) => l.includes('posts') || l.trim().startsWith('bigint id'))
-    // Within the posts entity, id should have PK
-    // Grab lines between "posts {" and the closing "}"
     const postsStart = lines.findIndex((l) => l.includes('posts {'))
     const postsEnd = lines.findIndex((l, i) => i > postsStart && l.trim() === '}')
     const postsLines = lines.slice(postsStart + 1, postsEnd)

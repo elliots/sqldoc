@@ -40,34 +40,37 @@ describe('PostgreSQL Inspector', () => {
       const schemas = result.schema!.schemas
       assert.ok(schemas.length > 0, 'should have at least one schema')
 
-      const publicSchema = schemas.find(s => s.name === 'public')
+      const publicSchema = schemas.find((s) => s.name === 'public')
       assert.ok(publicSchema, 'should have public schema')
 
-      const usersTable = publicSchema!.tables?.find(t => t.name === 'users')
+      const usersTable = publicSchema!.tables?.find((t) => t.name === 'users')
       assert.ok(usersTable, 'should find users table')
       assert.ok(usersTable!.columns, 'users should have columns')
       assert.equal(usersTable!.columns!.length, 5, 'users should have 5 columns')
 
       // Check column names
-      const colNames = usersTable!.columns!.map(c => c.name)
+      const colNames = usersTable!.columns!.map((c) => c.name)
       assert.deepEqual(colNames, ['id', 'name', 'email', 'age', 'active'])
 
       // Check primary key
-      assert.ok(usersTable!.primary_key, 'should have primary key')
-      assert.ok(usersTable!.primary_key!.parts?.some(p => p.column === 'id'), 'PK should be on id column')
+      assert.ok(usersTable!.primaryKey, 'should have primary key')
+      assert.ok(
+        usersTable!.primaryKey!.parts?.some((p) => p.column === 'id'),
+        'PK should be on id column',
+      )
 
       // Check NOT NULL: name and active should not be nullable
-      const nameCol = usersTable!.columns!.find(c => c.name === 'name')
+      const nameCol = usersTable!.columns!.find((c) => c.name === 'name')
       assert.ok(nameCol, 'should find name column')
       assert.ok(!nameCol!.type?.null, 'name should be NOT NULL')
 
-      const ageCol = usersTable!.columns!.find(c => c.name === 'age')
+      const ageCol = usersTable!.columns!.find((c) => c.name === 'age')
       assert.ok(ageCol, 'should find age column')
       assert.ok(ageCol!.type?.null, 'age should be nullable')
 
       // Check type categorization
-      const idCol = usersTable!.columns!.find(c => c.name === 'id')
-      assert.ok(idCol?.type?.T, 'id should have type T')
+      const idCol = usersTable!.columns!.find((c) => c.name === 'id')
+      assert.ok(idCol?.type.type.T, 'id should have type T')
     } finally {
       await localInspector.close()
     }
@@ -87,31 +90,42 @@ describe('PostgreSQL Inspector', () => {
       const result = await localInspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      const publicSchema = result.schema!.schemas.find(s => s.name === 'public')
+      const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
       assert.ok(publicSchema, 'should have public schema')
 
-      const tableNames = (publicSchema!.tables ?? []).map(t => t.name).sort()
+      const tableNames = (publicSchema!.tables ?? []).map((t) => t.name).sort()
       const expectedTables = [
-        'adoptions', 'categories', 'legacy_inventory', 'medical_records',
-        'owners', 'pets', 'staff',
+        'adoptions',
+        'categories',
+        'legacy_inventory',
+        'medical_records',
+        'owners',
+        'pets',
+        'staff',
       ].sort()
       assert.deepEqual(tableNames, expectedTables, 'should have all 7 pet store tables')
 
       // Check foreign keys on adoptions
-      const adoptions = publicSchema!.tables!.find(t => t.name === 'adoptions')
+      const adoptions = publicSchema!.tables!.find((t) => t.name === 'adoptions')
       assert.ok(adoptions, 'should find adoptions table')
-      assert.ok(adoptions!.foreign_keys && adoptions!.foreign_keys.length >= 2,
-        'adoptions should have at least 2 foreign keys (pet_id, owner_id)')
+      assert.ok(
+        adoptions!.foreignKeys && adoptions!.foreignKeys.length >= 2,
+        'adoptions should have at least 2 foreign keys (pet_id, owner_id)',
+      )
 
       // Check function exists
-      assert.ok(publicSchema!.funcs && publicSchema!.funcs.length > 0,
-        'should have at least one function (get_adoption_report)')
-      const reportFunc = publicSchema!.funcs!.find(f => f.name === 'get_adoption_report')
+      assert.ok(
+        publicSchema!.funcs && publicSchema!.funcs.length > 0,
+        'should have at least one function (get_adoption_report)',
+      )
+      const reportFunc = publicSchema!.funcs!.find((f) => f.name === 'get_adoption_report')
       assert.ok(reportFunc, 'should find get_adoption_report function')
 
       // Check composite type exists
-      assert.ok(publicSchema!.composite_types && publicSchema!.composite_types.length > 0,
-        'should have at least one composite type (adoption_report)')
+      assert.ok(
+        publicSchema!.compositeTypes && publicSchema!.compositeTypes.length > 0,
+        'should have at least one composite type (adoption_report)',
+      )
     } finally {
       await localInspector.close()
     }
@@ -136,31 +150,31 @@ describe('PostgreSQL Inspector', () => {
       const result = await localInspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      const publicSchema = result.schema!.schemas.find(s => s.name === 'public')
+      const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
       assert.ok(publicSchema, 'should have public schema')
 
-      const table = publicSchema!.tables?.find(t => t.name === 'typed_table')
+      const table = publicSchema!.tables?.find((t) => t.name === 'typed_table')
       assert.ok(table, 'should find typed_table')
 
       // Check bigserial
-      const idCol = table!.columns!.find(c => c.name === 'id')
-      assert.ok(idCol?.type?.T, 'id should have type')
+      const idCol = table!.columns!.find((c) => c.name === 'id')
+      assert.ok(idCol?.type.type.T, 'id should have type')
 
       // Check enum type
-      const statusCol = table!.columns!.find(c => c.name === 'status')
-      assert.ok(statusCol?.type?.T, 'status should have type T')
+      const statusCol = table!.columns!.find((c) => c.name === 'status')
+      assert.ok(statusCol?.type.type.T, 'status should have type T')
 
       // Check JSONB
-      const metaCol = table!.columns!.find(c => c.name === 'metadata')
-      assert.ok(metaCol?.type?.T, 'metadata should have type T')
+      const metaCol = table!.columns!.find((c) => c.name === 'metadata')
+      assert.ok(metaCol?.type.type.T, 'metadata should have type T')
 
       // Check timestamptz
-      const createdCol = table!.columns!.find(c => c.name === 'created_at')
-      assert.ok(createdCol?.type?.T, 'created_at should have type T')
+      const createdCol = table!.columns!.find((c) => c.name === 'created_at')
+      assert.ok(createdCol?.type.type.T, 'created_at should have type T')
 
       // Check numeric
-      const priceCol = table!.columns!.find(c => c.name === 'price')
-      assert.ok(priceCol?.type?.T, 'price should have type T')
+      const priceCol = table!.columns!.find((c) => c.name === 'price')
+      assert.ok(priceCol?.type.type.T, 'price should have type T')
     } finally {
       await localInspector.close()
     }
@@ -190,20 +204,19 @@ describe('PostgreSQL Inspector', () => {
       const result = await localInspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      const publicSchema = result.schema!.schemas.find(s => s.name === 'public')
+      const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
       assert.ok(publicSchema, 'should have public schema')
 
       // Check view
       assert.ok(publicSchema!.views && publicSchema!.views.length > 0, 'should have views')
-      const view = publicSchema!.views!.find(v => v.name === 'active_products')
+      const view = publicSchema!.views!.find((v) => v.name === 'active_products')
       assert.ok(view, 'should find active_products view')
       assert.ok(view!.def, 'view should have definition')
-      assert.ok(view!.columns && view!.columns.length === 3,
-        'view should have 3 columns (id, name, price)')
+      assert.ok(view!.columns && view!.columns.length === 3, 'view should have 3 columns (id, name, price)')
 
       // Check function
       assert.ok(publicSchema!.funcs && publicSchema!.funcs.length > 0, 'should have functions')
-      const func = publicSchema!.funcs!.find(f => f.name === 'get_product_count')
+      const func = publicSchema!.funcs!.find((f) => f.name === 'get_product_count')
       assert.ok(func, 'should find get_product_count function')
       assert.ok(func!.ret, 'function should have return type')
       assert.equal(func!.lang, 'sql', 'function language should be sql')
@@ -238,10 +251,10 @@ describe('PostgreSQL Inspector', () => {
       const result = await localInspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      const publicSchema = result.schema!.schemas.find(s => s.name === 'public')
+      const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
       assert.ok(publicSchema, 'should have public schema')
 
-      const table = publicSchema!.tables?.find(t => t.name === 'documents')
+      const table = publicSchema!.tables?.find((t) => t.name === 'documents')
       assert.ok(table, 'should find documents table')
 
       // Policies may be in attrs or a separate field depending on the marshal format
@@ -276,8 +289,7 @@ describe('PostgreSQL Inspector', () => {
       // Should have statements or changes indicating columns were added
       const hasStatements = result.statements && result.statements.length > 0
       const hasChanges = result.changes && result.changes.length > 0
-      assert.ok(hasStatements || hasChanges,
-        'diff should produce statements or changes for added columns')
+      assert.ok(hasStatements || hasChanges, 'diff should produce statements or changes for added columns')
 
       if (result.statements) {
         const stmtsStr = result.statements.join(' ')

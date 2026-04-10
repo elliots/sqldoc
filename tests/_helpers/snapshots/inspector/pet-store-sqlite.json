@@ -1,954 +1,896 @@
 {
   "schemas": [
     {
+      "name": "main",
       "attrs": [
         {
           "kind": "file",
           "name": ":memory:"
         }
       ],
-      "name": "main",
       "tables": [
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE categories (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  description TEXT\n)",
-              "kind": "create_stmt"
-            }
-          ],
+          "name": "categories",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "name",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "description",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             }
           ],
-          "name": "categories",
+          "attrs": [
+            {
+              "kind": "create_stmt",
+              "S": "CREATE TABLE categories (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  description TEXT\n)"
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
-          },
-          "schema": "main"
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
+          }
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE pets (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  category_id INTEGER REFERENCES categories(id),\n  name TEXT NOT NULL,\n  sku TEXT NOT NULL UNIQUE,\n  price REAL NOT NULL DEFAULT 0,\n  internal_notes TEXT,\n  -- @codegen.rename('petStatus')\n  status TEXT NOT NULL DEFAULT 'available',\n  created_at TEXT DEFAULT (datetime('now'))\n)",
-              "kind": "create_stmt"
-            }
-          ],
+          "name": "pets",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "category_id",
               "type": {
-                "null": true,
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
               }
             },
             {
               "name": "name",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "sku",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
-              "default": {
-                "V": "0"
-              },
               "name": "price",
               "type": {
-                "raw": "REAL",
                 "type": {
-                  "T": "real",
-                  "kind": "float"
-                }
+                  "kind": "float",
+                  "T": "real"
+                },
+                "raw": "REAL"
+              },
+              "default": {
+                "V": "0"
               }
             },
             {
               "name": "internal_notes",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             },
             {
-              "attrs": [
-                {
-                  "args": "'petStatus'",
-                  "kind": "tag",
-                  "name": "codegen.rename"
-                }
-              ],
+              "name": "status",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
+              },
               "default": {
                 "V": "'available'"
               },
-              "name": "status",
-              "type": {
-                "raw": "TEXT",
-                "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            },
-            {
-              "default": {
-                "X": "datetime('now')"
-              },
-              "name": "created_at",
-              "type": {
-                "null": true,
-                "raw": "TEXT",
-                "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            }
-          ],
-          "foreignKeys": [
-            {
-              "columns": ["category_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "categories",
-              "symbol": "0"
-            }
-          ],
-          "indexes": [
-            {
               "attrs": [
                 {
-                  "S": "",
-                  "kind": "create_stmt"
+                  "kind": "tag",
+                  "name": "codegen.rename",
+                  "args": "'petStatus'"
+                }
+              ]
+            },
+            {
+              "name": "created_at",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "text"
                 },
-                {
-                  "_goType": "*sqlite.IndexOrigin",
-                  "kind": "unknown"
-                }
-              ],
-              "name": "sqlite_autoindex_pets_1",
-              "parts": [
-                {
-                  "column": "sku"
-                }
-              ],
-              "unique": true
+                "raw": "TEXT",
+                "null": true
+              },
+              "default": {
+                "X": "datetime('now')"
+              }
             }
           ],
-          "name": "pets",
+          "attrs": [
+            {
+              "kind": "create_stmt",
+              "S": "CREATE TABLE pets (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  category_id INTEGER REFERENCES categories(id),\n  name TEXT NOT NULL,\n  sku TEXT NOT NULL UNIQUE,\n  price REAL NOT NULL DEFAULT 0,\n  internal_notes TEXT,\n  -- @codegen.rename('petStatus')\n  status TEXT NOT NULL DEFAULT 'available',\n  created_at TEXT DEFAULT (datetime('now'))\n)"
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
           },
-          "schema": "main"
+          "foreignKeys": [
+            {
+              "symbol": "0",
+              "columns": ["category_id"],
+              "refTable": "categories",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE owners (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  email TEXT NOT NULL UNIQUE,\n  phone TEXT,\n  created_at TEXT DEFAULT (datetime('now'))\n)",
-              "kind": "create_stmt"
-            }
-          ],
+          "name": "owners",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "name",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "email",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "phone",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             },
             {
-              "default": {
-                "X": "datetime('now')"
-              },
               "name": "created_at",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            }
-          ],
-          "indexes": [
-            {
-              "attrs": [
-                {
-                  "S": "",
-                  "kind": "create_stmt"
+                  "kind": "string",
+                  "T": "text"
                 },
-                {
-                  "_goType": "*sqlite.IndexOrigin",
-                  "kind": "unknown"
-                }
-              ],
-              "name": "sqlite_autoindex_owners_1",
-              "parts": [
-                {
-                  "column": "email"
-                }
-              ],
-              "unique": true
+                "raw": "TEXT",
+                "null": true
+              },
+              "default": {
+                "X": "datetime('now')"
+              }
             }
           ],
-          "name": "owners",
+          "attrs": [
+            {
+              "kind": "create_stmt",
+              "S": "CREATE TABLE owners (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  email TEXT NOT NULL UNIQUE,\n  phone TEXT,\n  created_at TEXT DEFAULT (datetime('now'))\n)"
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
-          },
-          "schema": "main"
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
+          }
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE adoptions (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  pet_id INTEGER NOT NULL REFERENCES pets(id),\n  owner_id INTEGER NOT NULL REFERENCES owners(id),\n  adopted_at TEXT NOT NULL DEFAULT (datetime('now')),\n  adoption_fee REAL NOT NULL DEFAULT 0\n)",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "",
-              "kind": "tag",
-              "name": "custom"
-            }
-          ],
+          "name": "adoptions",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "pet_id",
               "type": {
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER"
               }
             },
             {
               "name": "owner_id",
               "type": {
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER"
               }
             },
             {
-              "default": {
-                "X": "datetime('now')"
-              },
               "name": "adopted_at",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
+              },
+              "default": {
+                "X": "datetime('now')"
               }
             },
             {
-              "default": {
-                "V": "0"
-              },
               "name": "adoption_fee",
               "type": {
-                "raw": "REAL",
                 "type": {
-                  "T": "real",
-                  "kind": "float"
-                }
+                  "kind": "float",
+                  "T": "real"
+                },
+                "raw": "REAL"
+              },
+              "default": {
+                "V": "0"
               }
             }
           ],
-          "foreignKeys": [
+          "attrs": [
             {
-              "columns": ["owner_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "owners",
-              "symbol": "0"
+              "kind": "create_stmt",
+              "S": "CREATE TABLE adoptions (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  pet_id INTEGER NOT NULL REFERENCES pets(id),\n  owner_id INTEGER NOT NULL REFERENCES owners(id),\n  adopted_at TEXT NOT NULL DEFAULT (datetime('now')),\n  adoption_fee REAL NOT NULL DEFAULT 0\n)"
             },
             {
-              "columns": ["pet_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "pets",
-              "symbol": "1"
+              "kind": "tag",
+              "name": "custom",
+              "args": ""
             }
           ],
-          "name": "adoptions",
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
           },
-          "schema": "main"
+          "foreignKeys": [
+            {
+              "symbol": "0",
+              "columns": ["owner_id"],
+              "refTable": "owners",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            },
+            {
+              "symbol": "1",
+              "columns": ["pet_id"],
+              "refTable": "pets",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE medical_records (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  pet_id INTEGER NOT NULL REFERENCES pets(id),\n  visit_date TEXT NOT NULL DEFAULT (date('now')),\n  diagnosis TEXT NOT NULL,\n  treatment TEXT,\n  vet_name TEXT\n)",
-              "kind": "create_stmt"
-            }
-          ],
+          "name": "medical_records",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "pet_id",
               "type": {
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER"
               }
             },
             {
-              "default": {
-                "X": "date('now')"
-              },
               "name": "visit_date",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
+              },
+              "default": {
+                "X": "date('now')"
               }
             },
             {
               "name": "diagnosis",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "treatment",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             },
             {
               "name": "vet_name",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             }
           ],
-          "foreignKeys": [
+          "attrs": [
             {
-              "columns": ["pet_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "pets",
-              "symbol": "0"
+              "kind": "create_stmt",
+              "S": "CREATE TABLE medical_records (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  pet_id INTEGER NOT NULL REFERENCES pets(id),\n  visit_date TEXT NOT NULL DEFAULT (date('now')),\n  diagnosis TEXT NOT NULL,\n  treatment TEXT,\n  vet_name TEXT\n)"
             }
           ],
-          "name": "medical_records",
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
           },
-          "schema": "main"
+          "foreignKeys": [
+            {
+              "symbol": "0",
+              "columns": ["pet_id"],
+              "refTable": "pets",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE legacy_inventory (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  item_name TEXT,\n  old_sku TEXT,\n  quantity INTEGER DEFAULT 0\n)",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'audit.require-audit', 'Legacy table scheduled for removal'",
-              "kind": "tag",
-              "name": "lint.ignore"
-            }
-          ],
+          "name": "legacy_inventory",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "item_name",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             },
             {
               "name": "old_sku",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             },
             {
-              "default": {
-                "V": "0"
-              },
               "name": "quantity",
               "type": {
-                "null": true,
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
+              "default": {
+                "V": "0"
               }
             }
           ],
-          "name": "legacy_inventory",
+          "attrs": [
+            {
+              "kind": "create_stmt",
+              "S": "CREATE TABLE legacy_inventory (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  item_name TEXT,\n  old_sku TEXT,\n  quantity INTEGER DEFAULT 0\n)"
+            },
+            {
+              "kind": "tag",
+              "name": "lint.ignore",
+              "args": "'audit.require-audit', 'Legacy table scheduled for removal'"
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
-          },
-          "schema": "main"
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
+          }
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE staff (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  role TEXT NOT NULL DEFAULT 'associate',\n  hired_at TEXT NOT NULL DEFAULT (date('now'))\n)",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "",
-              "kind": "tag",
-              "name": "codegen.skip"
-            }
-          ],
+          "name": "staff",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "name",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
-              "default": {
-                "V": "'associate'"
-              },
               "name": "role",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
+              },
+              "default": {
+                "V": "'associate'"
               }
             },
             {
-              "default": {
-                "X": "date('now')"
-              },
               "name": "hired_at",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
+              },
+              "default": {
+                "X": "date('now')"
               }
             }
           ],
-          "name": "staff",
+          "attrs": [
+            {
+              "kind": "create_stmt",
+              "S": "CREATE TABLE staff (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  role TEXT NOT NULL DEFAULT 'associate',\n  hired_at TEXT NOT NULL DEFAULT (date('now'))\n)"
+            },
+            {
+              "kind": "tag",
+              "name": "codegen.skip",
+              "args": ""
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
-          },
-          "schema": "main"
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
+          }
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE reviews (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  pet_id INTEGER NOT NULL REFERENCES pets(id),\n  owner_id INTEGER NOT NULL REFERENCES owners(id),\n  rating INTEGER NOT NULL,\n  body TEXT,\n  location_id INTEGER REFERENCES locations(id),\n  created_at TEXT DEFAULT (datetime('now'))\n)",
-              "kind": "create_stmt"
-            }
-          ],
+          "name": "reviews",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "pet_id",
               "type": {
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER"
               }
             },
             {
               "name": "owner_id",
               "type": {
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER"
               }
             },
             {
               "name": "rating",
               "type": {
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER"
               }
             },
             {
               "name": "body",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             },
             {
               "name": "location_id",
               "type": {
-                "null": true,
-                "raw": "INTEGER",
                 "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
               }
             },
             {
-              "default": {
-                "X": "datetime('now')"
-              },
               "name": "created_at",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
+              },
+              "default": {
+                "X": "datetime('now')"
               }
             }
           ],
-          "foreignKeys": [
+          "attrs": [
             {
-              "columns": ["location_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "locations",
-              "symbol": "0"
-            },
-            {
-              "columns": ["owner_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "owners",
-              "symbol": "1"
-            },
-            {
-              "columns": ["pet_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "main",
-              "refTable": "pets",
-              "symbol": "2"
+              "kind": "create_stmt",
+              "S": "CREATE TABLE reviews (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  pet_id INTEGER NOT NULL REFERENCES pets(id),\n  owner_id INTEGER NOT NULL REFERENCES owners(id),\n  rating INTEGER NOT NULL,\n  body TEXT,\n  location_id INTEGER REFERENCES locations(id),\n  created_at TEXT DEFAULT (datetime('now'))\n)"
             }
           ],
-          "name": "reviews",
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
           },
-          "schema": "main"
+          "foreignKeys": [
+            {
+              "symbol": "0",
+              "columns": ["location_id"],
+              "refTable": "locations",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            },
+            {
+              "symbol": "1",
+              "columns": ["owner_id"],
+              "refTable": "owners",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            },
+            {
+              "symbol": "2",
+              "columns": ["pet_id"],
+              "refTable": "pets",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
         },
         {
-          "attrs": [
-            {
-              "S": "CREATE TABLE locations (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  address TEXT NOT NULL,\n  city TEXT NOT NULL,\n  zip TEXT\n)",
-              "kind": "create_stmt"
-            }
-          ],
+          "name": "locations",
           "columns": [
             {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "integer"
+                },
+                "raw": "INTEGER",
+                "null": true
+              },
               "attrs": [
                 {
                   "kind": "autoincrement"
                 }
-              ],
-              "name": "id",
-              "type": {
-                "null": true,
-                "raw": "INTEGER",
-                "type": {
-                  "T": "integer",
-                  "kind": "integer"
-                }
-              }
+              ]
             },
             {
               "name": "name",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "address",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "city",
               "type": {
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT"
               }
             },
             {
               "name": "zip",
               "type": {
-                "null": true,
-                "raw": "TEXT",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "TEXT",
+                "null": true
               }
             }
           ],
-          "name": "locations",
+          "attrs": [
+            {
+              "kind": "create_stmt",
+              "S": "CREATE TABLE locations (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  name TEXT NOT NULL,\n  address TEXT NOT NULL,\n  city TEXT NOT NULL,\n  zip TEXT\n)"
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "kind": "autoincrement"
-              }
-            ],
             "name": "PRIMARY",
+            "unique": true,
             "parts": [
               {
                 "column": "id"
               }
             ],
-            "unique": true
-          },
-          "schema": "main"
+            "attrs": [
+              {
+                "kind": "autoincrement"
+              }
+            ]
+          }
         }
       ]
     }

@@ -290,7 +290,7 @@ CREATE TABLE orders (
 
     // Verify column types
     const nameCol = usersTable.columns.find((c: any) => c.name === 'name')
-    expect(nameCol.type.T).toBe('text')
+    expect(nameCol.type.type.T).toBe('text')
 
     const ordersTable = tables.find((t: any) => t.name === 'orders')
     expect(ordersTable).not.toBe(undefined)

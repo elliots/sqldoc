@@ -246,17 +246,17 @@ export function typeDDL(t: SchemaType): string {
 
     case 'enum': {
       if (!t.T) throw new Error('postgres: missing enum type name')
-      return t.T
+      return qualifyType(t.T, (t as any).schema)
     }
 
     case 'composite': {
       if (!t.T) throw new Error('postgres: missing composite type name')
-      return t.T
+      return qualifyType(t.T, (t as any).schema)
     }
 
     case 'domain': {
       if (!t.T) throw new Error('postgres: missing domain type name')
-      return t.T
+      return qualifyType(t.T, (t as any).schema)
     }
 
     case 'serial': {
@@ -318,4 +318,10 @@ export function quote(s: string): string {
     return s
   }
   return "'" + s.replace(/'/g, "''") + "'"
+}
+
+/** Schema-qualify a type name if it has a schema. */
+function qualifyType(name: string, schema?: string): string {
+  if (schema) return `"${schema}"."${name}"`
+  return name
 }

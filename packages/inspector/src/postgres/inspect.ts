@@ -1,7 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/inspect_oss.go
 
-import type { DatabaseAdapter, QueryResult } from '@sqldoc/db'
+import type { DatabaseAdapter, QueryResult } from '../adapter.ts'
 import type { Inspector, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
 import { InspectMode } from '../schema/inspect.ts'
 import type {
@@ -31,6 +31,7 @@ import type {
   View,
 } from '../schema/schema.ts'
 import {
+  scanBigInt,
   scanBool,
   scanNumber,
   scanString,
@@ -40,6 +41,7 @@ import {
   modeInspectSchema,
 } from '../internal/sqlx.ts'
 import {
+  aggregatesQuery,
   columnsQuery,
   checksQuery,
   compositesQuery,
@@ -170,6 +172,7 @@ export class PostgresInspector implements Inspector {
         await this.inspectExtensions(realm)
         await this.inspectEventTriggers(realm)
         await this.inspectRangeTypes(realm)
+        await this.inspectAggregates(realm)
       }
       if (mode & InspectMode.InspectTriggers) {
         await this.inspectTriggers(realm)
@@ -605,7 +608,7 @@ export class PostgresInspector implements Inspector {
           refTable: refTableName,
           refColumns: [],
         }
-        if (refSchemaName && refSchemaName !== schemaName) {
+        if (refSchemaName) {
           fk.refSchema = refSchemaName
         }
         if (updType) {
@@ -844,7 +847,7 @@ export class PostgresInspector implements Inspector {
       const enumName = scanString(row, 2)
       const enumValue = scanString(row, 3)
 
-      if (!ns || !enumId || !enumName || !enumValue) continue
+      if (!ns || !enumId || !enumName || enumValue == null) continue
 
       let e = enumById.get(enumId)
       if (!e) {
@@ -986,11 +989,11 @@ export class PostgresInspector implements Inspector {
       const ns = scanString(row, 0)
       const name = scanString(row, 1)
       const seqType = scanString(row, 2)
-      const start = scanNumber(row, 3)
-      const increment = scanNumber(row, 4)
-      const cache = scanNumber(row, 5)
-      const minV = scanNumber(row, 6)
-      const maxV = scanNumber(row, 7)
+      const start = scanBigInt(row, 3)
+      const increment = scanBigInt(row, 4)
+      const cache = scanBigInt(row, 5)
+      const minV = scanBigInt(row, 6)
+      const maxV = scanBigInt(row, 7)
       const cycle = scanBool(row, 8)
       const ownerTable = scanString(row, 9)
       const ownerColumn = scanString(row, 10)
@@ -1189,6 +1192,70 @@ export class PostgresInspector implements Inspector {
     }
   }
 
+  // -- Aggregate Inspection --
+
+  private async inspectAggregates(realm: Realm): Promise<void> {
+    const schemaNames = realm.schemas.map((s) => s.name)
+    if (schemaNames.length === 0) return
+
+    const query = aggregatesQuery.replace('%s', nArgs(0, schemaNames.length))
+    const result = await this.db.query(query, schemaNames)
+
+    const schemaMap = new Map(realm.schemas.map((s) => [s.name, s]))
+
+    for (const row of result.rows) {
+      const ns = scanString(row, 0)
+      const name = scanString(row, 1)
+      const stateFunc = scanString(row, 2)
+      const stateType = scanString(row, 3)
+      const finalFunc = scanString(row, 4)
+      const initVal = scanString(row, 5)
+      const sortOp = scanString(row, 6)
+      const parallel = scanString(row, 7)
+      const argTypes = scanString(row, 8)
+
+      if (!ns || !name) continue
+
+      const s = schemaMap.get(ns)
+      if (!s) continue
+
+      const agg: any = {
+        kind: 'aggregate',
+        name,
+        schema: ns,
+        stateFunc: stateFunc || '',
+        stateType: stateType || '',
+      }
+      if (finalFunc && finalFunc !== '-') agg.finalFunc = finalFunc
+      if (initVal != null) agg.initVal = initVal
+      if (sortOp && sortOp !== '0' && sortOp !== '') agg.sortOp = sortOp
+      if (parallel && parallel !== '' && parallel !== 'UNSAFE') agg.parallel = parallel
+
+      // Parse argument types
+      if (argTypes) {
+        agg.args = argTypes
+          .split(',')
+          .map((a: string) => a.trim())
+          .filter(Boolean)
+      }
+
+      // Set dependencies on the state/final functions
+      agg.deps = []
+      for (const f of s.funcs ?? []) {
+        const fname = f.name
+        if (fname === stateFunc || `${ns}.${fname}` === stateFunc) {
+          agg.deps.push({ type: 'func', name: fname, schema: ns })
+        }
+        if (finalFunc && (fname === finalFunc || `${ns}.${fname}` === finalFunc)) {
+          agg.deps.push({ type: 'func', name: fname, schema: ns })
+        }
+      }
+
+      if (!s.attrs) s.attrs = []
+      s.attrs.push(agg)
+    }
+  }
+
   // -- Trigger Inspection --
 
   private async inspectTriggers(realm: Realm): Promise<void> {
@@ -1353,6 +1420,26 @@ export class PostgresInspector implements Inspector {
         case 'composite':
           // Every table has an implicit composite type
           if (tables.has(key)) return { type: 'table', name, schema: ns }
+          // Also check actual composite types
+          for (const s of realm.schemas) {
+            if (s.name === ns) {
+              if (s.compositeTypes?.some((ct) => ct.T === name))
+                return { type: 'compositeType', name, schema: ns } as any
+            }
+          }
+          break
+        case 'type':
+        case 'enum':
+          // Enum, domain, or other type object
+          for (const s of realm.schemas) {
+            if (s.name === ns) {
+              if (s.enums?.some((e) => e.T === name)) return { type: 'enum', name, schema: ns } as any
+              if ((s.attrs as any[])?.some((a) => a?.kind === 'domain' && a.T === name))
+                return { type: 'domainType', name, schema: ns } as any
+              if (s.compositeTypes?.some((ct) => ct.T === name))
+                return { type: 'compositeType', name, schema: ns } as any
+            }
+          }
           break
       }
       return undefined

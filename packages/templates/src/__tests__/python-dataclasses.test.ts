@@ -3,10 +3,10 @@ import pythonDataclasses from '../python-dataclasses/index.ts'
 
 const generate = pythonDataclasses.generate
 
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 
-const testRealm: AtlasRealm = {
+const testRealm: Realm = {
   schemas: [
     {
       name: 'public',
@@ -14,49 +14,50 @@ const testRealm: AtlasRealm = {
         {
           name: 'users',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'email', type: { T: 'character varying', raw: 'varchar(255)', null: false, category: 'string' } },
-            { name: 'name', type: { T: 'text', null: true, category: 'string' } },
-            { name: 'age', type: { T: 'integer', null: true, category: 'integer' } },
-            { name: 'is_active', type: { T: 'boolean', null: false, category: 'boolean' } },
-            { name: 'metadata', type: { T: 'jsonb', null: true, category: 'json' } },
-            { name: 'created_at', type: { T: 'timestamp with time zone', null: false, category: 'time' } },
-            { name: 'tags', type: { T: 'text[]', null: true, category: 'array' } },
-            { name: 'avatar', type: { T: 'bytea', null: true, category: 'binary' } },
-            { name: 'balance', type: { T: 'numeric(10,2)', null: true, category: 'decimal' } },
-            { name: 'external_id', type: { T: 'uuid', null: true, category: 'uuid' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            {
+              name: 'email',
+              type: { type: { kind: 'string', T: 'character varying', raw: 'varchar(255)' }, null: false },
+            },
+            { name: 'name', type: { type: { kind: 'string', T: 'text' }, null: true } },
+            { name: 'age', type: { type: { kind: 'integer', T: 'integer' }, null: true } },
+            { name: 'is_active', type: { type: { kind: 'boolean', T: 'boolean' }, null: false } },
+            { name: 'metadata', type: { type: { kind: 'json', T: 'jsonb' }, null: true } },
+            { name: 'created_at', type: { type: { kind: 'time', T: 'timestamp with time zone' }, null: false } },
+            { name: 'tags', type: { type: { kind: 'array', T: 'text[]' }, null: true } },
+            { name: 'avatar', type: { type: { kind: 'binary', T: 'bytea' }, null: true } },
+            { name: 'balance', type: { type: { kind: 'decimal', T: 'numeric(10,2)' }, null: true } },
+            { name: 'external_id', type: { type: { kind: 'uuid', T: 'uuid' }, null: true } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
+          primaryKey: { parts: [{ column: 'id' }] },
         },
         {
           name: 'posts',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'user_id', type: { T: 'bigint', null: false, category: 'integer' } },
-            { name: 'title', type: { T: 'text', null: false, category: 'string' } },
-            { name: 'body', type: { T: 'text', null: false, category: 'string' } },
-            { name: 'published_at', type: { T: 'timestamp with time zone', null: true, category: 'time' } },
-            { name: 'view_count', type: { T: 'integer', null: false, category: 'integer' } },
-            { name: 'rating', type: { T: 'double precision', null: true, category: 'float' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'user_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
+            { name: 'title', type: { type: { kind: 'string', T: 'text' }, null: false } },
+            { name: 'body', type: { type: { kind: 'string', T: 'text' }, null: false } },
+            { name: 'published_at', type: { type: { kind: 'time', T: 'timestamp with time zone' }, null: true } },
+            { name: 'view_count', type: { type: { kind: 'integer', T: 'integer' }, null: false } },
+            { name: 'rating', type: { type: { kind: 'float', T: 'double precision' }, null: true } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'posts_user_id_fkey', columns: ['user_id'], ref_table: 'users', ref_columns: ['id'] },
-          ],
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [{ symbol: 'posts_user_id_fkey', columns: ['user_id'], refTable: 'users', refColumns: ['id'] }],
         },
         {
           name: 'comments',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'post_id', type: { T: 'bigint', null: false, category: 'integer' } },
-            { name: 'user_id', type: { T: 'bigint', null: false, category: 'integer' } },
-            { name: 'content', type: { T: 'text', null: false, category: 'string' } },
-            { name: 'created_at', type: { T: 'timestamp with time zone', null: false, category: 'time' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'post_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
+            { name: 'user_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
+            { name: 'content', type: { type: { kind: 'string', T: 'text' }, null: false } },
+            { name: 'created_at', type: { type: { kind: 'time', T: 'timestamp with time zone' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'comments_post_id_fkey', columns: ['post_id'], ref_table: 'posts', ref_columns: ['id'] },
-            { symbol: 'comments_user_id_fkey', columns: ['user_id'], ref_table: 'users', ref_columns: ['id'] },
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [
+            { symbol: 'comments_post_id_fkey', columns: ['post_id'], refTable: 'posts', refColumns: ['id'] },
+            { symbol: 'comments_user_id_fkey', columns: ['user_id'], refTable: 'users', refColumns: ['id'] },
           ],
         },
       ],

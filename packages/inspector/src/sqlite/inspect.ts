@@ -51,7 +51,10 @@ import {
  * Implements the Inspector interface using sqlite_master and PRAGMA queries.
  */
 export class SqliteInspector {
-  constructor(private db: ExecQuerier) {}
+  private db: ExecQuerier
+  constructor(db: ExecQuerier) {
+    this.db = db
+  }
 
   /**
    * Inspect a single schema by name.
@@ -194,8 +197,9 @@ export class SqliteInspector {
       const partial = Boolean(row.partial)
       const stmt = String(row.sql ?? '')
 
-      // Skip primary key indexes.
+      // Skip primary key indexes and internal sqlite_ indexes.
       if (origin === 'pk') continue
+      if (name.startsWith('sqlite_')) continue
 
       const attrs: Attr[] = [
         { kind: 'create_stmt', S: stmt } as CreateStmt,

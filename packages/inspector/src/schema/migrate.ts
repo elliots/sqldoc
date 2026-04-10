@@ -35,32 +35,33 @@ export type Clause = IfExists | IfNotExists
 // -- ChangeKind (bit flags for what changed) --
 
 /** Describes a change kind that can be combined using a set of flags. */
-export enum ChangeKind {
-  NoChange = 0,
+export const ChangeKind = {
+  NoChange: 0,
 
   // Common changes
-  ChangeAttr = 1 << 0,
-  ChangeCharset = 1 << 1,
-  ChangeCollate = 1 << 2,
-  ChangeComment = 1 << 3,
+  ChangeAttr: 1 << 0,
+  ChangeCharset: 1 << 1,
+  ChangeCollate: 1 << 2,
+  ChangeComment: 1 << 3,
 
   // Column specific changes
-  ChangeNull = 1 << 4,
-  ChangeType = 1 << 5,
-  ChangeDefault = 1 << 6,
-  ChangeGenerated = 1 << 7,
+  ChangeNull: 1 << 4,
+  ChangeType: 1 << 5,
+  ChangeDefault: 1 << 6,
+  ChangeGenerated: 1 << 7,
 
   // Index specific changes
-  ChangeUnique = 1 << 8,
-  ChangeParts = 1 << 9,
+  ChangeUnique: 1 << 8,
+  ChangeParts: 1 << 9,
 
   // Foreign key specific changes
-  ChangeColumn = 1 << 10,
-  ChangeRefColumn = 1 << 11,
-  ChangeRefTable = 1 << 12,
-  ChangeUpdateAction = 1 << 13,
-  ChangeDeleteAction = 1 << 14,
-}
+  ChangeColumn: 1 << 10,
+  ChangeRefColumn: 1 << 11,
+  ChangeRefTable: 1 << 12,
+  ChangeUpdateAction: 1 << 13,
+  ChangeDeleteAction: 1 << 14,
+} as const
+export type ChangeKind = (typeof ChangeKind)[keyof typeof ChangeKind]
 
 // -- Schema Changes --
 
@@ -428,21 +429,59 @@ export interface RenameConstraint {
 
 /** Discriminated union of all schema change types. */
 export type Change =
-  | AddSchema | DropSchema | ModifySchema
-  | AddTable | DropTable | ModifyTable | RenameTable
-  | AddView | DropView | ModifyView | RenameView
-  | AddFunc | DropFunc | ModifyFunc | RenameFunc
-  | AddProc | DropProc | ModifyProc | RenameProc
-  | AddObject | DropObject | ModifyObject | RenameObject
-  | AddTrigger | DropTrigger | ModifyTrigger | RenameTrigger
-  | AddColumn | DropColumn | ModifyColumn | RenameColumn
-  | AddIndex | DropIndex | ModifyIndex | RenameIndex
-  | AddPrimaryKey | DropPrimaryKey | ModifyPrimaryKey
-  | AddForeignKey | DropForeignKey | ModifyForeignKey
-  | AddCheck | DropCheck | ModifyCheck
-  | AddSequence | DropSequence | ModifySequence
-  | AddPolicy | DropPolicy | ModifyPolicy
-  | AddAttr | DropAttr | ModifyAttr
+  | AddSchema
+  | DropSchema
+  | ModifySchema
+  | AddTable
+  | DropTable
+  | ModifyTable
+  | RenameTable
+  | AddView
+  | DropView
+  | ModifyView
+  | RenameView
+  | AddFunc
+  | DropFunc
+  | ModifyFunc
+  | RenameFunc
+  | AddProc
+  | DropProc
+  | ModifyProc
+  | RenameProc
+  | AddObject
+  | DropObject
+  | ModifyObject
+  | RenameObject
+  | AddTrigger
+  | DropTrigger
+  | ModifyTrigger
+  | RenameTrigger
+  | AddColumn
+  | DropColumn
+  | ModifyColumn
+  | RenameColumn
+  | AddIndex
+  | DropIndex
+  | ModifyIndex
+  | RenameIndex
+  | AddPrimaryKey
+  | DropPrimaryKey
+  | ModifyPrimaryKey
+  | AddForeignKey
+  | DropForeignKey
+  | ModifyForeignKey
+  | AddCheck
+  | DropCheck
+  | ModifyCheck
+  | AddSequence
+  | DropSequence
+  | ModifySequence
+  | AddPolicy
+  | DropPolicy
+  | ModifyPolicy
+  | AddAttr
+  | DropAttr
+  | ModifyAttr
   | RenameConstraint
 
 // -- Plan --
@@ -467,37 +506,37 @@ export interface PlanApplier {
 export class Changes extends Array<Change> {
   /** Returns the index of the first AddTable with the given name, or -1. */
   indexAddTable(name: string): number {
-    return this.findIndex(c => c.type === 'add_table' && (c as AddTable).T.name === name)
+    return this.findIndex((c) => c.type === 'add_table' && (c as AddTable).T.name === name)
   }
 
   /** Returns the index of the first DropTable with the given name, or -1. */
   indexDropTable(name: string): number {
-    return this.findIndex(c => c.type === 'drop_table' && (c as DropTable).T.name === name)
+    return this.findIndex((c) => c.type === 'drop_table' && (c as DropTable).T.name === name)
   }
 
   /** Returns the index of the first AddColumn with the given name, or -1. */
   indexAddColumn(name: string): number {
-    return this.findIndex(c => c.type === 'add_column' && (c as AddColumn).C.name === name)
+    return this.findIndex((c) => c.type === 'add_column' && (c as AddColumn).C.name === name)
   }
 
   /** Returns the index of the first DropColumn with the given name, or -1. */
   indexDropColumn(name: string): number {
-    return this.findIndex(c => c.type === 'drop_column' && (c as DropColumn).C.name === name)
+    return this.findIndex((c) => c.type === 'drop_column' && (c as DropColumn).C.name === name)
   }
 
   /** Returns the index of the first ModifyColumn with the given name, or -1. */
   indexModifyColumn(name: string): number {
-    return this.findIndex(c => c.type === 'modify_column' && (c as ModifyColumn).from.name === name)
+    return this.findIndex((c) => c.type === 'modify_column' && (c as ModifyColumn).from.name === name)
   }
 
   /** Returns the index of the first AddIndex with the given name, or -1. */
   indexAddIndex(name: string): number {
-    return this.findIndex(c => c.type === 'add_index' && (c as AddIndex).I.name === name)
+    return this.findIndex((c) => c.type === 'add_index' && (c as AddIndex).I.name === name)
   }
 
   /** Returns the index of the first DropIndex with the given name, or -1. */
   indexDropIndex(name: string): number {
-    return this.findIndex(c => c.type === 'drop_index' && (c as DropIndex).I.name === name)
+    return this.findIndex((c) => c.type === 'drop_index' && (c as DropIndex).I.name === name)
   }
 
   /** Removes elements at the given indexes. */

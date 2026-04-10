@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
-import type { AtlasResult } from '@sqldoc/db'
+import type { InspectorResult } from '@sqldoc/db'
 import { createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
@@ -121,7 +121,7 @@ export async function schemaInspectCommand(
         }
       } else if (resolved.atlasRealm) {
         // Pipeline already inspected — reuse the realm
-        outputInspect({ schema: resolved.atlasRealm } as AtlasResult, format)
+        outputInspect({ schema: resolved.atlasRealm } as InspectorResult, format)
       } else {
         throw new CliError('No schema available')
       }
@@ -132,7 +132,7 @@ export async function schemaInspectCommand(
   }
 }
 
-function outputInspect(result: AtlasResult, format: Format): void {
+function outputInspect(result: InspectorResult, format: Format): void {
   if (format === 'json') {
     console.log(JSON.stringify(result.schema, null, 2))
   } else {
@@ -296,7 +296,7 @@ async function diffWithLiveDb(
   }
 }
 
-function outputDiff(result: AtlasResult, format: Format, check: boolean): void {
+function outputDiff(result: InspectorResult, format: Format, check: boolean): void {
   if (result.error) {
     throw new CliError(`Diff error: ${result.error}`)
   }

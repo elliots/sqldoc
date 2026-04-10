@@ -90,7 +90,7 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
     })
 
     try {
-      const result = await runner.inspectRich(inspectSqls)
+      const result = await runner.inspect(inspectSqls)
 
       if (result.error) {
         console.error(`  ERROR: ${result.error}`)
@@ -102,7 +102,10 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
         return false
       }
 
-      fs.writeFileSync(outFile, JSON.stringify(result.schema, null, 2) + '\n')
+      fs.writeFileSync(
+        outFile,
+        JSON.stringify(result.schema, (_key, value) => (typeof value === 'bigint' ? Number(value) : value), 2) + '\n',
+      )
       const schemas = result.schema.schemas ?? []
       const tables = schemas.flatMap((s) => s.tables ?? [])
       const views = schemas.flatMap((s) => s.views ?? [])

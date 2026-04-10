@@ -1,5 +1,5 @@
 import type { ArgType, DocsMeta, InferSchema } from '@sqldoc/core'
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 
 /** Config for the codegen namespace in sqldoc.config.ts namespaces.codegen */
 export interface CodegenConfig {
@@ -25,7 +25,7 @@ export interface TemplateEntry {
 /** Context passed to each template's generate function */
 export interface TemplateContext<C = Record<string, unknown>> {
   /** Full post-compile Atlas realm */
-  realm: AtlasRealm
+  realm: Realm
   /** All tags across all files, grouped by source file then by SQL object */
   allFileTags: Array<{
     sourceFile: string

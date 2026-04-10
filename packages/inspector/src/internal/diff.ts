@@ -80,12 +80,7 @@ import {
  * Compute changes between two schemas.
  * Uses DiffDriver for dialect-specific comparison logic.
  */
-export function schemaDiff(
-  driver: DiffDriver,
-  from: Schema,
-  to: Schema,
-  opts?: DiffOptions,
-): Change[] {
+export function schemaDiff(driver: DiffDriver, from: Schema, to: Schema, opts?: DiffOptions): Change[] {
   if (from.name !== to.name) {
     throw new Error(`mismatched schema names: "${from.name}" != "${to.name}"`)
   }
@@ -208,12 +203,7 @@ export function schemaDiff(
 /**
  * Compute changes between two realms.
  */
-export function realmDiff(
-  driver: DiffDriver,
-  from: Realm,
-  to: Realm,
-  opts?: DiffOptions,
-): Change[] {
+export function realmDiff(driver: DiffDriver, from: Realm, to: Realm, opts?: DiffOptions): Change[] {
   const changes: Change[] = []
 
   // Realm-level object changes
@@ -222,7 +212,7 @@ export function realmDiff(
 
   // Drop or modify schemas
   for (const s1 of from.schemas) {
-    const s2 = to.schemas.find(s => s.name === s1.name)
+    const s2 = to.schemas.find((s) => s.name === s1.name)
     if (!s2) {
       changes.push({ type: 'drop_schema', S: s1 })
       continue
@@ -233,9 +223,26 @@ export function realmDiff(
 
   // Add schemas
   for (const s1 of to.schemas) {
-    if (!from.schemas.find(s => s.name === s1.name)) {
+    if (!from.schemas.find((s) => s.name === s1.name)) {
       changes.push({ type: 'add_schema', S: s1 })
-      // Add all objects in the new schema
+      // Add all schema-level objects (enums, composites, domains, extensions, sequences)
+      for (const e of s1.enums ?? []) {
+        changes.push({ type: 'add_object', O: e } as any)
+      }
+      for (const ct of s1.compositeTypes ?? []) {
+        changes.push({ type: 'add_object', O: ct } as any)
+      }
+      // Domains, range types, and aggregates are stored in attrs
+      for (const a of (s1.attrs ?? []) as any[]) {
+        if (a?.kind === 'domain' || a?.kind === 'range_type' || a?.kind === 'aggregate') {
+          changes.push({ type: 'add_object', O: a } as any)
+        }
+      }
+      // Extensions are handled at realm level by realmObjectDiff — skip here
+      for (const seq of s1.sequences ?? []) {
+        changes.push({ type: 'add_object', O: seq } as any)
+      }
+      // Add functions, procedures, tables, views
       for (const f of s1.funcs ?? []) {
         changes.push({ type: 'add_func', F: f })
       }
@@ -259,12 +266,7 @@ export function realmDiff(
 /**
  * Compute changes between two tables.
  */
-export function tableDiff(
-  driver: DiffDriver,
-  from: Table,
-  to: Table,
-  opts?: DiffOptions,
-): Change[] {
+export function tableDiff(driver: DiffDriver, from: Table, to: Table, opts?: DiffOptions): Change[] {
   const changes: Change[] = []
 
   // Table attribute changes (collations, checks, etc.)
@@ -353,7 +355,11 @@ function pkDiff(driver: DiffDriver, from: Table, to: Table, _opts?: DiffOptions)
     if (change !== ChangeKind.NoChange) {
       changes.push({ type: 'modify_primary_key', from: pk1, to: pk2, change })
     } else if (pk1.name && pk2.name && pk1.name !== pk2.name) {
-      changes.push({ type: 'rename_constraint', from: pk1 as unknown as Record<string, unknown>, to: pk2 as unknown as Record<string, unknown> })
+      changes.push({
+        type: 'rename_constraint',
+        from: pk1 as unknown as Record<string, unknown>,
+        to: pk2 as unknown as Record<string, unknown>,
+      })
     }
   }
 
@@ -635,19 +641,11 @@ function viewDiff(driver: DiffDriver, from: View, to: View, opts?: DiffOptions):
 // -- Helpers --
 
 function funcChanged(a: Func, b: Func): boolean {
-  return (
-    a.body !== b.body ||
-    a.lang !== b.lang ||
-    JSON.stringify(a.args ?? []) !== JSON.stringify(b.args ?? [])
-  )
+  return a.body !== b.body || a.lang !== b.lang || JSON.stringify(a.args ?? []) !== JSON.stringify(b.args ?? [])
 }
 
 function procChanged(a: Proc, b: Proc): boolean {
-  return (
-    a.body !== b.body ||
-    a.lang !== b.lang ||
-    JSON.stringify(a.args ?? []) !== JSON.stringify(b.args ?? [])
-  )
+  return a.body !== b.body || a.lang !== b.lang || JSON.stringify(a.args ?? []) !== JSON.stringify(b.args ?? [])
 }
 
 function sequenceChanged(a: Sequence, b: Sequence): boolean {
@@ -678,13 +676,13 @@ function addViewChanges(v: View): Change[] {
 
 /** Find a view matching both name and materialized status. */
 function findViewByMaterialized(s: Schema, v: View): View | undefined {
-  return s.views?.find(v2 => v2.name === v.name && v2.materialized === v.materialized)
+  return s.views?.find((v2) => v2.name === v.name && v2.materialized === v.materialized)
 }
 
 /** Check if a comment attribute changed. Returns the ChangeKind. */
 function commentChange(from: Attr[] | undefined, to: Attr[] | undefined): ChangeKind {
-  const c1 = from?.find(a => 'kind' in a && (a as any).kind === 'comment') as { text: string } | undefined
-  const c2 = to?.find(a => 'kind' in a && (a as any).kind === 'comment') as { text: string } | undefined
+  const c1 = from?.find((a) => 'kind' in a && (a as any).kind === 'comment') as { text: string } | undefined
+  const c2 = to?.find((a) => 'kind' in a && (a as any).kind === 'comment') as { text: string } | undefined
   if (c1?.text !== c2?.text) {
     return ChangeKind.ChangeComment
   }
@@ -776,7 +774,7 @@ export function detachCycles(changes: Change[]): Change[] {
 
       if (extFKs.length > 0) {
         // Defer external FK creation
-        const fkChanges: Change[] = extFKs.map(fk => ({ type: 'add_foreign_key' as const, F: fk }))
+        const fkChanges: Change[] = extFKs.map((fk) => ({ type: 'add_foreign_key' as const, F: fk }))
         deferred.push({ type: 'modify_table', T: t, changes: fkChanges })
         // Create table with only self-referencing FKs
         const tCopy = { ...t, foreignKeys: selfFKs.length > 0 ? selfFKs : undefined }
@@ -796,7 +794,7 @@ export function detachCycles(changes: Change[]): Change[] {
 
       if (extFKs.length > 0) {
         // Drop external FKs before dropping table
-        const fkChanges: Change[] = extFKs.map(fk => ({ type: 'drop_foreign_key' as const, F: fk }))
+        const fkChanges: Change[] = extFKs.map((fk) => ({ type: 'drop_foreign_key' as const, F: fk }))
         planned.push({ type: 'modify_table', T: t, changes: fkChanges })
         const tCopy = { ...t, foreignKeys: undefined }
         planned.push({ type: 'drop_table', T: tCopy })

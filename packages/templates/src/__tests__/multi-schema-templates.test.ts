@@ -3,7 +3,7 @@
  * Verifies that representative templates produce correct output
  * when given a realm with multiple schemas and cross-schema FKs.
  */
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import drizzle from '../drizzle/index.ts'
@@ -13,7 +13,7 @@ import zod from '../zod/index.ts'
 
 // ── Multi-schema realm fixture ───────────────────────────────────
 
-const multiSchemaRealm: AtlasRealm = {
+const multiSchemaRealm: Realm = {
   schemas: [
     {
       name: 'auth',
@@ -21,14 +21,12 @@ const multiSchemaRealm: AtlasRealm = {
         {
           name: 'users',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'email', type: { T: 'text', null: false, category: 'string' } },
-            { name: 'role_id', type: { T: 'bigint', null: false, category: 'integer' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'email', type: { type: { kind: 'string', T: 'text' }, null: false } },
+            { name: 'role_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'users_role_id_fkey', columns: ['role_id'], ref_table: 'roles', ref_columns: ['id'] },
-          ],
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [{ symbol: 'users_role_id_fkey', columns: ['role_id'], refTable: 'roles', refColumns: ['id'] }],
         },
       ],
     },
@@ -38,21 +36,21 @@ const multiSchemaRealm: AtlasRealm = {
         {
           name: 'roles',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'name', type: { T: 'text', null: false, category: 'string' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'name', type: { type: { kind: 'string', T: 'text' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
+          primaryKey: { parts: [{ column: 'id' }] },
         },
         {
           name: 'projects',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'name', type: { T: 'text', null: false, category: 'string' } },
-            { name: 'owner_id', type: { T: 'bigint', null: false, category: 'integer' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'name', type: { type: { kind: 'string', T: 'text' }, null: false } },
+            { name: 'owner_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'projects_owner_id_fkey', columns: ['owner_id'], ref_table: 'users', ref_columns: ['id'] },
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [
+            { symbol: 'projects_owner_id_fkey', columns: ['owner_id'], refTable: 'users', refColumns: ['id'] },
           ],
         },
       ],
@@ -60,7 +58,7 @@ const multiSchemaRealm: AtlasRealm = {
   ],
 }
 
-const singleSchemaRealm: AtlasRealm = {
+const singleSchemaRealm: Realm = {
   schemas: [
     {
       name: 'public',
@@ -68,18 +66,18 @@ const singleSchemaRealm: AtlasRealm = {
         {
           name: 'users',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'email', type: { T: 'text', null: false, category: 'string' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'email', type: { type: { kind: 'string', T: 'text' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
+          primaryKey: { parts: [{ column: 'id' }] },
         },
         {
           name: 'roles',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'name', type: { T: 'text', null: false, category: 'string' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'name', type: { type: { kind: 'string', T: 'text' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
+          primaryKey: { parts: [{ column: 'id' }] },
         },
       ],
     },

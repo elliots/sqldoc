@@ -14,9 +14,7 @@
     "NOTICE",
     "package.json"
   ],
-  "dependencies": {
-    "@sqldoc/db": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@sqldoc/db-pglite": "workspace:*"
   }

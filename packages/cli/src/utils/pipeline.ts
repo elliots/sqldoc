@@ -12,7 +12,7 @@ import {
   SqlparserTsAdapter,
   validate,
 } from '@sqldoc/core'
-import type { AtlasRealm, AtlasSchema } from '@sqldoc/db'
+import type { Realm, Schema } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
@@ -147,7 +147,7 @@ export async function runCompilePipeline(
 
   try {
     // ── Dual Atlas inspection when @external directives present (D-16, D-17) ──
-    let externalRealm: AtlasRealm | undefined
+    let externalRealm: Realm | undefined
 
     if (hasExternals) {
       // Inspection 1: external files only -> externalRealm
@@ -158,7 +158,7 @@ export async function runCompilePipeline(
       if (!externalResult.schema) {
         throw new Error(externalResult.error ?? 'Atlas failed to parse external schema')
       }
-      externalRealm = externalResult.schema as AtlasRealm
+      externalRealm = externalResult.schema as Realm
 
       // Extract external object names
       for (const schema of externalRealm.schemas) {
@@ -184,7 +184,7 @@ export async function runCompilePipeline(
 
     // Validate external object immutability (D-18)
     if (hasExternals && externalRealm) {
-      validateExternalImmutability(externalRealm, atlasRealm as AtlasRealm, externalObjectNames)
+      validateExternalImmutability(externalRealm, atlasRealm as Realm, externalObjectNames)
     }
 
     for (const filePath of allFiles) {
@@ -309,11 +309,11 @@ function stripMigrationDown(sql: string): string {
  * Uses JSON.stringify on sorted column arrays for deep equality.
  */
 function normalizeColumns(
-  columns: Array<{ name?: string; type?: { T?: string; raw?: string; null?: boolean } }> | undefined,
+  columns: Array<{ name: string; type: { type: { T: string }; raw?: string; null?: boolean } }> | undefined,
 ): string {
   if (!columns || columns.length === 0) return '[]'
-  const sorted = [...columns].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-  return JSON.stringify(sorted.map((c) => ({ name: c.name, type: c.type?.T ?? c.type?.raw, null: c.type?.null })))
+  const sorted = [...columns].sort((a, b) => a.name.localeCompare(b.name))
+  return JSON.stringify(sorted.map((c) => ({ name: c.name, type: c.type.type.T ?? c.type.raw, null: c.type.null })))
 }
 
 /**
@@ -321,14 +321,10 @@ function normalizeColumns(
  * Compares each external object between the externalRealm and fullRealm.
  * If any difference is detected, throws a hard error.
  */
-function validateExternalImmutability(
-  externalRealm: AtlasRealm,
-  fullRealm: AtlasRealm,
-  externalObjectNames: Set<string>,
-): void {
+function validateExternalImmutability(externalRealm: Realm, fullRealm: Realm, externalObjectNames: Set<string>): void {
   // Build lookup maps for full realm objects
-  const fullTables = new Map<string, AtlasSchema['tables']>()
-  const fullViews = new Map<string, AtlasSchema['views']>()
+  const fullTables = new Map<string, Schema['tables']>()
+  const fullViews = new Map<string, Schema['views']>()
   for (const schema of fullRealm.schemas) {
     for (const table of schema.tables ?? []) fullTables.set(table.name, [table])
     for (const view of schema.views ?? []) fullViews.set(view.name, [view])
@@ -371,7 +367,7 @@ function validateExternalImmutability(
  * Filter external objects from a realm, returning a new realm without them (D-20).
  * Used when config.codegen.skipExternal is true.
  */
-export function filterExternalFromRealm(realm: AtlasRealm, externalNames: Set<string>): AtlasRealm {
+export function filterExternalFromRealm(realm: Realm, externalNames: Set<string>): Realm {
   return {
     ...realm,
     schemas: realm.schemas.map((schema) => ({

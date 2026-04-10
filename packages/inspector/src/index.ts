@@ -2,10 +2,13 @@
 
 // Main API
 export { createInspector } from './inspector.ts'
-export type { InspectorOptions, InspectorRunner, DiffSource } from './inspector.ts'
+export type { DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
 
-// Marshal
-export { marshalRealm, typeCategory, marshalColumn, marshalColumnType } from './marshal.ts'
+// Database adapter interface
+export type { DatabaseAdapter, ExecResult, QueryResult } from './adapter.ts'
+
+// Type utilities
+export { isCustomType, typeCategory } from './marshal.ts'
 
 // Schema types
 export type {
@@ -48,6 +51,8 @@ export type {
   RawExpr,
   Realm,
   ReferenceAction,
+  Rename,
+  RenameCandidate,
   Schema,
   SchemaType,
   Sequence,
@@ -59,6 +64,7 @@ export type {
   TextSearchType,
   TimeType,
   Trigger,
+  TypeCategory,
   UnsupportedType,
   UUIDType,
   View,
@@ -70,12 +76,12 @@ export type {
   Differ,
   DiffOptions,
   ExecQuerier,
-  ExecResult,
+  ExecResult as InspectExecResult,
   Inspector,
   InspectOptions,
   InspectRealmOption,
   Normalizer,
-  QueryResult,
+  QueryResult as InspectQueryResult,
 } from './schema/inspect.ts'
 
 // Migration / Change types

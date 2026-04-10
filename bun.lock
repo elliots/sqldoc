@@ -46,6 +46,7 @@
       "name": "@sqldoc/db",
       "version": "0.1.3",
       "dependencies": {
+        "@sqldoc/inspector": "workspace:*",
         "picocolors": "catalog:",
       },
       "devDependencies": {
@@ -110,9 +111,6 @@
     "packages/inspector": {
       "name": "@sqldoc/inspector",
       "version": "0.0.1",
-      "dependencies": {
-        "@sqldoc/db": "workspace:*",
-      },
       "devDependencies": {
         "@sqldoc/db-pglite": "workspace:*",
       },

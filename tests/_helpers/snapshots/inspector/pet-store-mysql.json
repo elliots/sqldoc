@@ -1,1186 +1,1151 @@
 {
-  "attrs": [
-    {
-      "V": "utf8mb4",
-      "kind": "charset"
-    },
-    {
-      "V": "utf8mb4_0900_ai_ci",
-      "kind": "collation"
-    }
-  ],
   "schemas": [
     {
+      "name": "sqldoc_dev",
       "attrs": [
         {
-          "V": "utf8mb4",
-          "kind": "charset"
+          "kind": "charset",
+          "V": "utf8mb4"
         },
         {
-          "V": "utf8mb4_0900_ai_ci",
-          "kind": "collation"
+          "kind": "collation",
+          "V": "utf8mb4_0900_ai_ci"
         }
       ],
-      "name": "sqldoc_dev",
       "tables": [
         {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `adoptions` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `pet_id` int NOT NULL,\n  `owner_id` int NOT NULL,\n  `adopted_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `adoption_fee` decimal(10,2) NOT NULL DEFAULT '0.00',\n  PRIMARY KEY (`id`),\n  KEY `pet_id` (`pet_id`),\n  KEY `owner_id` (`owner_id`),\n  CONSTRAINT `adoptions_ibfk_1` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`id`),\n  CONSTRAINT `adoptions_ibfk_2` FOREIGN KEY (`owner_id`) REFERENCES `owners` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'Adoption records linking pets to owners'",
-              "kind": "tag",
-              "name": "comment"
-            },
-            {
-              "args": "",
-              "kind": "tag",
-              "name": "audit"
-            },
-            {
-              "args": "",
-              "kind": "tag",
-              "name": "custom"
-            },
-            {
-              "args": "'Tracks each adoption event with timestamps and fees'",
-              "kind": "tag",
-              "name": "docs.description"
-            }
-          ],
+          "name": "adoptions",
           "columns": [
             {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
               "name": "id",
               "type": {
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              },
+              "attrs": [
+                {
+                  "kind": "auto_increment",
+                  "V": 0
                 }
-              }
+              ]
             },
             {
               "name": "pet_id",
               "type": {
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
               }
             },
             {
               "name": "owner_id",
               "type": {
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
               }
             },
             {
-              "attrs": [
-                {
-                  "args": "'Timestamp when the adoption was finalized'",
-                  "kind": "tag",
-                  "name": "comment"
-                }
-              ],
+              "name": "adopted_at",
+              "type": {
+                "type": {
+                  "kind": "time",
+                  "T": "timestamp"
+                },
+                "raw": "timestamp"
+              },
               "default": {
                 "X": "CURRENT_TIMESTAMP"
               },
-              "name": "adopted_at",
-              "type": {
-                "raw": "timestamp",
-                "type": {
-                  "T": "timestamp",
-                  "kind": "time"
+              "attrs": [
+                {
+                  "kind": "tag",
+                  "name": "comment",
+                  "args": "'Timestamp when the adoption was finalized'"
                 }
-              }
+              ]
             },
             {
-              "default": {
-                "V": "0.00"
-              },
               "name": "adoption_fee",
               "type": {
-                "raw": "decimal(10,2)",
                 "type": {
-                  "T": "decimal",
                   "kind": "decimal",
+                  "T": "decimal",
                   "precision": 10,
                   "scale": 2
-                }
+                },
+                "raw": "decimal(10,2)"
+              },
+              "default": {
+                "V": "0.00"
               }
             }
           ],
-          "foreignKeys": [
+          "attrs": [
             {
-              "columns": ["pet_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "sqldoc_dev",
-              "refTable": "pets",
-              "symbol": "adoptions_ibfk_1"
+              "kind": "charset",
+              "V": "utf8mb4"
             },
             {
-              "columns": ["owner_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "sqldoc_dev",
-              "refTable": "owners",
-              "symbol": "adoptions_ibfk_2"
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "comment",
+              "args": "'Adoption records linking pets to owners'"
+            },
+            {
+              "kind": "tag",
+              "name": "audit",
+              "args": ""
+            },
+            {
+              "kind": "tag",
+              "name": "custom",
+              "args": ""
+            },
+            {
+              "kind": "tag",
+              "name": "docs.description",
+              "args": "'Tracks each adoption event with timestamps and fees'"
             }
           ],
           "indexes": [
             {
-              "attrs": [
-                {
-                  "_goType": "*mysql.IndexType",
-                  "kind": "unknown"
-                }
-              ],
               "name": "owner_id",
               "parts": [
                 {
                   "column": "owner_id"
                 }
+              ],
+              "attrs": [
+                {
+                  "kind": "index_type",
+                  "T": "BTREE"
+                }
               ]
             },
             {
-              "attrs": [
-                {
-                  "_goType": "*mysql.IndexType",
-                  "kind": "unknown"
-                }
-              ],
               "name": "pet_id",
               "parts": [
                 {
                   "column": "pet_id"
                 }
+              ],
+              "attrs": [
+                {
+                  "kind": "index_type",
+                  "T": "BTREE"
+                }
               ]
             }
           ],
-          "name": "adoptions",
           "primaryKey": {
-            "attrs": [
-              {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
             "name": "PRI",
             "parts": [
               {
                 "column": "id"
               }
-            ]
-          },
-          "schema": "sqldoc_dev"
-        },
-        {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `categories` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(100) NOT NULL,\n  `description` text,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'Pet categories lookup table'",
-              "kind": "tag",
-              "name": "comment"
-            },
-            {
-              "args": "'Lookup table for pet species and breed categories'",
-              "kind": "tag",
-              "name": "docs.description"
-            }
-          ],
-          "columns": [
-            {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
-              "name": "id",
-              "type": {
-                "raw": "int",
-                "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "'Category display name'",
-                  "kind": "tag",
-                  "name": "comment"
-                },
-                {
-                  "args": "",
-                  "kind": "tag",
-                  "name": "validate.notEmpty"
-                }
-              ],
-              "name": "name",
-              "type": {
-                "raw": "varchar(100)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 100
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                }
-              ],
-              "name": "description",
-              "type": {
-                "null": true,
-                "raw": "text",
-                "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            }
-          ],
-          "name": "categories",
-          "primaryKey": {
+            ],
             "attrs": [
               {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
-            "name": "PRI",
-            "parts": [
-              {
-                "column": "id"
+                "kind": "index_type",
+                "T": "BTREE"
               }
             ]
           },
-          "schema": "sqldoc_dev"
-        },
-        {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `legacy_inventory` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `item_name` varchar(200) DEFAULT NULL,\n  `old_sku` varchar(50) DEFAULT NULL,\n  `quantity` int DEFAULT '0',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'pets'",
-              "kind": "tag",
-              "name": "deprecated.replace"
-            },
-            {
-              "args": "'audit.require-audit', 'Legacy table scheduled for removal'",
-              "kind": "tag",
-              "name": "lint.ignore"
-            },
-            {
-              "args": "false",
-              "kind": "tag",
-              "name": "docs.emit"
-            }
-          ],
-          "columns": [
-            {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
-              "name": "id",
-              "type": {
-                "raw": "int",
-                "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                }
-              ],
-              "name": "item_name",
-              "type": {
-                "null": true,
-                "raw": "varchar(200)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 200
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "'2025-12-01'",
-                  "kind": "tag",
-                  "name": "deprecated.remove"
-                }
-              ],
-              "name": "old_sku",
-              "type": {
-                "null": true,
-                "raw": "varchar(50)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 50
-                }
-              }
-            },
-            {
-              "default": {
-                "V": "0"
-              },
-              "name": "quantity",
-              "type": {
-                "null": true,
-                "raw": "int",
-                "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            }
-          ],
-          "name": "legacy_inventory",
-          "primaryKey": {
-            "attrs": [
-              {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
-            "name": "PRI",
-            "parts": [
-              {
-                "column": "id"
-              }
-            ]
-          },
-          "schema": "sqldoc_dev"
-        },
-        {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `medical_records` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `pet_id` int NOT NULL,\n  `visit_date` date NOT NULL DEFAULT (curdate()),\n  `diagnosis` text NOT NULL,\n  `treatment` text,\n  `vet_name` varchar(150) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `pet_id` (`pet_id`),\n  CONSTRAINT `medical_records_ibfk_1` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'Veterinary medical records for pets'",
-              "kind": "tag",
-              "name": "comment"
-            }
-          ],
-          "columns": [
-            {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
-              "name": "id",
-              "type": {
-                "raw": "int",
-                "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            },
-            {
-              "name": "pet_id",
-              "type": {
-                "raw": "int",
-                "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            },
-            {
-              "default": {
-                "X": "(curdate())"
-              },
-              "name": "visit_date",
-              "type": {
-                "raw": "date",
-                "type": {
-                  "T": "date",
-                  "kind": "time"
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                }
-              ],
-              "name": "diagnosis",
-              "type": {
-                "raw": "text",
-                "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                }
-              ],
-              "name": "treatment",
-              "type": {
-                "null": true,
-                "raw": "text",
-                "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                }
-              ],
-              "name": "vet_name",
-              "type": {
-                "null": true,
-                "raw": "varchar(150)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 150
-                }
-              }
-            }
-          ],
           "foreignKeys": [
             {
+              "symbol": "adoptions_ibfk_1",
               "columns": ["pet_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "sqldoc_dev",
               "refTable": "pets",
-              "symbol": "medical_records_ibfk_1"
-            }
-          ],
-          "indexes": [
+              "refSchema": "sqldoc_dev",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            },
             {
+              "symbol": "adoptions_ibfk_2",
+              "columns": ["owner_id"],
+              "refTable": "owners",
+              "refSchema": "sqldoc_dev",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
+        },
+        {
+          "name": "categories",
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              },
               "attrs": [
                 {
-                  "_goType": "*mysql.IndexType",
-                  "kind": "unknown"
+                  "kind": "auto_increment",
+                  "V": 0
                 }
-              ],
-              "name": "pet_id",
-              "parts": [
+              ]
+            },
+            {
+              "name": "name",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 100
+                },
+                "raw": "varchar(100)"
+              },
+              "attrs": [
                 {
-                  "column": "pet_id"
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
+                  "kind": "tag",
+                  "name": "comment",
+                  "args": "'Category display name'"
+                },
+                {
+                  "kind": "tag",
+                  "name": "validate.notEmpty",
+                  "args": ""
+                }
+              ]
+            },
+            {
+              "name": "description",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "text",
+                "null": true
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
                 }
               ]
             }
           ],
-          "name": "medical_records",
+          "attrs": [
+            {
+              "kind": "charset",
+              "V": "utf8mb4"
+            },
+            {
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "comment",
+              "args": "'Pet categories lookup table'"
+            },
+            {
+              "kind": "tag",
+              "name": "docs.description",
+              "args": "'Lookup table for pet species and breed categories'"
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
             "name": "PRI",
             "parts": [
               {
                 "column": "id"
               }
+            ],
+            "attrs": [
+              {
+                "kind": "index_type",
+                "T": "BTREE"
+              }
             ]
-          },
-          "schema": "sqldoc_dev"
+          }
         },
         {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `owners` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(150) NOT NULL,\n  `email` varchar(255) NOT NULL,\n  `phone` varchar(20) DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'Pet owners and customers'",
-              "kind": "tag",
-              "name": "comment"
-            }
-          ],
+          "name": "legacy_inventory",
           "columns": [
             {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
               "name": "id",
               "type": {
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
+                  "kind": "integer",
+                  "T": "int"
                 },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "",
-                  "kind": "tag",
-                  "name": "validate.notEmpty"
-                }
-              ],
-              "name": "name",
-              "type": {
-                "raw": "varchar(150)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 150
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "'^[^@]+@[^@]+\\\\.[^@]+$'",
-                  "kind": "tag",
-                  "name": "validate.pattern"
-                }
-              ],
-              "name": "email",
-              "type": {
-                "raw": "varchar(255)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 255
-                }
-              }
-            },
-            {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "min: 7, max: 20",
-                  "kind": "tag",
-                  "name": "validate.length"
-                }
-              ],
-              "name": "phone",
-              "type": {
-                "null": true,
-                "raw": "varchar(20)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 20
-                }
-              }
-            },
-            {
-              "default": {
-                "X": "CURRENT_TIMESTAMP"
+                "raw": "int"
               },
-              "name": "created_at",
-              "type": {
-                "null": true,
-                "raw": "timestamp",
-                "type": {
-                  "T": "timestamp",
-                  "kind": "time"
+              "attrs": [
+                {
+                  "kind": "auto_increment",
+                  "V": 0
                 }
+              ]
+            },
+            {
+              "name": "item_name",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 200
+                },
+                "raw": "varchar(200)",
+                "null": true
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                }
+              ]
+            },
+            {
+              "name": "old_sku",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 50
+                },
+                "raw": "varchar(50)",
+                "null": true
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
+                  "kind": "tag",
+                  "name": "deprecated.remove",
+                  "args": "'2025-12-01'"
+                }
+              ]
+            },
+            {
+              "name": "quantity",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int",
+                "null": true
+              },
+              "default": {
+                "V": "0"
               }
+            }
+          ],
+          "attrs": [
+            {
+              "kind": "charset",
+              "V": "utf8mb4"
+            },
+            {
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "deprecated.replace",
+              "args": "'pets'"
+            },
+            {
+              "kind": "tag",
+              "name": "lint.ignore",
+              "args": "'audit.require-audit', 'Legacy table scheduled for removal'"
+            },
+            {
+              "kind": "tag",
+              "name": "docs.emit",
+              "args": "false"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRI",
+            "parts": [
+              {
+                "column": "id"
+              }
+            ],
+            "attrs": [
+              {
+                "kind": "index_type",
+                "T": "BTREE"
+              }
+            ]
+          }
+        },
+        {
+          "name": "medical_records",
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              },
+              "attrs": [
+                {
+                  "kind": "auto_increment",
+                  "V": 0
+                }
+              ]
+            },
+            {
+              "name": "pet_id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              }
+            },
+            {
+              "name": "visit_date",
+              "type": {
+                "type": {
+                  "kind": "time",
+                  "T": "date"
+                },
+                "raw": "date"
+              },
+              "default": {
+                "X": "(curdate())"
+              }
+            },
+            {
+              "name": "diagnosis",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "text"
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                }
+              ]
+            },
+            {
+              "name": "treatment",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "text",
+                "null": true
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                }
+              ]
+            },
+            {
+              "name": "vet_name",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 150
+                },
+                "raw": "varchar(150)",
+                "null": true
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                }
+              ]
+            }
+          ],
+          "attrs": [
+            {
+              "kind": "charset",
+              "V": "utf8mb4"
+            },
+            {
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "comment",
+              "args": "'Veterinary medical records for pets'"
             }
           ],
           "indexes": [
             {
-              "attrs": [
+              "name": "pet_id",
+              "parts": [
                 {
-                  "_goType": "*mysql.IndexType",
-                  "kind": "unknown"
+                  "column": "pet_id"
                 }
               ],
+              "attrs": [
+                {
+                  "kind": "index_type",
+                  "T": "BTREE"
+                }
+              ]
+            }
+          ],
+          "primaryKey": {
+            "name": "PRI",
+            "parts": [
+              {
+                "column": "id"
+              }
+            ],
+            "attrs": [
+              {
+                "kind": "index_type",
+                "T": "BTREE"
+              }
+            ]
+          },
+          "foreignKeys": [
+            {
+              "symbol": "medical_records_ibfk_1",
+              "columns": ["pet_id"],
+              "refTable": "pets",
+              "refSchema": "sqldoc_dev",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
+        },
+        {
+          "name": "owners",
+          "columns": [
+            {
+              "name": "id",
+              "type": {
+                "type": {
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              },
+              "attrs": [
+                {
+                  "kind": "auto_increment",
+                  "V": 0
+                }
+              ]
+            },
+            {
+              "name": "name",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 150
+                },
+                "raw": "varchar(150)"
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
+                  "kind": "tag",
+                  "name": "validate.notEmpty",
+                  "args": ""
+                }
+              ]
+            },
+            {
               "name": "email",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 255
+                },
+                "raw": "varchar(255)"
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
+                  "kind": "tag",
+                  "name": "validate.pattern",
+                  "args": "'^[^@]+@[^@]+\\\\.[^@]+$'"
+                }
+              ]
+            },
+            {
+              "name": "phone",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 20
+                },
+                "raw": "varchar(20)",
+                "null": true
+              },
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
+                  "kind": "tag",
+                  "name": "validate.length",
+                  "args": "min: 7, max: 20"
+                }
+              ]
+            },
+            {
+              "name": "created_at",
+              "type": {
+                "type": {
+                  "kind": "time",
+                  "T": "timestamp"
+                },
+                "raw": "timestamp",
+                "null": true
+              },
+              "default": {
+                "X": "CURRENT_TIMESTAMP"
+              }
+            }
+          ],
+          "attrs": [
+            {
+              "kind": "charset",
+              "V": "utf8mb4"
+            },
+            {
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "comment",
+              "args": "'Pet owners and customers'"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "email",
+              "unique": true,
               "parts": [
                 {
                   "column": "email"
                 }
               ],
-              "unique": true
+              "attrs": [
+                {
+                  "kind": "index_type",
+                  "T": "BTREE"
+                }
+              ]
             }
           ],
-          "name": "owners",
           "primaryKey": {
-            "attrs": [
-              {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
             "name": "PRI",
             "parts": [
               {
                 "column": "id"
               }
+            ],
+            "attrs": [
+              {
+                "kind": "index_type",
+                "T": "BTREE"
+              }
             ]
-          },
-          "schema": "sqldoc_dev"
+          }
         },
         {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `pets` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `category_id` int DEFAULT NULL,\n  `name` varchar(100) NOT NULL,\n  `sku` varchar(20) NOT NULL,\n  `price` decimal(10,2) NOT NULL DEFAULT '0.00',\n  `internal_notes` text,\n  `status` varchar(20) NOT NULL DEFAULT 'available',\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `sku` (`sku`),\n  KEY `category_id` (`category_id`),\n  CONSTRAINT `pets_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'Core pet inventory table'",
-              "kind": "tag",
-              "name": "comment"
-            },
-            {
-              "args": "'Central registry of all pets available for adoption'",
-              "kind": "tag",
-              "name": "docs.description"
-            }
-          ],
+          "name": "pets",
           "columns": [
             {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
               "name": "id",
               "type": {
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              },
+              "attrs": [
+                {
+                  "kind": "auto_increment",
+                  "V": 0
                 }
-              }
+              ]
             },
             {
               "name": "category_id",
               "type": {
-                "null": true,
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int",
+                "null": true
               }
             },
             {
-              "attrs": [
-                {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "",
-                  "kind": "tag",
-                  "name": "validate.notEmpty"
-                }
-              ],
               "name": "name",
               "type": {
-                "raw": "varchar(100)",
                 "type": {
-                  "T": "varchar",
                   "kind": "string",
+                  "T": "varchar",
                   "size": 100
-                }
-              }
-            },
-            {
+                },
+                "raw": "varchar(100)"
+              },
               "attrs": [
                 {
-                  "V": "utf8mb4",
-                  "kind": "charset"
+                  "kind": "charset",
+                  "V": "utf8mb4"
                 },
                 {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
                 },
                 {
-                  "args": "'^[A-Z]{3}-[0-9]{4}$'",
                   "kind": "tag",
-                  "name": "validate.pattern"
+                  "name": "validate.notEmpty",
+                  "args": ""
                 }
-              ],
+              ]
+            },
+            {
               "name": "sku",
               "type": {
-                "raw": "varchar(20)",
                 "type": {
-                  "T": "varchar",
                   "kind": "string",
+                  "T": "varchar",
                   "size": 20
-                }
-              }
-            },
-            {
+                },
+                "raw": "varchar(20)"
+              },
               "attrs": [
                 {
-                  "args": "min: 0, max: 99999",
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
                   "kind": "tag",
-                  "name": "validate.range"
+                  "name": "validate.pattern",
+                  "args": "'^[A-Z]{3}-[0-9]{4}$'"
                 }
-              ],
+              ]
+            },
+            {
+              "name": "price",
+              "type": {
+                "type": {
+                  "kind": "decimal",
+                  "T": "decimal",
+                  "precision": 10,
+                  "scale": 2
+                },
+                "raw": "decimal(10,2)"
+              },
               "default": {
                 "V": "0.00"
               },
-              "name": "price",
-              "type": {
-                "raw": "decimal(10,2)",
-                "type": {
-                  "T": "decimal",
-                  "kind": "decimal",
-                  "precision": 10,
-                  "scale": 2
-                }
-              }
-            },
-            {
               "attrs": [
                 {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
+                  "kind": "tag",
+                  "name": "validate.range",
+                  "args": "min: 0, max: 99999"
                 }
-              ],
+              ]
+            },
+            {
               "name": "internal_notes",
               "type": {
-                "null": true,
-                "raw": "text",
                 "type": {
-                  "T": "text",
-                  "kind": "string"
-                }
-              }
-            },
-            {
+                  "kind": "string",
+                  "T": "text"
+                },
+                "raw": "text",
+                "null": true
+              },
               "attrs": [
                 {
-                  "V": "utf8mb4",
-                  "kind": "charset"
+                  "kind": "charset",
+                  "V": "utf8mb4"
                 },
                 {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
-                },
-                {
-                  "args": "'petStatus'",
-                  "kind": "tag",
-                  "name": "codegen.rename"
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
                 }
-              ],
+              ]
+            },
+            {
+              "name": "status",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 20
+                },
+                "raw": "varchar(20)"
+              },
               "default": {
                 "V": "\"available\""
               },
-              "name": "status",
-              "type": {
-                "raw": "varchar(20)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 20
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
+                },
+                {
+                  "kind": "tag",
+                  "name": "codegen.rename",
+                  "args": "'petStatus'"
                 }
-              }
+              ]
             },
             {
-              "default": {
-                "X": "CURRENT_TIMESTAMP"
-              },
               "name": "created_at",
               "type": {
-                "null": true,
-                "raw": "timestamp",
                 "type": {
-                  "T": "timestamp",
-                  "kind": "time"
-                }
+                  "kind": "time",
+                  "T": "timestamp"
+                },
+                "raw": "timestamp",
+                "null": true
+              },
+              "default": {
+                "X": "CURRENT_TIMESTAMP"
               }
             }
           ],
-          "foreignKeys": [
+          "attrs": [
             {
-              "columns": ["category_id"],
-              "onDelete": "NO ACTION",
-              "onUpdate": "NO ACTION",
-              "refColumns": ["id"],
-              "refSchema": "sqldoc_dev",
-              "refTable": "categories",
-              "symbol": "pets_ibfk_1"
+              "kind": "charset",
+              "V": "utf8mb4"
+            },
+            {
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "comment",
+              "args": "'Core pet inventory table'"
+            },
+            {
+              "kind": "tag",
+              "name": "docs.description",
+              "args": "'Central registry of all pets available for adoption'"
             }
           ],
           "indexes": [
             {
-              "attrs": [
-                {
-                  "_goType": "*mysql.IndexType",
-                  "kind": "unknown"
-                }
-              ],
               "name": "category_id",
               "parts": [
                 {
                   "column": "category_id"
                 }
+              ],
+              "attrs": [
+                {
+                  "kind": "index_type",
+                  "T": "BTREE"
+                }
               ]
             },
             {
-              "attrs": [
-                {
-                  "_goType": "*mysql.IndexType",
-                  "kind": "unknown"
-                }
-              ],
               "name": "sku",
+              "unique": true,
               "parts": [
                 {
                   "column": "sku"
                 }
               ],
-              "unique": true
+              "attrs": [
+                {
+                  "kind": "index_type",
+                  "T": "BTREE"
+                }
+              ]
             }
           ],
-          "name": "pets",
           "primaryKey": {
-            "attrs": [
-              {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
             "name": "PRI",
             "parts": [
               {
                 "column": "id"
               }
+            ],
+            "attrs": [
+              {
+                "kind": "index_type",
+                "T": "BTREE"
+              }
             ]
           },
-          "schema": "sqldoc_dev"
+          "foreignKeys": [
+            {
+              "symbol": "pets_ibfk_1",
+              "columns": ["category_id"],
+              "refTable": "categories",
+              "refSchema": "sqldoc_dev",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION"
+            }
+          ]
         },
         {
-          "attrs": [
-            {
-              "V": "utf8mb4",
-              "kind": "charset"
-            },
-            {
-              "V": "utf8mb4_0900_ai_ci",
-              "kind": "collation"
-            },
-            {
-              "V": "InnoDB",
-              "default": true,
-              "kind": "engine"
-            },
-            {
-              "S": "CREATE TABLE `staff` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(150) NOT NULL,\n  `role` varchar(50) NOT NULL DEFAULT 'associate',\n  `hired_at` date NOT NULL DEFAULT (curdate()),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-              "kind": "create_stmt"
-            },
-            {
-              "args": "'Internal staff members'",
-              "kind": "tag",
-              "name": "comment"
-            },
-            {
-              "args": "",
-              "kind": "tag",
-              "name": "codegen.skip"
-            },
-            {
-              "args": "",
-              "kind": "tag",
-              "name": "audit"
-            }
-          ],
+          "name": "staff",
           "columns": [
             {
-              "attrs": [
-                {
-                  "V": 0,
-                  "kind": "auto_increment"
-                }
-              ],
               "name": "id",
               "type": {
-                "raw": "int",
                 "type": {
-                  "T": "int",
-                  "kind": "integer"
-                }
-              }
-            },
-            {
+                  "kind": "integer",
+                  "T": "int"
+                },
+                "raw": "int"
+              },
               "attrs": [
                 {
-                  "V": "utf8mb4",
-                  "kind": "charset"
-                },
-                {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
+                  "kind": "auto_increment",
+                  "V": 0
                 }
-              ],
+              ]
+            },
+            {
               "name": "name",
               "type": {
-                "raw": "varchar(150)",
                 "type": {
-                  "T": "varchar",
                   "kind": "string",
+                  "T": "varchar",
                   "size": 150
-                }
-              }
-            },
-            {
+                },
+                "raw": "varchar(150)"
+              },
               "attrs": [
                 {
-                  "V": "utf8mb4",
-                  "kind": "charset"
+                  "kind": "charset",
+                  "V": "utf8mb4"
                 },
                 {
-                  "V": "utf8mb4_0900_ai_ci",
-                  "kind": "collation"
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
                 }
-              ],
+              ]
+            },
+            {
+              "name": "role",
+              "type": {
+                "type": {
+                  "kind": "string",
+                  "T": "varchar",
+                  "size": 50
+                },
+                "raw": "varchar(50)"
+              },
               "default": {
                 "V": "\"associate\""
               },
-              "name": "role",
-              "type": {
-                "raw": "varchar(50)",
-                "type": {
-                  "T": "varchar",
-                  "kind": "string",
-                  "size": 50
+              "attrs": [
+                {
+                  "kind": "charset",
+                  "V": "utf8mb4"
+                },
+                {
+                  "kind": "collation",
+                  "V": "utf8mb4_0900_ai_ci"
                 }
-              }
+              ]
             },
             {
-              "default": {
-                "X": "(curdate())"
-              },
               "name": "hired_at",
               "type": {
-                "raw": "date",
                 "type": {
-                  "T": "date",
-                  "kind": "time"
-                }
+                  "kind": "time",
+                  "T": "date"
+                },
+                "raw": "date"
+              },
+              "default": {
+                "X": "(curdate())"
               }
             }
           ],
-          "name": "staff",
+          "attrs": [
+            {
+              "kind": "charset",
+              "V": "utf8mb4"
+            },
+            {
+              "kind": "collation",
+              "V": "utf8mb4_0900_ai_ci"
+            },
+            {
+              "kind": "engine",
+              "V": "InnoDB",
+              "default": true
+            },
+            {
+              "kind": "tag",
+              "name": "comment",
+              "args": "'Internal staff members'"
+            },
+            {
+              "kind": "tag",
+              "name": "codegen.skip",
+              "args": ""
+            },
+            {
+              "kind": "tag",
+              "name": "audit",
+              "args": ""
+            }
+          ],
           "primaryKey": {
-            "attrs": [
-              {
-                "_goType": "*mysql.IndexType",
-                "kind": "unknown"
-              }
-            ],
             "name": "PRI",
             "parts": [
               {
                 "column": "id"
               }
+            ],
+            "attrs": [
+              {
+                "kind": "index_type",
+                "T": "BTREE"
+              }
             ]
-          },
-          "schema": "sqldoc_dev"
+          }
         }
       ]
+    }
+  ],
+  "attrs": [
+    {
+      "kind": "charset",
+      "V": "utf8mb4"
+    },
+    {
+      "kind": "collation",
+      "V": "utf8mb4_0900_ai_ci"
     }
   ]
 }

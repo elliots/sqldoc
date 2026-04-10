@@ -1,16 +1,9 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/crdb_oss.go
 
-import type { DatabaseAdapter } from '@sqldoc/db'
+import type { DatabaseAdapter } from '../adapter.ts'
 import type { InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
-import type {
-  Attr,
-  Column,
-  Index,
-  Realm,
-  Schema,
-  Table,
-} from '../schema/schema.ts'
+import type { Attr, Column, Index, Realm, Schema, Table } from '../schema/schema.ts'
 import type { Change } from '../schema/migrate.ts'
 import type { DiffOptions } from '../schema/inspect.ts'
 import { PostgresInspector } from './inspect.ts'
@@ -31,7 +24,7 @@ import {
 
 function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 // -- CockroachDB Inspector --
@@ -110,7 +103,12 @@ export class CrdbDiff extends PostgresDiff {
    * Override column change to handle CRDB-specific serial type behavior.
    * All serial types in CockroachDB are implemented as bigint.
    */
-  columnChange(fromTable: Table, from: Column, to: Column, opts?: DiffOptions): import('../schema/migrate.ts').Change | undefined {
+  columnChange(
+    fromTable: Table,
+    from: Column,
+    to: Column,
+    opts?: DiffOptions,
+  ): import('../schema/migrate.ts').Change | undefined {
     // Normalize serial types to bigint for comparison
     const fromNorm = this.normalizeCrdbColumn(from)
     const toNorm = this.normalizeCrdbColumn(to)
@@ -121,7 +119,7 @@ export class CrdbDiff extends PostgresDiff {
   normalize(table: Table): void {
     // CockroachDB adds an implicit primary key on "rowid" if none defined
     if (!table.primaryKey) {
-      const rowid = table.columns.find(c => c.name === 'rowid')
+      const rowid = table.columns.find((c) => c.name === 'rowid')
       if (!rowid) {
         table.columns.push({
           name: 'rowid',

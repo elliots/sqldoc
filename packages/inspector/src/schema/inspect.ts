@@ -6,24 +6,25 @@ import type { Realm, Schema } from './schema.ts'
 // -- Inspect Mode (bit flags) --
 
 /** Controls the amount and depth of information returned on inspection. */
-export enum InspectMode {
+export const InspectMode = {
   /** Enables schema inspection. */
-  InspectSchemas = 1 << 0,
+  InspectSchemas: 1 << 0,
   /** Enables schema tables inspection including all child resources. */
-  InspectTables = 1 << 1,
+  InspectTables: 1 << 1,
   /** Enables schema views inspection. */
-  InspectViews = 1 << 2,
+  InspectViews: 1 << 2,
   /** Enables schema functions / procedures inspection. */
-  InspectFuncs = 1 << 3,
+  InspectFuncs: 1 << 3,
   /** Enables schema types inspection. */
-  InspectTypes = 1 << 4,
+  InspectTypes: 1 << 4,
   /** Enables inspection of database specific objects like sequences and extensions. */
-  InspectObjects = 1 << 5,
+  InspectObjects: 1 << 5,
   /** Enables schema triggers inspection. */
-  InspectTriggers = 1 << 6,
+  InspectTriggers: 1 << 6,
   /** Inspect all resources. */
-  InspectAll = (1 << 7) - 1,
-}
+  InspectAll: (1 << 7) - 1,
+} as const
+export type InspectMode = (typeof InspectMode)[keyof typeof InspectMode]
 
 // -- Inspect Options --
 
@@ -119,16 +120,17 @@ import type { Change } from './migrate.ts'
 import type { Table } from './schema.ts'
 
 /** Diff mode controls how the differ processes objects. */
-export enum DiffMode {
+export const DiffMode = {
   /** Default, backwards compatibility. */
-  Unset = 1 << 0,
+  Unset: 1 << 0,
   /** Diff objects are considered to be in not-normalized state. */
-  NotNormalized = 1 << 1,
+  NotNormalized: 1 << 1,
   /** Diff objects are considered to be in normalized state. */
-  Normalized = 1 << 2,
+  Normalized: 1 << 2,
   /** Invalid changes are skipped instead of returning an error. */
-  SkipInvalid = 1 << 3,
-}
+  SkipInvalid: 1 << 3,
+} as const
+export type DiffMode = (typeof DiffMode)[keyof typeof DiffMode]
 
 /** Options for the schema diffing process. */
 export interface DiffOptions {

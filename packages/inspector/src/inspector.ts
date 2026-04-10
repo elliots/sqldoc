@@ -1,13 +1,13 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: cmd/atlas-wasi/main.go
 
-import type { DatabaseAdapter, QueryResult as DbQueryResult } from '@sqldoc/db'
+import type { DatabaseAdapter } from './adapter.ts'
 import type { Inspector } from './schema/inspect.ts'
 import type { DiffDriver } from './internal/sqlx.ts'
 import type { PlanDriver } from './internal/plan.ts'
 import type { Change } from './schema/migrate.ts'
 import type { ExecQuerier, QueryResult, ExecResult } from './schema/inspect.ts'
-import type { Column, Realm, Schema, Table, Tag } from './schema/schema.ts'
+import type { Column, Realm, Rename, RenameCandidate, Table } from './schema/schema.ts'
 import { PostgresInspector } from './postgres/inspect.ts'
 import { CrdbInspector } from './postgres/crdb.ts'
 import { MysqlInspector } from './mysql/inspect.ts'
@@ -20,8 +20,8 @@ import { PostgresPlan } from './postgres/migrate.ts'
 import { MysqlPlan } from './mysql/migrate.ts'
 import { SqlitePlan } from './sqlite/migrate.ts'
 import { realmDiff } from './internal/diff.ts'
-import { changeToSQL } from './internal/plan.ts'
-import { snapshot } from './internal/dev.ts'
+import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
+import { createRestoreFunc, snapshot } from './internal/dev.ts'
 import { scanStmts } from './migrate/lex.ts'
 import { extractTagsFromStmts } from './migrate/tag.ts'
 // -- Types --
@@ -40,6 +40,7 @@ export interface InspectorResult {
   schema?: Realm
   statements?: string[]
   changes?: Change[]
+  renameCandidates?: RenameCandidate[]
   error?: string
 }
 
@@ -57,7 +58,7 @@ export interface InspectorRunner {
       fromSchema?: string
       toSchema?: string
       normalizeSchemas?: boolean
-      renames?: AtlasRename[]
+      renames?: Rename[]
     },
   ): Promise<InspectorResult>
 
@@ -74,7 +75,10 @@ export type DiffSource = string[] | DatabaseAdapter
  * (rows as Record<string, unknown>[]) needed by MySQL and SQLite inspectors.
  */
 class ExecQuerierAdapter implements ExecQuerier {
-  constructor(private db: DatabaseAdapter) {}
+  private db: DatabaseAdapter
+  constructor(db: DatabaseAdapter) {
+    this.db = db
+  }
 
   async query(sql: string, args?: unknown[]): Promise<QueryResult> {
     const result = await this.db.query(sql, args)
@@ -178,11 +182,7 @@ function applyTags(realm: Realm, files: string[], fileNames?: string[]): void {
 /**
  * Detect potential rename candidates by finding drop+add pairs with matching types.
  */
-function detectRenameCandidates(
-  fromRealm: Realm,
-  toRealm: Realm,
-  knownRenames?: AtlasRename[],
-): AtlasRenameCandidate[] {
+function detectRenameCandidates(fromRealm: Realm, toRealm: Realm, knownRenames?: Rename[]): RenameCandidate[] {
   const knownSet = new Set<string>()
   for (const r of knownRenames ?? []) {
     if (r.type === 'column') {
@@ -192,7 +192,7 @@ function detectRenameCandidates(
     }
   }
 
-  const candidates: AtlasRenameCandidate[] = []
+  const candidates: RenameCandidate[] = []
 
   for (const fromSchema of fromRealm.schemas) {
     const toSchema = toRealm.schemas.find((s) => s.name === fromSchema.name)
@@ -263,7 +263,7 @@ function columnsTypeMatch(a: Column, b: Column): boolean {
 /**
  * Apply known renames to the FROM realm and return RENAME SQL statements.
  */
-function applyKnownRenames(fromRealm: Realm, renames: AtlasRename[], dialect: string): string[] {
+function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string): string[] {
   const stmts: string[] = []
   const q = dialect === 'mysql' ? (s: string) => `\`${s}\`` : (s: string) => `"${s}"`
 
@@ -318,135 +318,6 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
   const table = findTableInRealm(realm, tableName)
   if (!table) return undefined
   return table.columns.find((c) => c.name === colName)
-}
-
-// -- Extract Structured Changes --
-
-function extractChanges(changes: Change[]): AtlasChange[] {
-  const result: AtlasChange[] = []
-  for (const c of changes) {
-    switch (c.type) {
-      case 'add_table':
-        result.push({
-          type: 'add_table',
-          table: c.T.name,
-          detail: c.T.columns.map((col) => col.name).join(', '),
-        })
-        for (const idx of c.T.indexes ?? []) {
-          result.push({ type: 'add_index', table: c.T.name, name: idx.name })
-        }
-        break
-      case 'drop_table':
-        result.push({ type: 'drop_table', table: c.T.name })
-        break
-      case 'rename_table':
-        result.push({
-          type: 'rename_table',
-          table: c.to.name,
-          detail: `${c.from.name} -> ${c.to.name}`,
-        })
-        break
-      case 'modify_table':
-        result.push(...extractTableChanges(c.T.name, c.changes))
-        break
-      case 'add_view':
-        result.push({ type: 'add_view', table: c.V.name })
-        break
-      case 'drop_view':
-        result.push({ type: 'drop_view', table: c.V.name })
-        break
-      case 'modify_view':
-        result.push({ type: 'modify_view', table: c.to.name })
-        break
-      case 'add_func':
-        result.push({ type: 'add_function', table: c.F.name })
-        break
-      case 'drop_func':
-        result.push({ type: 'drop_function', table: c.F.name })
-        break
-      case 'modify_func':
-        result.push({ type: 'modify_function', table: c.to.name })
-        break
-      case 'modify_schema':
-        result.push(...extractChanges(c.changes))
-        break
-    }
-  }
-  return result
-}
-
-function extractTableChanges(tableName: string, changes: Change[]): AtlasChange[] {
-  const result: AtlasChange[] = []
-  for (const c of changes) {
-    switch (c.type) {
-      case 'add_column':
-        result.push({
-          type: 'add_column',
-          table: tableName,
-          name: c.C.name,
-          detail: c.C.type?.type?.T,
-        })
-        break
-      case 'drop_column':
-        result.push({ type: 'drop_column', table: tableName, name: c.C.name })
-        break
-      case 'modify_column': {
-        const parts: string[] = []
-        if (c.from.type?.type?.T !== c.to.type?.type?.T) {
-          parts.push(`${c.from.type?.type?.T ?? ''} -> ${c.to.type?.type?.T ?? ''}`)
-        }
-        if (c.from.type?.null !== c.to.type?.null) {
-          parts.push(c.to.type?.null ? 'set nullable' : 'set not null')
-        }
-        result.push({
-          type: 'modify_column',
-          table: tableName,
-          name: c.to.name,
-          detail: parts.length > 0 ? parts.join(', ') : 'modified',
-        })
-        break
-      }
-      case 'rename_column':
-        result.push({
-          type: 'rename_column',
-          table: tableName,
-          name: c.to.name,
-          detail: `${c.from.name} -> ${c.to.name}`,
-        })
-        break
-      case 'add_index':
-        result.push({ type: 'add_index', table: tableName, name: c.I.name })
-        break
-      case 'drop_index':
-        result.push({ type: 'drop_index', table: tableName, name: c.I.name })
-        break
-    }
-  }
-  return result
-}
-
-function extractRenameChanges(renames: AtlasRename[]): AtlasChange[] {
-  const result: AtlasChange[] = []
-  for (const r of renames) {
-    switch (r.type) {
-      case 'column':
-        result.push({
-          type: 'rename_column',
-          table: r.table,
-          name: r.newName,
-          detail: `${r.oldName} -> ${r.newName}`,
-        })
-        break
-      case 'table':
-        result.push({
-          type: 'rename_table',
-          table: r.newName,
-          detail: `${r.oldName} -> ${r.newName}`,
-        })
-        break
-    }
-  }
-  return result
 }
 
 // -- Schema Normalization --
@@ -527,6 +398,31 @@ function createComponents(
 export async function createInspector(options: InspectorOptions): Promise<InspectorRunner> {
   const { db, dialect } = options
   const { inspector, differ, planner } = createComponents(dialect, db, options)
+  const eq = new ExecQuerierAdapter(db)
+
+  // Create a diff+apply function for the general restore path (matches Go Atlas)
+  async function diffAndApply(current: Realm, desired: Realm): Promise<void> {
+    let changes = realmDiff(differ, current, desired)
+    if (changes.length === 0) return
+    changes = detachCycles(changes)
+    changes = sortChanges(changes)
+    // MySQL: disable FK checks during apply (drops may reference other tables)
+    if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 0')
+    try {
+      for (const change of changes) {
+        const stmts = changeToSQL(planner, change)
+        for (const stmt of stmts) {
+          await eq.exec(stmt)
+        }
+      }
+    } finally {
+      if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 1')
+    }
+  }
+
+  // Capture initial dev DB state for snapshot/restore pattern (matches Go Atlas Snapshot)
+  const initialRealm = await inspector.inspectRealm()
+  const restore = createRestoreFunc(eq, inspector, initialRealm, dialect, diffAndApply)
 
   return {
     async inspect(files, opts) {
@@ -537,12 +433,11 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         return { schema: realm }
       }
 
-      // Execute SQL files against dev DB and inspect
-      const eq = new ExecQuerierAdapter(db)
+      // Execute SQL files against dev DB and inspect (with restore after)
       const realm = await snapshot(eq, inspector, files, {
         schema: opts?.schema,
-        clean: true,
         dialect,
+        restore,
       })
       const filtered = filterSystemSchemas(realm, dialect)
 
@@ -555,18 +450,18 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     async diff(from, to, opts) {
       let fromRealm: Realm
       let toRealm: Realm
-      const eq = new ExecQuerierAdapter(db)
 
       // Inspect "from" side
       if (Array.isArray(from)) {
         if (from.length === 0) {
-          // Empty from = empty schema
-          fromRealm = { schemas: [] }
+          // Empty from: inspect the dev DB's existing state (e.g. public schema exists)
+          fromRealm = await inspector.inspectRealm()
+          fromRealm = filterSystemSchemas(fromRealm, dialect)
         } else {
           fromRealm = await snapshot(eq, inspector, from, {
             schema: opts?.fromSchema,
-            clean: true,
             dialect,
+            restore,
           })
           fromRealm = filterSystemSchemas(fromRealm, dialect)
         }
@@ -580,12 +475,13 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       // Inspect "to" side
       if (Array.isArray(to)) {
         if (to.length === 0) {
-          toRealm = { schemas: [] }
+          toRealm = await inspector.inspectRealm()
+          toRealm = filterSystemSchemas(toRealm, dialect)
         } else {
           toRealm = await snapshot(eq, inspector, to, {
             schema: opts?.toSchema,
-            clean: true,
             dialect,
+            restore,
           })
           toRealm = filterSystemSchemas(toRealm, dialect)
         }
@@ -613,15 +509,15 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       const renameCandidates = detectRenameCandidates(fromRealm, toRealm, opts?.renames)
 
       // Compute diff
-      const changes = realmDiff(differ, fromRealm, toRealm)
-
-      // Build structured changes
-      let structured = opts?.renames ? extractRenameChanges(opts.renames) : []
-      structured = [...structured, ...extractChanges(changes)]
+      let changes = realmDiff(differ, fromRealm, toRealm)
 
       if (changes.length === 0 && renameStmts.length === 0) {
-        return { renameCandidates, changes: structured }
+        return { renameCandidates, changes }
       }
+
+      // Sort changes by dependency (schemas first, then topological sort)
+      changes = detachCycles(changes)
+      changes = sortChanges(changes)
 
       // Generate SQL statements from changes
       const diffStmts: string[] = []
@@ -637,7 +533,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         statements = statements.map((s) => s.split(prefix).join(''))
       }
 
-      return { statements, changes: structured, renameCandidates }
+      return { statements, changes, renameCandidates }
     },
 
     async close() {

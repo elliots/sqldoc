@@ -1,8 +1,9 @@
 /**
- * Enrichment layer — preprocesses Atlas realm + tags into a rich,
+ * Enrichment layer — preprocesses inspector realm + tags into a rich,
  * template-friendly structure. Computed once, used by all templates.
  */
-import type { AtlasColumn, AtlasTable, TypeCategory } from '@sqldoc/db'
+import type { Column, Table, TypeCategory } from '@sqldoc/db'
+import { isCustomType, typeCategory } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 import { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './atlas.ts'
 import { singularizeLast, toPascalCase } from './naming.ts'
@@ -38,8 +39,8 @@ export interface EnrichedTable {
   hasMany: Relation[]
   /** All tags on this table */
   tags: TagEntry[]
-  /** Raw Atlas table (escape hatch) */
-  raw: AtlasTable
+  /** Raw inspector table (escape hatch) */
+  raw: Table
 }
 
 export interface EnrichedColumn {
@@ -51,7 +52,7 @@ export interface EnrichedColumn {
   camelName: string
   /** Raw SQL type string (e.g. "character varying", "bigserial") */
   pgType: string
-  /** Dialect-independent type category from Atlas */
+  /** Dialect-independent type category */
   category: TypeCategory
   /** Whether this is a user-defined type (enum, composite, domain) */
   isCustomType: boolean
@@ -73,8 +74,8 @@ export interface EnrichedColumn {
   typeOverride?: string
   /** All tags on this column */
   tags: TagEntry[]
-  /** Raw Atlas column (escape hatch) */
-  raw: AtlasColumn
+  /** Raw inspector column (escape hatch) */
+  raw: Column
 }
 
 export interface Relation {
@@ -142,7 +143,7 @@ export interface EnrichedFunction {
 // ── Enrichment ───────────────────────────────────────────────────
 
 /**
- * Enrich the raw Atlas realm into a template-friendly structure.
+ * Enrich the raw inspector realm into a template-friendly structure.
  * Computes relationships, PK/FK lookups, tag indexing, naming, etc.
  *
  * Schema-aware: multi-schema realms get schema-prefixed pascalNames (e.g. AuthUser),
@@ -165,30 +166,28 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
     tableNameToSchemas.set(t.name, schemas)
   }
 
-  /** Resolve which schema a ref_table belongs to */
+  /** Resolve which schema a refTable belongs to */
   function resolveRefSchema(refTable: string, currentSchema: string): string {
-    // If ref_table contains a dot, parse schema from it
     if (refTable.includes('.')) {
       return refTable.split('.')[0]
     }
     const schemas = tableNameToSchemas.get(refTable)
     if (!schemas || schemas.length === 0) return currentSchema
     if (schemas.length === 1) return schemas[0]
-    // Ambiguous: prefer same schema, fall back to first
     return schemas.includes(currentSchema) ? currentSchema : schemas[0]
   }
 
   // Build reverse FK index: "schema.targetTable" -> relations pointing at it
   const reverseIndex = new Map<string, Relation[]>()
   for (const table of rawTables) {
-    for (const fk of table.foreign_keys ?? []) {
-      if (!fk.ref_table || !fk.columns?.length) continue
-      const refSchema = resolveRefSchema(fk.ref_table, table._schema)
-      const refKey = `${refSchema}.${fk.ref_table}`
+    for (const fk of table.foreignKeys ?? []) {
+      if (!fk.columns.length) continue
+      const refSchema = resolveRefSchema(fk.refTable, table._schema)
+      const refKey = `${refSchema}.${fk.refTable}`
       for (let i = 0; i < fk.columns.length; i++) {
         const rel: Relation = {
           constraintName: fk.symbol ?? '',
-          column: fk.ref_columns?.[i] ?? 'id',
+          column: fk.refColumns[i] ?? 'id',
           foreignTable: table.name,
           foreignColumn: fk.columns[i],
           foreignSchema: table._schema,
@@ -209,7 +208,6 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
     const rename = findRename(tableTags, ctx.templateName)
     let pascalName: string
     if (rename) {
-      // @codegen.rename overrides schema prefix entirely
       pascalName = rename
     } else {
       const baseName = toPascalCase(singularizeLast(table.name))
@@ -224,22 +222,22 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
     const sqlName = isMultiSchema && schema !== defaultSchema ? `${schema}.${table.name}` : table.name
 
     const pkColumns = new Set(
-      (table.primary_key?.parts ?? []).map((p) => p.column).filter((c): c is string => c != null),
+      (table.primaryKey?.parts ?? []).map((p) => p.column).filter((c): c is string => c != null),
     )
 
     // Build FK map for this table
     const fkMap = new Map<string, { table: string; column: string; schema: string }>()
     const belongsTo: Relation[] = []
-    for (const fk of table.foreign_keys ?? []) {
-      if (!fk.columns?.length || !fk.ref_table) continue
-      const refSchema = resolveRefSchema(fk.ref_table, schema)
+    for (const fk of table.foreignKeys ?? []) {
+      if (!fk.columns.length) continue
+      const refSchema = resolveRefSchema(fk.refTable, schema)
       for (let i = 0; i < fk.columns.length; i++) {
-        const ref = { table: fk.ref_table, column: fk.ref_columns?.[i] ?? 'id', schema: refSchema }
+        const ref = { table: fk.refTable, column: fk.refColumns[i] ?? 'id', schema: refSchema }
         fkMap.set(fk.columns[i], ref)
         belongsTo.push({
           constraintName: fk.symbol ?? '',
           column: fk.columns[i],
-          foreignTable: fk.ref_table,
+          foreignTable: fk.refTable,
           foreignColumn: ref.column,
           foreignSchema: refSchema,
         })
@@ -248,7 +246,7 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
 
     const hasMany = reverseIndex.get(`${schema}.${table.name}`) ?? []
 
-    const columns: EnrichedColumn[] = (table.columns ?? []).map((col) =>
+    const columns: EnrichedColumn[] = table.columns.map((col) =>
       enrichColumn(col, table.name, ctx.templateName, ctx.allFileTags, pkColumns, fkMap),
     )
 
@@ -303,7 +301,6 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
   })
 
   // ── Enums ─────────────────────────────────────────────────────
-  // Extract from all columns (tables + views) since Atlas surfaces enum info per-column
   const enums: EnrichedEnum[] = extractEnums(tables, views)
 
   // ── Functions ─────────────────────────────────────────────────
@@ -323,14 +320,17 @@ export function enrichRealm(ctx: TemplateContext<any>): EnrichedSchema {
       schema: fn._schema,
       args: (fn.args ?? []).map((a) => ({
         name: a.name ?? '',
-        type: a.type?.T ?? a.type?.raw ?? 'unknown',
-        category: a.type?.category ?? 'unknown',
+        type: a.type.type.T ?? a.type.raw ?? 'unknown',
+        category: typeCategory(a.type.type),
       })),
       returnType: fn.ret
         ? {
-            type: fn.ret.T ?? fn.ret.raw ?? 'unknown',
-            category: fn.ret.category ?? 'unknown',
-            compositeFields: fn.ret.composite_fields,
+            type: fn.ret.type.T ?? fn.ret.raw ?? 'unknown',
+            category: typeCategory(fn.ret.type),
+            compositeFields:
+              fn.ret.type.kind === 'composite' && 'fields' in fn.ret.type
+                ? fn.ret.type.fields.map((f) => ({ name: f.name, type: f.type.T }))
+                : undefined,
           }
         : undefined,
       language: fn.lang,
@@ -392,23 +392,35 @@ function detectNameClashes(tables: EnrichedTable[]): void {
   }
 }
 
-/** Enrich a single column using Atlas type metadata */
+/** Enrich a single column using inspector type metadata */
 function enrichColumn(
-  col: AtlasColumn,
+  col: Column,
   parentName: string,
   templateName: string,
   allFileTags: TemplateContext<any>['allFileTags'],
   pkColumns?: Set<string>,
   fkMap?: Map<string, { table: string; column: string; schema: string }>,
 ): EnrichedColumn {
-  const colName = col.name ?? ''
+  const colName = col.name
   const colTags = colName ? findTagsForObject(allFileTags, `${parentName}.${colName}`) : []
   const pgType = getColumnType(col)
   const nullable = isNullable(col)
   const typeOverride = colName ? findTypeOverride(colTags, templateName) : undefined
   const defaultValue = extractDefault(col.default)
-  const category = (col.type?.category ?? 'unknown') as TypeCategory
+  const category = typeCategory(col.type.type)
   const isSerial = category === 'integer' && pgType.toLowerCase().includes('serial')
+
+  // Extract enum values from SchemaType
+  let enumValues: string[] | undefined
+  if (col.type.type.kind === 'enum') {
+    enumValues = col.type.type.values
+  }
+
+  // Extract composite fields from SchemaType
+  let compositeFields: Array<{ name: string; type: string }> | undefined
+  if (col.type.type.kind === 'composite' && 'fields' in col.type.type) {
+    compositeFields = col.type.type.fields.map((f) => ({ name: f.name, type: f.type.T }))
+  }
 
   return {
     name: colName,
@@ -416,14 +428,14 @@ function enrichColumn(
     camelName: colName ? toCamelCase(colName) : '',
     pgType,
     category,
-    isCustomType: col.type?.is_custom ?? false,
-    enumValues: col.type?.enum_values,
-    compositeFields: col.type?.composite_fields,
+    isCustomType: isCustomType(col.type.type),
+    enumValues,
+    compositeFields,
     nullable,
-    isPrimaryKey: col.name ? (pkColumns?.has(col.name) ?? false) : false,
+    isPrimaryKey: pkColumns?.has(colName) ?? false,
     isSerial,
     defaultValue,
-    foreignKey: col.name ? fkMap?.get(col.name) : undefined,
+    foreignKey: fkMap?.get(colName),
     typeOverride,
     tags: colTags,
     raw: col,

@@ -1443,3 +1443,33 @@ export function parseReferenceAction(code: string): string | undefined {
       return undefined
   }
 }
+
+/** Query to list aggregate functions. */
+export const aggregatesQuery = `
+SELECT
+  n.nspname AS schema_name,
+  p.proname AS agg_name,
+  sf.proname AS state_func,
+  pg_catalog.format_type(a.aggtranstype, NULL) AS state_type,
+  ff.proname AS final_func,
+  a.agginitval AS init_val,
+  COALESCE(so.oprname, '') AS sort_op,
+  CASE p.proparallel
+    WHEN 's' THEN 'SAFE'
+    WHEN 'u' THEN 'UNSAFE'
+    WHEN 'r' THEN 'RESTRICTED'
+    ELSE ''
+  END AS parallel,
+  pg_catalog.pg_get_function_identity_arguments(p.oid) AS arg_types
+FROM
+  pg_catalog.pg_aggregate a
+  JOIN pg_catalog.pg_proc p ON p.oid = a.aggfnoid
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  JOIN pg_catalog.pg_proc sf ON sf.oid = a.aggtransfn
+  LEFT JOIN pg_catalog.pg_proc ff ON ff.oid = a.aggfinalfn
+  LEFT JOIN pg_catalog.pg_operator so ON so.oid = a.aggsortop
+WHERE
+  n.nspname IN (%s)
+ORDER BY
+  n.nspname, p.proname
+`

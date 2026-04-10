@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
-import type { AtlasRename, AtlasRenameCandidate } from '@sqldoc/db'
+import type { Change, Rename, RenameCandidate } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { debug, resolveConfigRoot } from '../debug.ts'
@@ -130,7 +130,7 @@ async function migrateProject(
   const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
 
   let upStatements: string[]
-  let upChanges: import('@sqldoc/db').AtlasChange[] | undefined
+  let upChanges: Change[] | undefined
   let downStatements: string[]
 
   try {
@@ -218,7 +218,12 @@ async function migrateProject(
   if (destructiveChanges.length > 0 && !options.force) {
     console.error(pc.red(pc.bold('Error: Migration contains destructive changes:')))
     for (const change of destructiveChanges) {
-      const label = change.name ? `${change.type}: ${change.table}.${change.name}` : `${change.type}: ${change.table}`
+      const label =
+        change.type === 'drop_table'
+          ? `drop_table: ${change.T.name}`
+          : change.type === 'drop_column'
+            ? `drop_column: ${change.C.name}`
+            : change.type
       console.error(pc.red(`  - ${label}`))
     }
     console.error('')
@@ -278,8 +283,8 @@ async function migrateProject(
  * Build a list of known renames from @docs.previously tags in compiled outputs.
  * Scans fileTags for tags with namespace "docs" and tag "previously".
  */
-export function buildRenamesFromPreviously(outputs: CompilerOutput[]): AtlasRename[] {
-  const renames: AtlasRename[] = []
+export function buildRenamesFromPreviously(outputs: CompilerOutput[]): Rename[] {
+  const renames: Rename[] = []
 
   for (const output of outputs) {
     for (const fileTag of output.fileTags) {
@@ -321,15 +326,15 @@ export function buildRenamesFromPreviously(outputs: CompilerOutput[]): AtlasRena
 
 /**
  * Prompt the user interactively for rename candidates detected by Atlas.
- * Returns the list of accepted renames as AtlasRename objects.
+ * Returns the list of accepted renames as Rename objects.
  */
-async function promptRenameCandidates(candidates: AtlasRenameCandidate[]): Promise<AtlasRename[]> {
+async function promptRenameCandidates(candidates: RenameCandidate[]): Promise<Rename[]> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stderr,
   })
 
-  const accepted: AtlasRename[] = []
+  const accepted: Rename[] = []
 
   for (const candidate of candidates) {
     const typeLabel = candidate.type === 'column' ? 'Column' : 'Table'

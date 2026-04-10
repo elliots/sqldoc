@@ -1,15 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/diff_oss.go
 
-import type {
-  Attr,
-  Column,
-  Index,
-  Realm,
-  Schema,
-  Table,
-  View,
-} from '../schema/schema.ts'
+import type { Attr, Column, Index, Realm, Schema, Table, View } from '../schema/schema.ts'
 import type { Change } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
 import type { DiffOptions } from '../schema/inspect.ts'
@@ -22,7 +14,7 @@ import { IndexTypeBTree } from './driver.ts'
 
 function findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
-  return attrs.find(a => 'kind' in a && (a as any).kind === kind) as T | undefined
+  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
 function hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
@@ -71,7 +63,7 @@ export class PostgresDiff implements DiffDriver {
     const publicName = this.schemaName || 'public'
     const comment = findAttr<{ kind: 'comment'; text: string }>(attrs, 'comment')
     if (comment?.text === 'standard public schema' && (!s.name || s.name === publicName)) {
-      return attrs.filter(a => !('kind' in a && (a as any).kind === 'comment'))
+      return attrs.filter((a) => !('kind' in a && (a as any).kind === 'comment'))
     }
     return attrs
   }
@@ -83,40 +75,90 @@ export class PostgresDiff implements DiffDriver {
     // Enum diff
     const fromEnums = from.enums ?? []
     const toEnums = to.enums ?? []
-    const toEnumMap = new Map(toEnums.map(e => [e.T, e]))
-    const fromEnumMap = new Map(fromEnums.map(e => [e.T, e]))
+    const toEnumMap = new Map(toEnums.map((e) => [e.T, e]))
+    const fromEnumMap = new Map(fromEnums.map((e) => [e.T, e]))
 
     for (const e1 of fromEnums) {
       const e2 = toEnumMap.get(e1.T)
       if (!e2) {
-        changes.push({ type: 'drop_object', O: { objectType: 'enum', enum: e1 } })
+        changes.push({ type: 'drop_object', O: e1 } as any)
       } else if (JSON.stringify(e1.values) !== JSON.stringify(e2.values)) {
-        changes.push({ type: 'modify_object', from: { objectType: 'enum', enum: e1 }, to: { objectType: 'enum', enum: e2 } })
+        changes.push({ type: 'modify_object', from: e1, to: e2 } as any)
       }
     }
     for (const e of toEnums) {
       if (!fromEnumMap.has(e.T)) {
-        changes.push({ type: 'add_object', O: { objectType: 'enum', enum: e } })
+        changes.push({ type: 'add_object', O: e } as any)
       }
     }
 
-    // Extension diff
-    const fromExts = from.extensions ?? []
-    const toExts = to.extensions ?? []
-    const toExtMap = new Map(toExts.map(e => [e.name, e]))
-    const fromExtMap = new Map(fromExts.map(e => [e.name, e]))
+    // Extensions are compared at realm level (realmObjectDiff), not per-schema
 
-    for (const e1 of fromExts) {
-      const e2 = toExtMap.get(e1.name)
-      if (!e2) {
-        changes.push({ type: 'drop_object', O: { objectType: 'extension', extension: e1 } })
-      } else if (e1.version !== e2.version) {
-        changes.push({ type: 'modify_object', from: { objectType: 'extension', extension: e1 }, to: { objectType: 'extension', extension: e2 } })
+    // Domain diff (stored in attrs)
+    const fromDomains = ((from.attrs ?? []) as any[]).filter((a) => a?.kind === 'domain')
+    const toDomains = ((to.attrs ?? []) as any[]).filter((a) => a?.kind === 'domain')
+    const toDomainMap = new Map(toDomains.map((d) => [d.T, d]))
+    const fromDomainMap = new Map(fromDomains.map((d) => [d.T, d]))
+
+    for (const d of fromDomains) {
+      if (!toDomainMap.has(d.T)) {
+        changes.push({ type: 'drop_object', O: d } as any)
       }
     }
-    for (const e of toExts) {
-      if (!fromExtMap.has(e.name)) {
-        changes.push({ type: 'add_object', O: { objectType: 'extension', extension: e } })
+    for (const d of toDomains) {
+      if (!fromDomainMap.has(d.T)) {
+        changes.push({ type: 'add_object', O: d } as any)
+      }
+    }
+
+    // Composite type diff
+    const fromComps = from.compositeTypes ?? []
+    const toComps = to.compositeTypes ?? []
+    const toCompMap = new Map(toComps.map((c) => [c.T, c]))
+    const fromCompMap = new Map(fromComps.map((c) => [c.T, c]))
+
+    for (const c of fromComps) {
+      if (!toCompMap.has(c.T)) {
+        changes.push({ type: 'drop_object', O: c } as any)
+      }
+    }
+    for (const c of toComps) {
+      if (!fromCompMap.has(c.T)) {
+        changes.push({ type: 'add_object', O: c } as any)
+      }
+    }
+
+    // Range type diff (stored in attrs)
+    const fromRanges = ((from.attrs ?? []) as any[]).filter((a) => a?.kind === 'range_type')
+    const toRanges = ((to.attrs ?? []) as any[]).filter((a) => a?.kind === 'range_type')
+    const toRangeMap = new Map(toRanges.map((r) => [r.T, r]))
+    const fromRangeMap = new Map(fromRanges.map((r) => [r.T, r]))
+
+    for (const r of fromRanges) {
+      if (!toRangeMap.has(r.T)) {
+        changes.push({ type: 'drop_object', O: r } as any)
+      }
+    }
+    for (const r of toRanges) {
+      if (!fromRangeMap.has(r.T)) {
+        changes.push({ type: 'add_object', O: r } as any)
+      }
+    }
+
+    // Aggregate diff (stored in attrs)
+    const fromAggs = ((from.attrs ?? []) as any[]).filter((a) => a?.kind === 'aggregate')
+    const toAggs = ((to.attrs ?? []) as any[]).filter((a) => a?.kind === 'aggregate')
+    const toAggMap = new Map(toAggs.map((a) => [a.name, a]))
+    const fromAggMap = new Map(fromAggs.map((a) => [a.name, a]))
+
+    for (const a of fromAggs) {
+      if (!toAggMap.has(a.name)) {
+        changes.push({ type: 'drop_object', O: a } as any)
+      }
+    }
+    for (const a of toAggs) {
+      if (!fromAggMap.has(a.name)) {
+        changes.push({ type: 'add_object', O: a } as any)
       }
     }
 
@@ -124,8 +166,32 @@ export class PostgresDiff implements DiffDriver {
   }
 
   /** Returns a changeset for migrating realm objects from one state to the other. */
-  realmObjectDiff(_from: Realm, _to: Realm): Change[] {
-    return []
+  realmObjectDiff(from: Realm, to: Realm): Change[] {
+    const changes: Change[] = []
+
+    // Extensions are realm-wide — compare across all schemas
+    const fromExts = new Map<string, any>()
+    const toExts = new Map<string, any>()
+    for (const s of from.schemas) {
+      for (const e of s.extensions ?? []) fromExts.set(e.name, e)
+    }
+    for (const s of to.schemas) {
+      for (const e of s.extensions ?? []) toExts.set(e.name, e)
+    }
+
+    for (const [name, e1] of fromExts) {
+      const e2 = toExts.get(name)
+      if (!e2) {
+        changes.push({ type: 'drop_object', O: e1 } as any)
+      }
+    }
+    for (const [name, e] of toExts) {
+      if (!fromExts.has(name)) {
+        changes.push({ type: 'add_object', O: e } as any)
+      }
+    }
+
+    return changes
   }
 
   /** Returns a changeset for migrating table attributes from one state to the other. */
@@ -283,8 +349,14 @@ export class PostgresDiff implements DiffDriver {
 
   /** Reports if identity attributes changed. */
   private identityChanged(from: Attr[] | undefined, to: Attr[] | undefined): boolean {
-    const fromId = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(from, 'identity')
-    const toId = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(to, 'identity')
+    const fromId = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(
+      from,
+      'identity',
+    )
+    const toId = findAttr<{ kind: 'identity'; generation: string; sequence?: { start: number; increment: number } }>(
+      to,
+      'identity',
+    )
 
     const hasFrom = fromId !== undefined
     const hasTo = toId !== undefined
@@ -362,8 +434,8 @@ export class PostgresDiff implements DiffDriver {
     const toNF = findAttr<{ kind: 'nulls_first'; V: boolean }>(toPart.attrs, 'nulls_first')
 
     // Default nulls ordering depends on DESC
-    const fromNullsFirst = fromNF?.V ?? (fromPart.desc === true)
-    const toNullsFirst = toNF?.V ?? (toPart.desc === true)
+    const fromNullsFirst = fromNF?.V ?? fromPart.desc === true
+    const toNullsFirst = toNF?.V ?? toPart.desc === true
     if (fromNullsFirst !== toNullsFirst) return true
 
     // Compare operator class
@@ -379,9 +451,7 @@ export class PostgresDiff implements DiffDriver {
   /** Reports if the index name was generated by the database for unnamed constraints. */
   isGeneratedIndexName(table: Table, index: Index): boolean {
     if (!index.name) return false
-    const partNames = index.parts
-      .map(p => p.column ?? '')
-      .filter(Boolean)
+    const partNames = index.parts.map((p) => p.column ?? '').filter(Boolean)
 
     if (partNames.length === 0) return false
 

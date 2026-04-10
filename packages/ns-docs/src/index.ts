@@ -1,5 +1,5 @@
 import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import { realmToDocsSchema } from './atlas.ts'
 import { mergeSchemaWithTags } from './merge.ts'
 import { generateMermaidERD } from './mermaid.ts'
@@ -43,7 +43,7 @@ const plugin: NamespacePlugin = {
     const title = config.title ?? 'Schema Documentation'
 
     // Atlas realm is provided by CLI compile (WASI inspect already ran)
-    const realm = ctx.atlasRealm as AtlasRealm | undefined
+    const realm = ctx.atlasRealm as Realm | undefined
     if (!realm) {
       throw new Error('ns-docs requires Atlas schema. Run with a database connection (devUrl in config).')
     }

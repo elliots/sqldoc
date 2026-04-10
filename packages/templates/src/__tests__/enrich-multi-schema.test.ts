@@ -3,40 +3,38 @@
  * detection, FK schema resolution, and stripSchemaFromName behavior.
  */
 
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { enrichRealm } from '../helpers/enrich.ts'
 
 // ── Fixtures ────────────────────────────────────────────────────────
 
-const singleSchemaRealm: AtlasRealm = {
+const singleSchemaRealm: Realm = {
   schemas: [
     {
       name: 'public',
       tables: [
         {
           name: 'users',
-          columns: [{ name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } }],
-          primary_key: { parts: [{ column: 'id' }] },
+          columns: [{ name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } }],
+          primaryKey: { parts: [{ column: 'id' }] },
         },
         {
           name: 'posts',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'user_id', type: { T: 'bigint', null: false, category: 'integer' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'user_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'posts_user_id_fkey', columns: ['user_id'], ref_table: 'users', ref_columns: ['id'] },
-          ],
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [{ symbol: 'posts_user_id_fkey', columns: ['user_id'], refTable: 'users', refColumns: ['id'] }],
         },
       ],
     },
   ],
 }
 
-const multiSchemaRealm: AtlasRealm = {
+const multiSchemaRealm: Realm = {
   schemas: [
     {
       name: 'auth',
@@ -44,13 +42,11 @@ const multiSchemaRealm: AtlasRealm = {
         {
           name: 'users',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'role_id', type: { T: 'bigint', null: false, category: 'integer' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'role_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'users_role_id_fkey', columns: ['role_id'], ref_table: 'roles', ref_columns: ['id'] },
-          ],
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [{ symbol: 'users_role_id_fkey', columns: ['role_id'], refTable: 'roles', refColumns: ['id'] }],
         },
       ],
     },
@@ -60,36 +56,36 @@ const multiSchemaRealm: AtlasRealm = {
         {
           name: 'projects',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'owner_id', type: { T: 'bigint', null: false, category: 'integer' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'owner_id', type: { type: { kind: 'integer', T: 'bigint' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
-            { symbol: 'projects_owner_id_fkey', columns: ['owner_id'], ref_table: 'users', ref_columns: ['id'] },
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [
+            { symbol: 'projects_owner_id_fkey', columns: ['owner_id'], refTable: 'users', refColumns: ['id'] },
           ],
         },
         {
           name: 'roles',
           columns: [
-            { name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } },
-            { name: 'name', type: { T: 'text', null: false, category: 'string' } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } },
+            { name: 'name', type: { type: { kind: 'string', T: 'text' }, null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
+          primaryKey: { parts: [{ column: 'id' }] },
         },
       ],
     },
   ],
 }
 
-const clashRealm: AtlasRealm = {
+const clashRealm: Realm = {
   schemas: [
     {
       name: 'auth',
       tables: [
         {
           name: 'users',
-          columns: [{ name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } }],
-          primary_key: { parts: [{ column: 'id' }] },
+          columns: [{ name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } }],
+          primaryKey: { parts: [{ column: 'id' }] },
         },
       ],
     },
@@ -98,8 +94,8 @@ const clashRealm: AtlasRealm = {
       tables: [
         {
           name: 'users',
-          columns: [{ name: 'id', type: { T: 'bigserial', null: false, category: 'integer' } }],
-          primary_key: { parts: [{ column: 'id' }] },
+          columns: [{ name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, null: false } }],
+          primaryKey: { parts: [{ column: 'id' }] },
         },
       ],
     },
@@ -108,7 +104,7 @@ const clashRealm: AtlasRealm = {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function makeCtx(realm: AtlasRealm, overrides?: Partial<TemplateContext>): TemplateContext {
+function makeCtx(realm: Realm, overrides?: Partial<TemplateContext>): TemplateContext {
   return {
     realm,
     allFileTags: [],

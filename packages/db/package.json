@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@sqldoc/db",
   "version": "0.1.3",
-  "description": "Atlas WASI integration for sqldoc -- schema types, database adapters, WASI runner",
+  "description": "Database adapters and schema type re-exports for sqldoc",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -15,16 +15,13 @@
   "files": [
     "src",
     "!src/__tests__",
-    "wasm",
     "package.json"
   ],
   "scripts": {
-    "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsgo -noEmit",
-    "build:wasm": "cd ../../../atlastest/atlas/cmd/atlas-wasi && GOOS=wasip1 GOARCH=wasm go build -o atlas.wasm . && cp atlas.wasm ../../../../sqldoc/packages/db/wasm/atlas.wasm",
-    "codegen:schema": "echo 'Types hand-crafted from atlas/sql/schema/schema.go -- see src/types.ts. tygo cannot handle Go interfaces (Attr, Type, Expr). Re-read schema.go and update src/types.ts manually when the Go source changes.'"
+    "typecheck": "tsgo -noEmit"
   },
   "dependencies": {
+    "@sqldoc/inspector": "workspace:*",
     "picocolors": "catalog:"
   },
   "devDependencies": {

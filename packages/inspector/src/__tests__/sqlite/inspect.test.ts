@@ -27,19 +27,19 @@ describe('SQLite Inspector', () => {
       const schemas = result.schema!.schemas
       assert.ok(schemas.length > 0, 'should have at least one schema')
 
-      const mainSchema = schemas.find(s => s.name === 'main')
+      const mainSchema = schemas.find((s) => s.name === 'main')
       assert.ok(mainSchema, 'should have main schema')
 
-      const usersTable = mainSchema!.tables?.find(t => t.name === 'users')
+      const usersTable = mainSchema!.tables?.find((t) => t.name === 'users')
       assert.ok(usersTable, 'should find users table')
       assert.ok(usersTable!.columns, 'users should have columns')
       assert.equal(usersTable!.columns!.length, 5, 'users should have 5 columns')
 
-      const colNames = usersTable!.columns!.map(c => c.name)
+      const colNames = usersTable!.columns!.map((c) => c.name)
       assert.deepEqual(colNames, ['id', 'name', 'email', 'age', 'active'])
 
       // Check primary key
-      assert.ok(usersTable!.primary_key, 'should have primary key')
+      assert.ok(usersTable!.primaryKey, 'should have primary key')
     } finally {
       await inspector.close()
     }
@@ -52,7 +52,10 @@ describe('SQLite Inspector', () => {
     const testsDir = path.resolve(import.meta.dirname, '../../../../../tests')
     const schemaSql = fs.readFileSync(path.join(testsDir, 'pet-store-sqlite/schema.sql'), 'utf-8')
     const includeReviewsSql = fs.readFileSync(path.join(testsDir, 'pet-store-sqlite/include/reviews.sql'), 'utf-8')
-    const externalLocationsSql = fs.readFileSync(path.join(testsDir, 'pet-store-sqlite/external/locations.sql'), 'utf-8')
+    const externalLocationsSql = fs.readFileSync(
+      path.join(testsDir, 'pet-store-sqlite/external/locations.sql'),
+      'utf-8',
+    )
 
     const db = await createSqliteAdapter(':memory:')
     const inspector = await createInspector({ db, dialect: 'sqlite' })
@@ -62,21 +65,30 @@ describe('SQLite Inspector', () => {
       const result = await inspector.inspect([externalLocationsSql, schemaSql, includeReviewsSql])
       assert.ok(result.schema, 'should return schema')
 
-      const mainSchema = result.schema!.schemas.find(s => s.name === 'main')
+      const mainSchema = result.schema!.schemas.find((s) => s.name === 'main')
       assert.ok(mainSchema, 'should have main schema')
 
-      const tableNames = (mainSchema!.tables ?? []).map(t => t.name).sort()
+      const tableNames = (mainSchema!.tables ?? []).map((t) => t.name).sort()
       const expectedTables = [
-        'adoptions', 'categories', 'legacy_inventory', 'locations',
-        'medical_records', 'owners', 'pets', 'reviews', 'staff',
+        'adoptions',
+        'categories',
+        'legacy_inventory',
+        'locations',
+        'medical_records',
+        'owners',
+        'pets',
+        'reviews',
+        'staff',
       ].sort()
       assert.deepEqual(tableNames, expectedTables, 'should have all pet store tables')
 
       // Check foreign keys on adoptions
-      const adoptions = mainSchema!.tables!.find(t => t.name === 'adoptions')
+      const adoptions = mainSchema!.tables!.find((t) => t.name === 'adoptions')
       assert.ok(adoptions, 'should find adoptions table')
-      assert.ok(adoptions!.foreign_keys && adoptions!.foreign_keys.length >= 2,
-        'adoptions should have at least 2 foreign keys')
+      assert.ok(
+        adoptions!.foreignKeys && adoptions!.foreignKeys.length >= 2,
+        'adoptions should have at least 2 foreign keys',
+      )
     } finally {
       await inspector.close()
     }
@@ -101,17 +113,17 @@ describe('SQLite Inspector', () => {
       const result = await inspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      const mainSchema = result.schema!.schemas.find(s => s.name === 'main')
+      const mainSchema = result.schema!.schemas.find((s) => s.name === 'main')
       assert.ok(mainSchema, 'should have main schema')
 
-      const table = mainSchema!.tables?.find(t => t.name === 'affinity_test')
+      const table = mainSchema!.tables?.find((t) => t.name === 'affinity_test')
       assert.ok(table, 'should find affinity_test table')
       assert.equal(table!.columns!.length, 7, 'should have 7 columns')
 
       // Each column should have a type
       for (const col of table!.columns!) {
         assert.ok(col.type, `column ${col.name} should have type`)
-        assert.ok(col.type!.T || col.type!.raw, `column ${col.name} should have T or raw type`)
+        assert.ok(col.type.type.T || col.type.raw, `column ${col.name} should have T or raw type`)
       }
     } finally {
       await inspector.close()
@@ -133,10 +145,10 @@ describe('SQLite Inspector', () => {
       const result = await inspector.inspect([sql])
       assert.ok(result.schema, 'should return schema')
 
-      const mainSchema = result.schema!.schemas.find(s => s.name === 'main')
+      const mainSchema = result.schema!.schemas.find((s) => s.name === 'main')
       assert.ok(mainSchema, 'should have main schema')
 
-      const table = mainSchema!.tables?.find(t => t.name === 'validated')
+      const table = mainSchema!.tables?.find((t) => t.name === 'validated')
       assert.ok(table, 'should find validated table')
 
       // Check constraints should be present - either on the table attrs or as separate checks
@@ -169,8 +181,7 @@ describe('SQLite Inspector', () => {
 
       const hasStatements = result.statements && result.statements.length > 0
       const hasChanges = result.changes && result.changes.length > 0
-      assert.ok(hasStatements || hasChanges,
-        'diff should produce statements or changes for the added column')
+      assert.ok(hasStatements || hasChanges, 'diff should produce statements or changes for the added column')
     } finally {
       await inspector.close()
     }

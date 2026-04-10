@@ -330,11 +330,11 @@ export interface Sequence {
   name: string
   schema?: string
   type?: ColumnType
-  start?: number
-  increment?: number
-  min?: number
-  max?: number
-  cache?: number
+  start?: number | bigint
+  increment?: number | bigint
+  min?: number | bigint
+  max?: number | bigint
+  cache?: number | bigint
   cycle?: boolean
   attrs?: Attr[]
 }
@@ -468,4 +468,42 @@ export interface Schema {
 export interface Realm {
   schemas: Schema[]
   attrs?: Attr[]
+}
+
+// -- Type Category --
+
+/** Dialect-independent type category for column types. */
+export type TypeCategory =
+  | 'string'
+  | 'integer'
+  | 'float'
+  | 'decimal'
+  | 'boolean'
+  | 'time'
+  | 'binary'
+  | 'json'
+  | 'uuid'
+  | 'spatial'
+  | 'enum'
+  | 'composite'
+  | 'array'
+  | 'unknown'
+
+// -- Rename Types --
+
+/** A known rename to apply before diffing. */
+export interface Rename {
+  type: 'column' | 'table'
+  table: string
+  oldName: string
+  newName: string
+}
+
+/** A potential rename detected during diff (drop+add pair with matching type). */
+export interface RenameCandidate {
+  type: 'column' | 'table'
+  table: string
+  oldName: string
+  newName: string
+  colType?: string
 }

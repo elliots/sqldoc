@@ -1,8 +1,8 @@
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { realmToDocsSchema } from '../atlas.ts'
 
-const sampleRealm: AtlasRealm = {
+const sampleRealm: Realm = {
   schemas: [
     {
       name: 'public',
@@ -10,9 +10,9 @@ const sampleRealm: AtlasRealm = {
         {
           name: 'users',
           columns: [
-            { name: 'id', type: { raw: 'bigserial', T: 'bigserial', null: false } },
-            { name: 'email', type: { raw: 'text', T: 'text', null: false } },
-            { name: 'bio', type: { raw: 'text', T: 'text', null: true } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial', null: false } },
+            { name: 'email', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: false } },
+            { name: 'bio', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: true } },
           ],
           indexes: [
             {
@@ -21,22 +21,22 @@ const sampleRealm: AtlasRealm = {
               parts: [{ column: 'email' }],
             },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [],
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [],
         },
         {
           name: 'posts',
           columns: [
-            { name: 'id', type: { raw: 'bigserial', T: 'bigserial', null: false } },
-            { name: 'user_id', type: { raw: 'bigint', T: 'bigint', null: false } },
+            { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial', null: false } },
+            { name: 'user_id', type: { type: { kind: 'integer', T: 'bigint' }, raw: 'bigint', null: false } },
           ],
-          primary_key: { parts: [{ column: 'id' }] },
-          foreign_keys: [
+          primaryKey: { parts: [{ column: 'id' }] },
+          foreignKeys: [
             {
               symbol: 'posts_user_id_fkey',
               columns: ['user_id'],
-              ref_table: 'users',
-              ref_columns: ['id'],
+              refTable: 'users',
+              refColumns: ['id'],
             },
           ],
         },
@@ -44,7 +44,7 @@ const sampleRealm: AtlasRealm = {
       views: [
         {
           name: 'active_users',
-          columns: [{ name: 'email', type: { raw: 'text', T: 'text' } }],
+          columns: [{ name: 'email', type: { type: { kind: 'string', T: 'text' }, raw: 'text' } }],
         },
       ],
     },
@@ -52,7 +52,7 @@ const sampleRealm: AtlasRealm = {
 }
 
 describe('realmToDocsSchema', () => {
-  it('converts Atlas WASI realm to ns-docs AtlasSchema format', () => {
+  it('converts realm to ns-docs AtlasSchema format', () => {
     const result = realmToDocsSchema(sampleRealm)
     expect(result.schemas).toHaveLength(1)
     expect(result.schemas[0].name).toBe('public')
@@ -115,14 +115,14 @@ describe('realmToDocsSchema', () => {
   })
 
   it('falls back to T when raw is undefined', () => {
-    const realm: AtlasRealm = {
+    const realm: Realm = {
       schemas: [
         {
           name: 'test',
           tables: [
             {
               name: 't',
-              columns: [{ name: 'x', type: { T: 'integer' } }],
+              columns: [{ name: 'x', type: { type: { kind: 'integer', T: 'integer' } } }],
             },
           ],
         },
