@@ -303,4 +303,42 @@ describe('PostgreSQL Inspector', () => {
       await localInspector.close()
     }
   })
+
+  it('domain migration preserves NOT NULL, type size, and detects definition changes', async () => {
+    const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
+    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+
+    try {
+      const sql = `
+        CREATE DOMAIN url AS character varying(2048) NOT NULL;
+        CREATE DOMAIN score AS integer CHECK (VALUE >= 0 AND VALUE <= 100);
+        CREATE TABLE items (id serial PRIMARY KEY, link url, rating score);
+      `
+
+      // Round-trip: generate migration from empty, apply it, diff should be zero
+      const migration = await localInspector.diff([], [sql])
+      assert.ok(!migration.error, `diff should not error: ${migration.error}`)
+      const stmts = migration.statements ?? []
+
+      // Verify migration SQL preserves NOT NULL and size
+      const urlStmt = stmts.find((s) => s.includes('CREATE DOMAIN') && s.includes('url'))
+      assert.ok(urlStmt, 'should generate CREATE DOMAIN for url')
+      assert.ok(urlStmt!.includes('NOT NULL'), 'domain migration should preserve NOT NULL')
+      assert.ok(urlStmt!.includes('2048'), 'domain migration should preserve type size')
+
+      // Round-trip should produce zero changes
+      const migrationSQL = `${stmts.join(';\n')};`
+      const roundTrip = await localInspector.diff([migrationSQL], [sql])
+      assert.ok(!roundTrip.error, `round-trip diff should not error: ${roundTrip.error}`)
+      assert.deepEqual(roundTrip.statements ?? [], [], 'round-trip diff should be empty')
+
+      // Changing a domain definition should produce a diff
+      const alteredSql = sql.replace('character varying(2048)', 'text')
+      const altered = await localInspector.diff([sql], [alteredSql])
+      assert.ok(!altered.error, `altered diff should not error: ${altered.error}`)
+      assert.ok((altered.statements ?? []).length > 0, 'changing domain type should produce a diff')
+    } finally {
+      await localInspector.close()
+    }
+  })
 })
