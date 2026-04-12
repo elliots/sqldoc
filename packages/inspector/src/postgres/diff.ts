@@ -236,6 +236,8 @@ export class PostgresDiff implements DiffDriver {
         changes.push({ type: 'modify_attr', from: fromComment as Attr, to: toComment as Attr })
       } else if (toComment) {
         changes.push({ type: 'add_attr', A: toComment as Attr })
+      } else if (fromComment) {
+        changes.push({ type: 'drop_attr', A: fromComment as Attr })
       }
     }
     return changes
@@ -393,13 +395,9 @@ export class PostgresDiff implements DiffDriver {
     const hasFrom = fromGen !== undefined
     const hasTo = toGen !== undefined
 
-    if (hasFrom && hasTo) {
-      // Compare expressions and types — the planner handles drop+recreate
-      return fromGen!.expr !== toGen!.expr || fromGen!.type !== toGen!.type
-    }
-
-    // DROP EXPRESSION is supported
-    return hasFrom && !hasTo
+    if (hasFrom !== hasTo) return true
+    if (!hasFrom) return false
+    return fromGen!.expr !== toGen!.expr || fromGen!.type !== toGen!.type
   }
 
   /** Reports if the index attributes were changed. */
@@ -412,12 +410,10 @@ export class PostgresDiff implements DiffDriver {
     // Compare index predicates (WHERE clause for partial indexes)
     const fromPred = findAttr<{ kind: 'predicate'; P: string }>(from, 'predicate')
     const toPred = findAttr<{ kind: 'predicate'; P: string }>(to, 'predicate')
-    if (fromPred?.P !== toPred?.P) {
-      // Try with mayWrap normalization
-      if (fromPred?.P && toPred?.P && fromPred.P !== mayWrap(toPred.P)) {
-        return true
-      }
-      if ((fromPred?.P ?? '') !== (toPred?.P ?? '')) return true
+    {
+      const lhs = fromPred?.P ? mayWrap(fromPred.P) : ''
+      const rhs = toPred?.P ? mayWrap(toPred.P) : ''
+      if (lhs !== rhs) return true
     }
 
     // Compare NULLS DISTINCT

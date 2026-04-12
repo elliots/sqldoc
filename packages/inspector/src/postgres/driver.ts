@@ -1241,8 +1241,8 @@ function columnType(c: ColumnDesc): SchemaType {
   // UUID
   if (lower === TypeUUID) return { kind: 'uuid', T: t } as UUIDType
 
-  // XML (stored as unsupported since we don't have an XMLType in schema.ts)
-  if (lower === TypeXML) return { kind: 'unsupported', T: t } as UnsupportedType
+  // XML
+  if (lower === TypeXML) return { kind: 'xml', T: t }
 
   // Array type keyword
   if (lower === TypeArray) {
