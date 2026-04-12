@@ -81,9 +81,9 @@ const plugin: NamespacePlugin = {
 
       const templateName =
         typeof entry.template === 'string' ? extractTemplateName(entry.template) : (template.name ?? 'unknown')
-      let defaultSchema: string | undefined
-      if (ctx.dialect === 'postgres') defaultSchema = 'public'
-      else if (ctx.dialect === 'sqlite') defaultSchema = 'main'
+      // Must match the default schema logic in compile.ts
+      const canonicalDefault = ctx.dialect === 'sqlite' ? 'main' : ctx.dialect === 'mssql' ? 'dbo' : 'public'
+      const defaultSchema = realm.schemas.length === 1 ? realm.schemas[0].name : canonicalDefault
 
       const templateCtx: TemplateContext = {
         realm,

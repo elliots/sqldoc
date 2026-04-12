@@ -286,7 +286,10 @@ function compileWithRealm(
     fileNamespaces,
   }
   // Default schema names are stripped from object identity (e.g. public.users → users)
-  const defaultSchema = config.dialect === 'sqlite' ? 'main' : config.dialect === 'mssql' ? 'dbo' : 'public'
+  // For single-schema realms, that schema is always the default.
+  // For multi-schema, use the dialect's canonical default (public/main/dbo).
+  const canonicalDefault = config.dialect === 'sqlite' ? 'main' : config.dialect === 'mssql' ? 'dbo' : 'public'
+  const defaultSchema = realm.schemas.length === 1 ? realm.schemas[0].name : canonicalDefault
 
   for (const schema of realm.schemas) {
     const qualify = (name: string) => (schema.name && schema.name !== defaultSchema ? `${schema.name}.${name}` : name)
