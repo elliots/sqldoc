@@ -103,6 +103,9 @@ export class PostgresDiff implements DiffDriver {
     for (const d of fromDomains) {
       if (!toDomainMap.has(d.T)) {
         changes.push({ type: 'drop_object', O: d } as any)
+      } else if (objectChanged(d, toDomainMap.get(d.T))) {
+        changes.push({ type: 'drop_object', O: d } as any)
+        changes.push({ type: 'add_object', O: toDomainMap.get(d.T) } as any)
       }
     }
     for (const d of toDomains) {
@@ -120,6 +123,9 @@ export class PostgresDiff implements DiffDriver {
     for (const c of fromComps) {
       if (!toCompMap.has(c.T)) {
         changes.push({ type: 'drop_object', O: c } as any)
+      } else if (objectChanged(c, toCompMap.get(c.T))) {
+        changes.push({ type: 'drop_object', O: c } as any)
+        changes.push({ type: 'add_object', O: toCompMap.get(c.T) } as any)
       }
     }
     for (const c of toComps) {
@@ -137,6 +143,9 @@ export class PostgresDiff implements DiffDriver {
     for (const r of fromRanges) {
       if (!toRangeMap.has(r.T)) {
         changes.push({ type: 'drop_object', O: r } as any)
+      } else if (objectChanged(r, toRangeMap.get(r.T))) {
+        changes.push({ type: 'drop_object', O: r } as any)
+        changes.push({ type: 'add_object', O: toRangeMap.get(r.T) } as any)
       }
     }
     for (const r of toRanges) {
@@ -154,6 +163,9 @@ export class PostgresDiff implements DiffDriver {
     for (const a of fromAggs) {
       if (!toAggMap.has(a.name)) {
         changes.push({ type: 'drop_object', O: a } as any)
+      } else if (objectChanged(a, toAggMap.get(a.name))) {
+        changes.push({ type: 'drop_object', O: a } as any)
+        changes.push({ type: 'add_object', O: toAggMap.get(a.name) } as any)
       }
     }
     for (const a of toAggs) {
@@ -492,4 +504,18 @@ export class PostgresDiff implements DiffDriver {
   normalize(_table: Table): void {
     // PostgreSQL-specific normalization (minimal for OSS)
   }
+}
+
+/** Compare schema objects by their key semantic properties. */
+function objectChanged(a: any, b: any): boolean {
+  return stableStringify(a) !== stableStringify(b)
+}
+
+/** JSON.stringify with sorted keys for stable comparison. */
+function stableStringify(obj: any): string {
+  if (obj === null || obj === undefined) return String(obj)
+  if (typeof obj !== 'object') return JSON.stringify(obj)
+  if (Array.isArray(obj)) return `[${obj.map(stableStringify).join(',')}]`
+  const keys = Object.keys(obj).sort()
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`
 }

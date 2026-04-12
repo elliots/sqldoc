@@ -169,9 +169,9 @@ export class PostgresPlan implements PlanDriver {
   /** Generate SQL for creating a domain type. */
   private addDomainType(obj: any): string[] {
     const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
-    const baseType = obj.type?.T || 'text'
+    const baseType = obj.type ? typeDDL(obj.type) : 'text'
     const stmts = [`CREATE DOMAIN ${ident} AS ${baseType}`]
-    if (obj.null === false) {
+    if (!obj.null) {
       stmts[0] += ' NOT NULL'
     }
     if (obj.default) {
