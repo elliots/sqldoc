@@ -358,13 +358,14 @@ function processRealmObject(
   // Extract tags from object-level attrs
   const objectTags = findTags(obj.attrs)
 
-  // Collect all tags on this object (object-level + column-level) for siblingTags
-  const allObjectTagsParsed = objectTags.map((t) => {
+  // Object-level tags only (used as base for per-column tag sets)
+  const objectTagsParsed = objectTags.map((t) => {
     const split = splitTagName(t.name)
     return { namespace: split.namespace, tag: split.tag, argsStr: t.args }
   })
 
-  // Also collect column tags for sibling awareness
+  // All tags (object + all columns) for object-level callbacks
+  const allObjectTagsParsed = [...objectTagsParsed]
   if (obj.columns) {
     for (const col of obj.columns) {
       const colTags = findTags(col.attrs)
@@ -488,13 +489,20 @@ function processRealmObject(
         const args = parseTagArgs(atag.args)
         const columnType = col.type.raw ?? col.type.type.T
 
-        // Build namespaceTags
-        const namespaceTags = allObjectTagsParsed
+        // Build per-column tag set: object-level tags + this column's tags only
+        const columnTagsParsed = [...objectTagsParsed]
+        for (const ct of colTags) {
+          const split = splitTagName(ct.name)
+          columnTagsParsed.push({ namespace: split.namespace, tag: split.tag, argsStr: ct.args })
+        }
+
+        // Build namespaceTags from this column's scoped set
+        const namespaceTags = columnTagsParsed
           .filter((t) => t.namespace === namespace)
           .map((t) => ({ tag: t.tag, args: parseTagArgs(t.argsStr) }))
 
-        // Build siblingTags
-        const siblingTags = allObjectTagsParsed.map((t) => ({
+        // Build siblingTags from this column's scoped set
+        const siblingTags = columnTagsParsed.map((t) => ({
           namespace: t.namespace,
           tag: t.tag,
           args: parseTagArgs(t.argsStr),
