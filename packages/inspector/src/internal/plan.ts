@@ -419,8 +419,10 @@ export function sortChanges(changes: Change[]): Change[] {
     switch (c.type) {
       case 'add_schema':
       case 'modify_schema':
-      case 'drop_schema':
         prelude.push(c)
+        break
+      case 'drop_schema':
+        drop.push(c)
         break
       case 'add_object': {
         // Extensions must be created before tables/types (matches Go topLevel)
