@@ -3,17 +3,10 @@
 
 import type { InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
-import type { Attr, Column, Realm, Schema, Table } from '../schema/schema.ts'
+import type { Column, Realm, Schema, Table } from '../schema/schema.ts'
 import { MysqlDiff } from './diff.ts'
 import { MysqlInspector } from './inspect.ts'
 import { MysqlPlan } from './migrate.ts'
-
-// -- Helper: find attribute by kind --
-
-function _findAttr<T extends Attr>(attrs: Attr[] | undefined, kind: string): T | undefined {
-  if (!attrs) return undefined
-  return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
-}
 
 // -- TiDB Priority Function --
 

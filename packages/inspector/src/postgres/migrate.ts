@@ -489,7 +489,7 @@ export class PostgresPlan implements PlanDriver {
         parts.push(`ALTER COLUMN "${to.name}" SET ${def}`)
         k &= ~ChangeKind.ChangeDefault
       } else if (k & ChangeKind.ChangeAttr) {
-        // Identity changes
+        // Identity changes — PostgreSQL requires separate ALTER COLUMN clauses
         const toId = findAttr<{
           kind: 'identity'
           generation: string
@@ -497,10 +497,16 @@ export class PostgresPlan implements PlanDriver {
         }>(to.attrs, 'identity')
         if (toId) {
           const gen = toId.generation || 'BY DEFAULT'
-          const seq = toId.sequence ?? { start: 1, increment: 1 }
-          parts.push(
-            `ALTER COLUMN "${to.name}" SET GENERATED ${gen} SET START WITH ${seq.start} SET INCREMENT BY ${seq.increment}`,
-          )
+          parts.push(`ALTER COLUMN "${to.name}" SET GENERATED ${gen}`)
+          const seq = toId.sequence
+          if (seq) {
+            if (seq.start !== undefined) {
+              parts.push(`ALTER COLUMN "${to.name}" SET START WITH ${seq.start}`)
+            }
+            if (seq.increment !== undefined) {
+              parts.push(`ALTER COLUMN "${to.name}" SET INCREMENT BY ${seq.increment}`)
+            }
+          }
         }
         k &= ~ChangeKind.ChangeAttr
       } else if (k & ChangeKind.ChangeGenerated) {
@@ -512,6 +518,9 @@ export class PostgresPlan implements PlanDriver {
         const collation = findAttr<{ kind: 'collation'; V: string }>(to.attrs, 'collation')
         if (collation) {
           parts.push(`ALTER COLUMN "${to.name}" TYPE ${typeStr} COLLATE "${collation.V}"`)
+        } else {
+          // Reset to column type's default collation
+          parts.push(`ALTER COLUMN "${to.name}" TYPE ${typeStr}`)
         }
         k &= ~ChangeKind.ChangeCollate
       } else if (k & ChangeKind.ChangeComment) {

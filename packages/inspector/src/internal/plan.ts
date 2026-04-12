@@ -59,6 +59,11 @@ export interface PlanOptions {
 
 // -- Comparison Helpers --
 
+/** Build a schema-qualified name for use as a map key. */
+function qualifiedName(name: string, schema?: string): string {
+  return schema ? `${schema}.${name}` : name
+}
+
 /** Reports if two schema strings are the same. */
 function sameSchema(a: string | undefined, b: string | undefined): boolean {
   if (!a && !b) return true
@@ -301,39 +306,42 @@ function dependencies(changes: Change[]): DependenciesResult {
   for (const change of changes) {
     switch (change.type) {
       case 'add_table': {
-        ensureEntry(change.T.name)
+        const key = qualifiedName(change.T.name, change.T.schema)
+        ensureEntry(key)
         for (const fk of change.T.foreignKeys ?? []) {
           const err = checkFK(fk)
           if (err) return { error: err }
           // Non-self-referencing FK
           if (fk.refTable !== change.T.name || !sameSchema(fk.refSchema, change.T.schema)) {
-            addDep(change.T.name, fk.refTable)
+            addDep(key, qualifiedName(fk.refTable, fk.refSchema))
           }
         }
         break
       }
 
       case 'drop_table': {
-        ensureEntry(change.T.name)
+        const key = qualifiedName(change.T.name, change.T.schema)
+        ensureEntry(key)
         for (const fk of change.T.foreignKeys ?? []) {
           const err = checkFK(fk)
           if (err) return { error: err }
           if (isDropped(changes, fk.refTable, fk.refSchema)) {
-            addDep(fk.refTable, change.T.name)
+            addDep(qualifiedName(fk.refTable, fk.refSchema), key)
           }
         }
         break
       }
 
       case 'modify_table': {
-        ensureEntry(change.T.name)
+        const key = qualifiedName(change.T.name, change.T.schema)
+        ensureEntry(key)
         for (const c of change.changes) {
           switch (c.type) {
             case 'add_foreign_key': {
               const err = checkFK(c.F)
               if (err) return { error: err }
               if (c.F.refTable !== change.T.name || !sameSchema(c.F.refSchema, change.T.schema)) {
-                addDep(change.T.name, c.F.refTable)
+                addDep(key, qualifiedName(c.F.refTable, c.F.refSchema))
               }
               break
             }
@@ -341,7 +349,7 @@ function dependencies(changes: Change[]): DependenciesResult {
               const err = checkFK(c.to)
               if (err) return { error: err }
               if (c.to.refTable !== change.T.name || !sameSchema(c.to.refSchema, change.T.schema)) {
-                addDep(change.T.name, c.to.refTable)
+                addDep(key, qualifiedName(c.to.refTable, c.to.refSchema))
               }
               break
             }
@@ -349,7 +357,7 @@ function dependencies(changes: Change[]): DependenciesResult {
               const err = checkFK(c.F)
               if (err) return { error: err }
               if (isDropped(changes, c.F.refTable, c.F.refSchema)) {
-                addDep(c.F.refTable, change.T.name)
+                addDep(qualifiedName(c.F.refTable, c.F.refSchema), key)
               }
               break
             }
@@ -375,21 +383,21 @@ function checkFK(fk: ForeignKey): string | undefined {
   return undefined
 }
 
-/** Extract table name from a change (for sorting). */
+/** Extract schema-qualified table name from a change (for sorting/keying). */
 function tableName(change: Change): string {
   switch (change.type) {
     case 'add_table':
     case 'drop_table':
     case 'modify_table':
-      return change.T.name
+      return change.T.schema ? `${change.T.schema}.${change.T.name}` : change.T.name
     default:
       return ''
   }
 }
 
 /** Check if a table is being dropped in the changeset. */
-function isDropped(changes: Change[], tableName: string, tableSchema?: string): boolean {
-  return changes.some((c) => c.type === 'drop_table' && c.T.name === tableName && sameSchema(c.T.schema, tableSchema))
+function isDropped(changes: Change[], name: string, schema?: string): boolean {
+  return changes.some((c) => c.type === 'drop_table' && c.T.name === name && sameSchema(c.T.schema, schema))
 }
 
 // -- SortChanges (main topological sort for all change types) --
