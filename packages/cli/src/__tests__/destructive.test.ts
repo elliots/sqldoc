@@ -65,6 +65,26 @@ describe('detectDestructiveChanges', () => {
     expect(detectDestructiveChanges(changes)).toEqual([])
   })
 
+  it('detects drop_schema', () => {
+    const changes: Change[] = [{ type: 'drop_schema', S: { name: 'analytics' } }]
+    const result = detectDestructiveChanges(changes)
+    expect(result).toHaveLength(1)
+    expect(result[0].type).toBe('drop_schema')
+  })
+
+  it('detects drop_column nested in modify_schema -> modify_table', () => {
+    const changes: Change[] = [
+      {
+        type: 'modify_schema',
+        S: { name: 'public' },
+        changes: [{ type: 'modify_table', T: tbl('users'), changes: [{ type: 'drop_column', C: col('old_field') }] }],
+      },
+    ]
+    const result = detectDestructiveChanges(changes)
+    expect(result).toHaveLength(1)
+    expect(result[0].type).toBe('drop_column')
+  })
+
   it('filters only destructive from mixed changes', () => {
     const changes: Change[] = [
       { type: 'add_table', T: tbl('new_users') },
