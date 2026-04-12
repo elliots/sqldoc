@@ -160,10 +160,10 @@ export async function runCompilePipeline(
       }
       externalRealm = externalResult.schema as Realm
 
-      // Extract external object names
+      // Extract external object names (schema-qualified to avoid cross-schema collisions)
       for (const schema of externalRealm.schemas) {
-        for (const table of schema.tables ?? []) externalObjectNames.add(table.name)
-        for (const view of schema.views ?? []) externalObjectNames.add(view.name)
+        for (const table of schema.tables ?? []) externalObjectNames.add(`${schema.name}.${table.name}`)
+        for (const view of schema.views ?? []) externalObjectNames.add(`${schema.name}.${view.name}`)
       }
     }
 
@@ -313,7 +313,15 @@ function normalizeColumns(
 ): string {
   if (!columns || columns.length === 0) return '[]'
   const sorted = [...columns].sort((a, b) => a.name.localeCompare(b.name))
-  return JSON.stringify(sorted.map((c) => ({ name: c.name, type: c.type.type.T ?? c.type.raw, null: c.type.null })))
+  return JSON.stringify(
+    sorted.map((c) => ({
+      name: c.name,
+      type: c.type.raw ?? c.type.type.T,
+      null: c.type.null,
+      default: (c as any).default,
+      generated: (c as any).generated,
+    })),
+  )
 }
 
 /**
@@ -322,19 +330,24 @@ function normalizeColumns(
  * If any difference is detected, throws a hard error.
  */
 function validateExternalImmutability(externalRealm: Realm, fullRealm: Realm, externalObjectNames: Set<string>): void {
-  // Build lookup maps for full realm objects
+  // Build lookup maps for full realm objects (schema-qualified keys)
   const fullTables = new Map<string, Schema['tables']>()
   const fullViews = new Map<string, Schema['views']>()
   for (const schema of fullRealm.schemas) {
-    for (const table of schema.tables ?? []) fullTables.set(table.name, [table])
-    for (const view of schema.views ?? []) fullViews.set(view.name, [view])
+    for (const table of schema.tables ?? []) fullTables.set(`${schema.name}.${table.name}`, [table])
+    for (const view of schema.views ?? []) fullViews.set(`${schema.name}.${view.name}`, [view])
   }
 
   for (const schema of externalRealm.schemas) {
     for (const extTable of schema.tables ?? []) {
-      if (!externalObjectNames.has(extTable.name)) continue
-      const fullTableArr = fullTables.get(extTable.name)
-      if (!fullTableArr || fullTableArr.length === 0) continue
+      const qualName = `${schema.name}.${extTable.name}`
+      if (!externalObjectNames.has(qualName)) continue
+      const fullTableArr = fullTables.get(qualName)
+      if (!fullTableArr || fullTableArr.length === 0) {
+        throw new Error(
+          `External object '${extTable.name}' was removed by a project or include file. External objects are immutable.`,
+        )
+      }
       const fullTable = fullTableArr[0]
 
       const extCols = normalizeColumns(extTable.columns)
@@ -347,9 +360,14 @@ function validateExternalImmutability(externalRealm: Realm, fullRealm: Realm, ex
     }
 
     for (const extView of schema.views ?? []) {
-      if (!externalObjectNames.has(extView.name)) continue
-      const fullViewArr = fullViews.get(extView.name)
-      if (!fullViewArr || fullViewArr.length === 0) continue
+      const qualViewName = `${schema.name}.${extView.name}`
+      if (!externalObjectNames.has(qualViewName)) continue
+      const fullViewArr = fullViews.get(qualViewName)
+      if (!fullViewArr || fullViewArr.length === 0) {
+        throw new Error(
+          `External object '${extView.name}' was removed by a project or include file. External objects are immutable.`,
+        )
+      }
       const fullView = fullViewArr[0]
 
       const extCols = normalizeColumns(extView.columns)
@@ -372,8 +390,8 @@ export function filterExternalFromRealm(realm: Realm, externalNames: Set<string>
     ...realm,
     schemas: realm.schemas.map((schema) => ({
       ...schema,
-      tables: (schema.tables ?? []).filter((t) => !externalNames.has(t.name)),
-      views: (schema.views ?? []).filter((v) => !externalNames.has(v.name)),
+      tables: (schema.tables ?? []).filter((t) => !externalNames.has(`${schema.name}.${t.name}`)),
+      views: (schema.views ?? []).filter((v) => !externalNames.has(`${schema.name}.${v.name}`)),
     })),
   }
 }
