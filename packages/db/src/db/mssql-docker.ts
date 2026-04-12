@@ -217,6 +217,7 @@ export async function createMssqlDockerAdapter(
   }
 
   return {
+    currentSchema: db.currentSchema,
     query: db.query,
     exec: db.exec,
     async close() {

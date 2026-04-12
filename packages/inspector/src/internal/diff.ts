@@ -29,7 +29,7 @@ import type { DiffDriver } from './sqlx.ts'
  * Uses DiffDriver for dialect-specific comparison logic.
  */
 export function schemaDiff(driver: DiffDriver, from: Schema, to: Schema, opts?: DiffOptions): Change[] {
-  if (from.name !== to.name) {
+  if (from.name !== to.name && !opts?.matchDefaultSchemas) {
     throw new Error(`mismatched schema names: "${from.name}" != "${to.name}"`)
   }
   const changes: Change[] = []
@@ -153,24 +153,42 @@ export function schemaDiff(driver: DiffDriver, from: Schema, to: Schema, opts?: 
  */
 export function realmDiff(driver: DiffDriver, from: Realm, to: Realm, opts?: DiffOptions): Change[] {
   const changes: Change[] = []
+  const matchDefaults = opts?.matchDefaultSchemas ?? false
 
   // Realm-level object changes
   const realmObjChanges = driver.realmObjectDiff(from, to)
   changes.push(...realmObjChanges)
 
+  // Build schema matching: pair from-schemas to to-schemas.
+  // When matchDefaultSchemas is true, default schemas match each other even if names differ.
+  const matchedTo = new Set<string>()
+
+  function findMatchingSchema(s1: Schema): Schema | undefined {
+    // Exact name match first
+    const exact = to.schemas.find((s) => s.name === s1.name)
+    if (exact) return exact
+    // Default schema equivalence: from's default matches to's default
+    if (matchDefaults && from.defaultSchema && to.defaultSchema && s1.name === from.defaultSchema) {
+      return to.schemas.find((s) => s.name === to.defaultSchema)
+    }
+    return undefined
+  }
+
   // Drop or modify schemas
   for (const s1 of from.schemas) {
-    const s2 = to.schemas.find((s) => s.name === s1.name)
+    const s2 = findMatchingSchema(s1)
     if (!s2) {
       changes.push({ type: 'drop_schema', S: s1 })
       continue
     }
+    matchedTo.add(s2.name)
     const schemaChanges = schemaDiff(driver, s1, s2, opts)
     changes.push(...schemaChanges)
   }
 
   // Add schemas
   for (const s1 of to.schemas) {
+    if (matchedTo.has(s1.name)) continue
     if (!from.schemas.find((s) => s.name === s1.name)) {
       changes.push({ type: 'add_schema', S: s1 })
       // Add all schema-level objects (enums, composites, domains, extensions, sequences)

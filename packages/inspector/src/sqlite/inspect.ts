@@ -123,7 +123,9 @@ export class SqliteInspector {
       }
     }
 
-    return { schemas }
+    const realm: Realm = { schemas }
+    realm.defaultSchema = await this.currentSchema()
+    return realm
   }
 
   // -- Private Inspection Methods --
@@ -436,7 +438,7 @@ export class SqliteInspector {
       if (wr) attrs.push({ kind: 'without_rowid' } as WithoutRowID)
       if (strict) attrs.push({ kind: 'strict' } as Strict)
 
-      tables.push({ name, columns: [], attrs })
+      tables.push({ name, schema: mainFile, columns: [], attrs })
     }
     return tables
   }
@@ -584,7 +586,7 @@ export class SqliteInspector {
   // -- Current Schema --
 
   async currentSchema(): Promise<string> {
-    return 'main'
+    return this.db.currentSchema
   }
 }
 

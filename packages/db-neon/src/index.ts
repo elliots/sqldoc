@@ -23,7 +23,13 @@ const plugin: DatabaseAdapterPlugin = {
     const connectionString = devUrl.replace(/^neon:\/\//, 'postgres://')
     const sql = neon(connectionString, { fullResults: true })
 
+    // Detect current schema at connection time
+    const schemaResult = await sql('SELECT current_schema()')
+    const columns = schemaResult.fields.map((f) => f.name)
+    const currentSchema = columns.map((c) => (schemaResult.rows[0] as Record<string, unknown>)[c])[0] as string
+
     return {
+      currentSchema,
       async query(queryText: string, args?: unknown[]): Promise<QueryResult> {
         const result = args && args.length > 0 ? await sql(queryText, args) : await sql(queryText)
         if (result.rows.length === 0) {

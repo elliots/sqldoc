@@ -10,6 +10,17 @@ export function hasClause(extra: Clause[] | undefined, type: string): boolean {
   return extra?.some((c) => c.type === type) ?? false
 }
 
+/** Annotate all drop changes with IF EXISTS clauses. Used by restore to handle dependency ordering. */
+export function withIfExists(changes: Change[]): Change[] {
+  const ifExistsExtra: Clause[] = [{ type: 'if_exists' }]
+  for (const c of changes) {
+    if (c.type.startsWith('drop_') && 'extra' in c) {
+      ;(c as any).extra = [...((c as any).extra ?? []), ...ifExistsExtra]
+    }
+  }
+  return changes
+}
+
 import type { ForeignKey, Func, ObjectRef, Proc, Schema, Sequence, Table, Trigger, View } from '../schema/schema.ts'
 
 // -- PlanDriver Interface --
@@ -1123,6 +1134,9 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
 
     case 'add_proc':
       return driver.addProc?.(change.P) ?? []
+
+    case 'drop_proc':
+      return driver.dropProc?.(change.P, change.extra) ?? []
 
     default:
       return []

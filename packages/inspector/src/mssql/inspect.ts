@@ -157,6 +157,7 @@ export class MssqlInspector implements Inspector {
       await this.inspectSequences(realm)
     }
 
+    realm.defaultSchema = await this.currentSchema()
     return realm
   }
 
@@ -531,8 +532,8 @@ export class MssqlInspector implements Inspector {
         onDelete: parseReferenceAction(fk.onDelete),
       }
 
-      // Only set refSchema if it differs from the current schema
-      if (fk.refSchema && fk.refSchema !== fk.table.schema) {
+      // Always set refSchema
+      if (fk.refSchema) {
         parsed.refSchema = fk.refSchema
       }
 
@@ -919,10 +920,7 @@ ORDER BY c.column_id`
   // -- Current Schema --
 
   async currentSchema(): Promise<string> {
-    const result = await this.db.query('SELECT SCHEMA_NAME() AS s', [])
-    const schema = (result.rows[0] as any)?.s
-    if (!schema) throw new Error('failed to detect current schema from database connection')
-    return schema
+    return this.db.currentSchema
   }
 }
 

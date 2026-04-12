@@ -84,6 +84,7 @@ import {
 export class PostgresInspector implements Inspector {
   private db: DatabaseAdapter
   private version = 0
+  private savedSearchPath: string | null = null
 
   constructor(db: DatabaseAdapter) {
     this.db = db
@@ -137,6 +138,9 @@ export class PostgresInspector implements Inspector {
     // Detect server version
     await this.detectVersion()
 
+    // Detect defaultSchema before clearing search_path (current_schema() needs it)
+    const defaultSchema = await this.currentSchema()
+
     // Clear search_path to ensure format_type returns schema-qualified names
     // (matches Go's noSearchPath). This ensures types like "hstore" are returned
     // as "public.hstore" and cross-schema types are fully qualified.
@@ -180,6 +184,7 @@ export class PostgresInspector implements Inspector {
       await this.inspectDeps(realm)
       resolveColumnTypes(realm)
 
+      realm.defaultSchema = defaultSchema
       return realm
     } finally {
       await restoreSearchPath()
@@ -209,9 +214,15 @@ export class PostgresInspector implements Inspector {
     try {
       const result = await this.db.query("SELECT current_setting('search_path'), set_config('search_path', '', false)")
       const prev = result.rows.length > 0 ? scanString(result.rows[0], 0) : null
+      // Save the original search_path on first call (before any user SQL can change it)
+      if (this.savedSearchPath === null && prev != null) {
+        this.savedSearchPath = prev
+      }
+      // Always restore to the original, not whatever user SQL may have changed it to
+      const restoreTo = this.savedSearchPath
       return async () => {
-        if (prev != null) {
-          await this.db.query('SELECT set_config($1, $2, false)', ['search_path', prev])
+        if (restoreTo != null) {
+          await this.db.query('SELECT set_config($1, $2, false)', ['search_path', restoreTo])
         }
       }
     } catch {
@@ -1610,10 +1621,7 @@ export class PostgresInspector implements Inspector {
   // -- Current Schema --
 
   async currentSchema(): Promise<string> {
-    const result = await this.db.query('SELECT current_schema()', [])
-    const schema = scanString(result.rows[0] as unknown[], 0)
-    if (!schema) throw new Error('failed to detect current schema from database connection')
-    return schema
+    return this.db.currentSchema
   }
 }
 

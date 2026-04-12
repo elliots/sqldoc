@@ -229,6 +229,8 @@ export async function schemaDiffCommand(options: {
       try {
         const result = await runner.diff(fromSql, toSql, {
           schema: defaultSchemaForDialect(dialect),
+          matchDefaultSchemas: true,
+          stripDefaultSchema: true,
         })
         outputDiff(result, format, options.check ?? false)
       } finally {
@@ -300,7 +302,11 @@ async function diffWithLiveDb(
         return
       }
     }
-    const result = await diffRunner.diff(fromSql, toSql, { schema: schemaOpt })
+    const result = await diffRunner.diff(fromSql, toSql, {
+      schema: schemaOpt,
+      matchDefaultSchemas: true,
+      stripDefaultSchema: true,
+    })
     outputDiff(result, format, check)
   } finally {
     await diffRunner.close()

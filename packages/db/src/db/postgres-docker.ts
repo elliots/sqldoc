@@ -55,6 +55,7 @@ export async function createPostgresDockerAdapter(
   }
 
   return {
+    currentSchema: pgAdapter.currentSchema,
     query: pgAdapter.query,
     exec: pgAdapter.exec,
     async close() {

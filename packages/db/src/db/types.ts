@@ -6,6 +6,8 @@ export interface DatabaseAdapter {
   query(sql: string, args?: unknown[]): Promise<QueryResult>
   exec(sql: string, args?: unknown[]): Promise<ExecResult>
   close(): Promise<void>
+  /** The current/default schema name, detected at connection time. */
+  currentSchema: string
 }
 
 /**
@@ -78,7 +80,12 @@ export async function createBunSqlAdapter(connectionString: string, connectionTi
   // Reserve a dedicated connection — Atlas WASI bridge needs it to stay open
   const db = await pool.reserve()
 
+  // Detect current schema at connection time
+  const schemaRows = await db.unsafe('SELECT current_schema()').values()
+  const currentSchema = (schemaRows[0] as unknown[])[0] as string
+
   return {
+    currentSchema,
     async query(sql: string, args?: unknown[]): Promise<QueryResult> {
       // Use .values() — object-mode deduplicates column keys
       // (SELECT f('a'), f('b') → 1 key instead of 2)

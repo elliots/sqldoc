@@ -20,7 +20,12 @@ const plugin: DatabaseAdapterPlugin = {
       throw err
     }
 
+    // Detect current schema at connection time
+    const schemaResult = await sql`SELECT current_schema()`.values()
+    const currentSchema = (schemaResult[0] as unknown[])[0] as string
+
     return {
+      currentSchema,
       async query(queryText: string, args?: unknown[]): Promise<QueryResult> {
         const result = await sql.unsafe(queryText, args as any[], { prepare: false }).values()
         if (result.length === 0) {

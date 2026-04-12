@@ -52,10 +52,8 @@ export interface SnapshotOptions {
  * @param transformChanges - Optional transform applied before executing changes (e.g. Postgres withCascade)
  */
 export function createRestoreFunc(
-  _db: ExecQuerier,
   inspector: Inspector,
   desired: Realm,
-  _dialect: string,
   diffAndApply: (current: Realm, desired: Realm, transformChanges?: TransformChanges) => Promise<void>,
   transformChanges?: TransformChanges,
 ): RestoreFunc {
