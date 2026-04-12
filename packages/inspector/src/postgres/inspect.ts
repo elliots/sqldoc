@@ -1815,12 +1815,13 @@ function tokenize(body: string): Set<string> {
       buf += ch
     } else {
       if (buf.length > 0) {
-        words.add(buf)
+        // Skip very short tokens that commonly cause false positive matches
+        if (buf.length >= 3) words.add(buf)
         buf = ''
       }
     }
   }
-  if (buf.length > 0) words.add(buf)
+  if (buf.length >= 3) words.add(buf)
   return words
 }
 

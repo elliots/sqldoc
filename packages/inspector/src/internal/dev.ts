@@ -75,7 +75,11 @@ export function createRestoreFunc(
         (current.schemas[0].tables?.length ?? 0) === 0 &&
         (current.schemas[0].views?.length ?? 0) === 0 &&
         (current.schemas[0].funcs?.length ?? 0) === 0 &&
-        (current.schemas[0].procs?.length ?? 0) === 0
+        (current.schemas[0].procs?.length ?? 0) === 0 &&
+        (current.schemas[0].triggers?.length ?? 0) === 0 &&
+        ((current.schemas[0].attrs ?? []) as any[]).filter(
+          (a) => a?.kind === 'enum' || a?.kind === 'domain' || a?.kind === 'range_type' || a?.kind === 'aggregate',
+        ).length === 0
       ) {
         return
       }
@@ -128,9 +132,17 @@ export async function snapshot(
       try {
         await db.exec(batchSQL)
       } catch {
-        // On batch failure, fall back to one-by-one for precise errors
+        // On batch failure, fall back to one-by-one for precise errors.
+        // Re-execute each statement individually — idempotent DDL (CREATE IF NOT EXISTS,
+        // DROP IF EXISTS) handles already-applied statements safely.
         for (const stmt of batch) {
-          await db.exec(stmt.text)
+          try {
+            await db.exec(stmt.text)
+          } catch (stmtErr) {
+            throw new Error(
+              `failed to execute statement: ${stmt.text.slice(0, 200)}: ${(stmtErr as any)?.message ?? stmtErr}`,
+            )
+          }
         }
       }
     }
