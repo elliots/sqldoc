@@ -24,7 +24,7 @@ export const InspectMode = {
   /** Inspect all resources. */
   InspectAll: (1 << 7) - 1,
 } as const
-export type InspectMode = (typeof InspectMode)[keyof typeof InspectMode]
+export type InspectMode = number
 
 // -- Inspect Options --
 
@@ -121,16 +121,16 @@ import type { Table } from './schema.ts'
 
 /** Diff mode controls how the differ processes objects. */
 export const DiffMode = {
-  /** Default, backwards compatibility. */
-  Unset: 1 << 0,
+  /** Default, no flags set. */
+  Unset: 0,
   /** Diff objects are considered to be in not-normalized state. */
-  NotNormalized: 1 << 1,
+  NotNormalized: 1 << 0,
   /** Diff objects are considered to be in normalized state. */
-  Normalized: 1 << 2,
+  Normalized: 1 << 1,
   /** Invalid changes are skipped instead of returning an error. */
-  SkipInvalid: 1 << 3,
+  SkipInvalid: 1 << 2,
 } as const
-export type DiffMode = (typeof DiffMode)[keyof typeof DiffMode]
+export type DiffMode = number
 
 /** Options for the schema diffing process. */
 export interface DiffOptions {
