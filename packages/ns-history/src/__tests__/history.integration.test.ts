@@ -11,7 +11,7 @@ import { after, describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
 function getSql(
-  dialect: 'postgres' | 'mysql' | 'sqlite',
+  dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql',
   objectName: string,
   columns: Array<{ name: string; type: { T: string; null?: boolean } }>,
 ): string[] {

@@ -2,7 +2,7 @@
 
 // Database adapter interface
 export type { DatabaseAdapter, ExecResult, QueryResult } from './adapter.ts'
-export type { DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
+export type { Dialect, DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
 // Main API
 export { createInspector } from './inspector.ts'
 

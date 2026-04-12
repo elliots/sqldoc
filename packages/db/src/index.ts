@@ -1,10 +1,12 @@
 // @sqldoc/db -- Database adapters and schema types for sqldoc
 // Schema types are re-exported from @sqldoc/inspector.
 
+import { createMssqlDockerAdapter } from './db/mssql-docker.ts'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 import type { OnMissingPlugin } from './db/plugin-resolver.ts'
 import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
+import type { Dialect } from './db/types.ts'
 import { validatePostgresExtensions } from './extensions.ts'
 
 // Re-export schema types from @sqldoc/inspector
@@ -128,6 +130,8 @@ export {
   setAttr,
   typeCategory,
 } from '@sqldoc/inspector'
+export type { MssqlDockerOptions } from './db/mssql-docker.ts'
+export { createMssqlDockerAdapter } from './db/mssql-docker.ts'
 export { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 export type { OnMissingPlugin } from './db/plugin-resolver.ts'
 export { extractScheme, registerBuiltin, resolveAdapterPlugin, schemeToPackage } from './db/plugin-resolver.ts'
@@ -136,13 +140,14 @@ export { createSqliteAdapter } from './db/sqlite.ts'
 export type {
   AdapterPluginContext,
   DatabaseAdapterPlugin,
+  Dialect,
 } from './db/types.ts'
 export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
 export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
 
 export interface CreateRunnerConfig {
   /** SQL dialect (required) */
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: Dialect
   /** Database connection URL. If omitted, uses dialect-specific default. */
   devUrl?: string
   /** Postgres extensions to load. Validated against the dev database. */
@@ -153,7 +158,7 @@ export interface CreateRunnerConfig {
   onMissingPlugin?: OnMissingPlugin
 }
 
-function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
+function defaultDevUrl(dialect: Dialect): string {
   switch (dialect) {
     case 'postgres':
       return 'pglite'
@@ -161,6 +166,8 @@ function defaultDevUrl(dialect: 'postgres' | 'mysql' | 'sqlite'): string {
       return ':memory:'
     case 'mysql':
       return 'docker://mysql:8'
+    case 'mssql':
+      return 'docker://mcr.microsoft.com/mssql/server:2022-latest'
   }
 }
 
@@ -191,6 +198,8 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
       db = await createMysqlDockerAdapter(devUrl, pluginOpts)
     } else if (dialect === 'postgres') {
       db = await createPostgresDockerAdapter(devUrl, pluginOpts)
+    } else if (dialect === 'mssql') {
+      db = await createMssqlDockerAdapter(devUrl, pluginOpts)
     } else {
       throw new Error(`Docker dev URLs are not supported for dialect '${dialect}'`)
     }

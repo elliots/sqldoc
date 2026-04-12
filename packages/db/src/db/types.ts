@@ -30,6 +30,9 @@ export const isBun = (globalThis as any).Bun !== undefined
 
 // ── Adapter Plugin System ──────────────────────────────────────────
 
+/** Supported SQL dialects. */
+export type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
+
 /** Plugin interface for external database adapter packages. */
 export interface DatabaseAdapterPlugin {
   apiVersion: 1
@@ -37,7 +40,7 @@ export interface DatabaseAdapterPlugin {
   /** URL schemes this plugin handles (without '://') or keywords (e.g. 'pglite') */
   schemes: string[]
   /** SQL dialects this plugin supports */
-  dialects: Array<'postgres' | 'mysql' | 'sqlite'>
+  dialects: Dialect[]
   /** Runtime compatibility */
   runtime: 'bun' | 'node' | 'any'
   /** Create an adapter for the given devUrl */
@@ -45,7 +48,7 @@ export interface DatabaseAdapterPlugin {
 }
 
 export interface AdapterPluginContext {
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: Dialect
   extensions: string[]
 }
 

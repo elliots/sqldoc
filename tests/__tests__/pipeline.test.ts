@@ -10,12 +10,13 @@ function readFixture(name: string): string {
   return fs.readFileSync(path.join(fixturesDir, name), 'utf-8')
 }
 
-type Dialect = 'postgres' | 'mysql' | 'sqlite'
+type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
 
 const adapters: Record<Dialect, SqlparserTsAdapter> = {
   postgres: new SqlparserTsAdapter('postgres'),
   mysql: new SqlparserTsAdapter('mysql'),
   sqlite: new SqlparserTsAdapter('sqlite'),
+  mssql: new SqlparserTsAdapter('mssql'),
 }
 
 before(async () => {

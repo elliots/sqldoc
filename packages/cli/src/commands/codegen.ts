@@ -1,7 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { DocsMeta, ProjectContext } from '@sqldoc/core'
-import { loadConfig, loadImports, resolveAllProjects, resolveProject } from '@sqldoc/core'
+import { findSqldocDir, loadConfig, loadImports, resolveAllProjects, resolveProject } from '@sqldoc/core'
+import type { Realm } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
@@ -105,6 +106,7 @@ export async function codegenCommand(
           dialect,
           devUrl: config.devUrl,
           extensions: extractExtensions([mergedSql]).extensions,
+          sqldocDir: findSqldocDir(configRoot) ?? undefined,
         })
         const postCompileResult = await freshRunner.inspect([mergedSql])
         await freshRunner.close()

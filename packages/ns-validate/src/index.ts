@@ -6,9 +6,12 @@ function isTextType(type: string | undefined): boolean {
   const t = type.toLowerCase()
   return (
     t === 'text' ||
+    t === 'ntext' ||
     t.startsWith('varchar') ||
+    t.startsWith('nvarchar') ||
     t.startsWith('character varying') ||
     t === 'char' ||
+    t === 'nchar' ||
     t.startsWith('character')
   )
 }
@@ -16,7 +19,7 @@ function isTextType(type: string | undefined): boolean {
 const plugin: NamespacePlugin = {
   apiVersion: 1,
   name: 'validate',
-  databases: ['postgres', 'mysql'],
+  databases: ['postgres', 'mysql', 'mssql'],
   tags: {
     check: {
       description: 'Add a CHECK constraint with a custom expression',
@@ -109,10 +112,12 @@ const plugin: NamespacePlugin = {
           return { docs }
         }
 
+        const notEmptyExpr =
+          dialect === 'mssql' ? `LEN(LTRIM(RTRIM(${q(columnName!)}))) > 0` : `length(trim(${q(columnName!)})) > 0`
         return {
           sql: [
             {
-              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_not_empty`)} CHECK (length(trim(${q(columnName!)})) > 0);`,
+              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_not_empty`)} CHECK (${notEmptyExpr});`,
             },
           ],
           docs,
@@ -143,16 +148,17 @@ const plugin: NamespacePlugin = {
         const args = tag.args as Record<string, unknown>
         const min = args.min as number | undefined
         const max = args.max as number | undefined
+        const lenFn = dialect === 'mssql' ? 'LEN' : 'length'
         let checkExpr: string
         let label: string
         if (min != null && max != null) {
-          checkExpr = `length(${q(columnName!)}) >= ${min} AND length(${q(columnName!)}) <= ${max}`
+          checkExpr = `${lenFn}(${q(columnName!)}) >= ${min} AND ${lenFn}(${q(columnName!)}) <= ${max}`
           label = `Length: ${min}\u2013${max}`
         } else if (min != null) {
-          checkExpr = `length(${q(columnName!)}) >= ${min}`
+          checkExpr = `${lenFn}(${q(columnName!)}) >= ${min}`
           label = `Min length: ${min}`
         } else {
-          checkExpr = `length(${q(columnName!)}) <= ${max}`
+          checkExpr = `${lenFn}(${q(columnName!)}) <= ${max}`
           label = `Max length: ${max}`
         }
         const docs = {
@@ -181,7 +187,8 @@ const plugin: NamespacePlugin = {
           columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Pattern: ${pattern}` }],
         }
 
-        if (dialect === 'sqlite') {
+        if (dialect === 'sqlite' || dialect === 'mssql') {
+          // MSSQL has no regex operator in CHECK constraints; emit docs only
           return { docs }
         }
 

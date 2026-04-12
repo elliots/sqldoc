@@ -3,7 +3,7 @@
  * Generates sqldoc.config.ts and example.sql based on user choices.
  */
 
-type Dialect = 'postgres' | 'mysql' | 'sqlite'
+type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
 
 interface ScaffoldOptions {
   dialect: Dialect
@@ -63,6 +63,8 @@ function devUrlForDialect(dialect: Dialect): string {
       return 'mysql://localhost:3306/mydb'
     case 'sqlite':
       return 'sqlite://dev.db'
+    case 'mssql':
+      return 'mssql://sa:YourPassword1!@localhost:1433/mydb'
   }
 }
 
@@ -170,14 +172,23 @@ function tableExample(opts: ScaffoldOptions): string {
     lines.push(tableTags.join('\n'))
   }
 
-  const idType = opts.dialect === 'mysql' ? 'INT AUTO_INCREMENT' : opts.dialect === 'sqlite' ? 'INTEGER' : 'SERIAL'
-  const textType = opts.dialect === 'mysql' ? 'VARCHAR(255)' : 'TEXT'
+  const idType =
+    opts.dialect === 'mysql'
+      ? 'INT AUTO_INCREMENT'
+      : opts.dialect === 'sqlite'
+        ? 'INTEGER'
+        : opts.dialect === 'mssql'
+          ? 'INT IDENTITY(1,1)'
+          : 'SERIAL'
+  const textType = opts.dialect === 'mysql' ? 'VARCHAR(255)' : opts.dialect === 'mssql' ? 'NVARCHAR(255)' : 'TEXT'
   const timestampType =
     opts.dialect === 'mysql'
       ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
       : opts.dialect === 'sqlite'
         ? 'TEXT DEFAULT CURRENT_TIMESTAMP'
-        : 'TIMESTAMPTZ DEFAULT now()'
+        : opts.dialect === 'mssql'
+          ? 'DATETIME2 DEFAULT GETDATE()'
+          : 'TIMESTAMPTZ DEFAULT now()'
 
   lines.push('CREATE TABLE users (')
 

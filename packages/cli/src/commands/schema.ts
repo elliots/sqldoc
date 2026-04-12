@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { ResolvedConfig } from '@sqldoc/core'
+import type { Dialect, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { InspectorResult } from '@sqldoc/db'
 import { createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
@@ -12,6 +12,17 @@ import { runCompilePipeline } from '../utils/pipeline.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
 
 type Format = 'sql' | 'json' | 'pretty'
+
+function defaultSchemaForDialect(dialect: Dialect): string | undefined {
+  switch (dialect) {
+    case 'postgres':
+      return 'public'
+    case 'mssql':
+      return 'dbo'
+    default:
+      return undefined
+  }
+}
 
 function pluginInstallConfig(configRoot: string) {
   const sqldocDir = findSqldocDir(configRoot) ?? undefined
@@ -110,7 +121,7 @@ export async function schemaInspectCommand(
         const runner = await createRunner({ dialect, devUrl: resolved.value, ...pluginInstallConfig(configRoot) })
         try {
           const result = await runner.inspect([], {
-            schema: dialect === 'postgres' ? 'public' : undefined,
+            schema: defaultSchemaForDialect(dialect),
           })
           if (result.error) {
             throw new CliError(`Inspect error: ${result.error}`)
@@ -217,7 +228,7 @@ export async function schemaDiffCommand(options: {
       })
       try {
         const result = await runner.diff(fromSql, toSql, {
-          schema: dialect === 'postgres' ? 'public' : undefined,
+          schema: defaultSchemaForDialect(dialect),
         })
         outputDiff(result, format, options.check ?? false)
       } finally {
@@ -234,12 +245,12 @@ async function diffWithLiveDb(
   from: ResolvedSource,
   to: ResolvedSource,
   config: ResolvedConfig,
-  dialect: 'postgres' | 'mysql' | 'sqlite',
+  dialect: Dialect,
   format: Format,
   check: boolean,
   configRoot: string,
 ): Promise<void> {
-  const schemaOpt = dialect === 'postgres' ? 'public' : undefined
+  const schemaOpt = defaultSchemaForDialect(dialect)
 
   const liveSource = from.type === 'database' ? from : to
   const sqlSource = from.type === 'database' ? to : from

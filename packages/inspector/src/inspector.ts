@@ -9,6 +9,10 @@ import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
 import type { DiffDriver } from './internal/sqlx.ts'
 import { scanStmts } from './migrate/lex.ts'
 import { extractTagsFromStmts } from './migrate/tag.ts'
+import { AzureSqlInspector } from './mssql/azuresql.ts'
+import { MssqlDiff } from './mssql/diff.ts'
+import { MssqlInspector } from './mssql/inspect.ts'
+import { MssqlPlan } from './mssql/migrate.ts'
 import { MysqlDiff } from './mysql/diff.ts'
 import { MysqlInspector } from './mysql/inspect.ts'
 import { MysqlPlan } from './mysql/migrate.ts'
@@ -25,13 +29,18 @@ import { SqliteInspector } from './sqlite/inspect.ts'
 import { SqlitePlan } from './sqlite/migrate.ts'
 // -- Types --
 
+/** Supported SQL dialects. */
+export type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
+
 export interface InspectorOptions {
   db: DatabaseAdapter
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: Dialect
   /** Optional: CockroachDB mode (uses crdb variant of postgres) */
   crdb?: boolean
   /** Optional: TiDB mode (uses tidb variant of mysql) */
   tidb?: boolean
+  /** Optional: Azure SQL Database mode (uses azuresql variant of mssql) */
+  azuresql?: boolean
 }
 
 /** Result from the inspector — uses rich Realm types directly. */
@@ -105,6 +114,7 @@ const SYSTEM_SCHEMAS: Record<string, Set<string>> = {
   postgres: new Set(['information_schema', 'pg_catalog', 'pg_toast']),
   mysql: new Set(['information_schema', 'mysql', 'performance_schema', 'sys']),
   sqlite: new Set(),
+  mssql: new Set(['INFORMATION_SCHEMA', 'sys', 'guest']),
 }
 
 function filterSystemSchemas(realm: Realm, dialect: string): Realm {
@@ -264,7 +274,12 @@ function columnsTypeMatch(a: Column, b: Column): boolean {
  */
 function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string): string[] {
   const stmts: string[] = []
-  const q = dialect === 'mysql' ? (s: string) => `\`${s}\`` : (s: string) => `"${s}"`
+  const q =
+    dialect === 'mysql'
+      ? (s: string) => `\`${s}\``
+      : dialect === 'mssql'
+        ? (s: string) => `[${s}]`
+        : (s: string) => `"${s}"`
 
   // Build table rename map for cross-reference
   const tableRenameMap = new Map<string, string>()
@@ -322,7 +337,7 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
 // -- Schema Normalization --
 
 function normalizeSchemaNames(realm: Realm, dialect: string, schemaName?: string): string {
-  const def = dialect === 'sqlite' ? 'main' : 'public'
+  const def = dialect === 'sqlite' ? 'main' : dialect === 'mssql' ? 'dbo' : 'public'
   const strip = new Set([def])
   if (schemaName) strip.add(schemaName)
 
@@ -378,6 +393,14 @@ function createComponents(
         differ: new SqliteDiff(),
         planner: new SqlitePlan(),
       }
+    case 'mssql': {
+      const inspector = opts.azuresql ? new AzureSqlInspector(eq) : new MssqlInspector(eq)
+      return {
+        inspector,
+        differ: new MssqlDiff(),
+        planner: new MssqlPlan(),
+      }
+    }
     default:
       throw new Error(`Unsupported dialect: "${dialect}"`)
   }
@@ -408,8 +431,9 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     if (changes.length === 0) return
     changes = detachCycles(changes)
     changes = sortChanges(changes)
-    // MySQL: disable FK checks during apply (drops may reference other tables)
+    // MySQL/MSSQL: disable FK checks during apply (drops may reference other tables)
     if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 0')
+    if (dialect === 'mssql') await eq.exec('EXEC sp_MSforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT ALL"')
     try {
       for (const change of changes) {
         const stmts = changeToSQL(planner, change)
@@ -419,6 +443,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       }
     } finally {
       if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 1')
+      if (dialect === 'mssql') await eq.exec('EXEC sp_MSforeachtable "ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL"')
     }
   }
 
@@ -531,7 +556,12 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       // Strip default schema qualifier from output if requested
       let statements = [...renameStmts, ...diffStmts]
       if (defaultSchema) {
-        const prefix = dialect === 'mysql' ? `\`${defaultSchema}\`.` : `"${defaultSchema}".`
+        const prefix =
+          dialect === 'mysql'
+            ? `\`${defaultSchema}\`.`
+            : dialect === 'mssql'
+              ? `[${defaultSchema}].`
+              : `"${defaultSchema}".`
         statements = statements.map((s) => s.split(prefix).join(''))
       }
 

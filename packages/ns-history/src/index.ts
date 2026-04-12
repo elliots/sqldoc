@@ -178,8 +178,13 @@ const plugin: NamespacePlugin = {
 
     if (dialect === 'postgres') {
       triggerSqls = generatePostgresHistoryTriggers(objectName, destination, operations, columns)
-    } else {
+    } else if (dialect === 'mssql') {
+      // MSSQL: trigger generation not yet implemented
+      triggerSqls = []
+    } else if (dialect === 'mysql' || dialect === 'sqlite') {
       triggerSqls = generatePerEventHistoryTriggers(objectName, destination, operations, columns, dialect)
+    } else {
+      throw new Error(`ns-history: unsupported dialect '${dialect}'`)
     }
 
     const sql: SqlOutput[] = [historyTableSql, ...triggerSqls]

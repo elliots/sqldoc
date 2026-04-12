@@ -1,6 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/sqlx.go, sql/internal/sqlx/sqlx_oss.go
 
+import type { Dialect } from '../inspector.ts'
 import type { DiffOptions, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
 import type {
@@ -340,7 +341,7 @@ export function mysqlArgs(count: number): string {
  * Conditionally build WHERE IN clause with parameter placeholders.
  * Dialect determines placeholder style ($N vs ?).
  */
-export function inClause(dialect: 'postgres' | 'mysql' | 'sqlite', paramStart: number, count: number): string {
+export function inClause(dialect: Dialect, paramStart: number, count: number): string {
   if (count === 0) return '()'
   if (dialect === 'postgres') {
     return `(${pgArgs(paramStart, count)})`

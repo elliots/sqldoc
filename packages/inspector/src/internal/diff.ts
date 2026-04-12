@@ -231,18 +231,25 @@ export function tableDiff(driver: DiffDriver, from: Table, to: Table, opts?: Dif
   changes.push(...indexDiff(driver, from, to, opts))
 
   // Foreign key diff
+  const matchedFKs = new Set<string>()
   for (const fk1 of from.foreignKeys ?? []) {
-    const fk2 = findForeignKey(to, fk1.symbol ?? '')
+    let fk2 = findForeignKey(to, fk1.symbol ?? '')
+    if (!fk2) {
+      // System-named FK: try structural match
+      fk2 = findSimilarForeignKey(to, fk1)
+    }
     if (!fk2) {
       changes.push({ type: 'drop_foreign_key', F: fk1 })
       continue
     }
+    matchedFKs.add(fk2.symbol ?? '')
     const fkChangeKind = fkChange(driver, fk1, fk2)
     if (fkChangeKind !== ChangeKind.NoChange) {
       changes.push({ type: 'modify_foreign_key', from: fk1, to: fk2, change: fkChangeKind })
     }
   }
   for (const fk1 of to.foreignKeys ?? []) {
+    if (matchedFKs.has(fk1.symbol ?? '')) continue
     if (!findForeignKey(from, fk1.symbol ?? '')) {
       changes.push({ type: 'add_foreign_key', F: fk1 })
     }
@@ -303,11 +310,15 @@ function pkDiff(driver: DiffDriver, from: Table, to: Table, _opts?: DiffOptions)
     if (change !== ChangeKind.NoChange) {
       changes.push({ type: 'modify_primary_key', from: pk1, to: pk2, change })
     } else if (pk1.name && pk2.name && pk1.name !== pk2.name) {
-      changes.push({
-        type: 'rename_constraint',
-        from: pk1 as unknown as Record<string, unknown>,
-        to: pk2 as unknown as Record<string, unknown>,
-      })
+      // Skip rename when both sides have system-generated names (e.g. MSSQL PK__table__hex)
+      const bothGenerated = driver.isGeneratedIndexName(from, pk1) && driver.isGeneratedIndexName(to, pk2)
+      if (!bothGenerated) {
+        changes.push({
+          type: 'rename_constraint',
+          from: pk1 as unknown as Record<string, unknown>,
+          to: pk2 as unknown as Record<string, unknown>,
+        })
+      }
     }
   }
 
@@ -395,10 +406,28 @@ function partsChange(driver: DiffDriver, from: Index, to: Index): ChangeKind {
 /** Search for an unnamed index with the same index-parts. */
 function findSimilarUnnamedIndex(driver: DiffDriver, table: Table, idx1: Index): Index | undefined {
   for (const idx2 of table.indexes ?? []) {
-    if (idx2.name === '' || idx2.name === undefined) {
+    // Match against unnamed indexes or indexes that are also system-named
+    const isUnnamed = idx2.name === '' || idx2.name === undefined
+    const isAlsoSystemNamed = idx2.name && driver.isGeneratedIndexName(table, idx2)
+    if (isUnnamed || isAlsoSystemNamed) {
       if (idx1.unique === idx2.unique && partsChange(driver, idx1, idx2) === ChangeKind.NoChange) {
         return idx2
       }
+    }
+  }
+  return undefined
+}
+
+/** Find a structurally equivalent FK in a table, ignoring constraint names. Used for system-named FKs. */
+function findSimilarForeignKey(table: Table, fk1: ForeignKey): ForeignKey | undefined {
+  for (const fk2 of table.foreignKeys ?? []) {
+    if (
+      fk1.refTable === fk2.refTable &&
+      fk1.columns.length === fk2.columns.length &&
+      fk1.columns.every((c, i) => c === fk2.columns[i]) &&
+      fk1.refColumns.every((c, i) => c === fk2.refColumns[i])
+    ) {
+      return fk2
     }
   }
   return undefined
@@ -454,26 +483,32 @@ function checkDiff(from: Table, to: Table, _opts?: DiffOptions): Change[] {
   const fromChecks = from.checks ?? []
   const toChecks = to.checks ?? []
 
-  // Build a map for quick lookup
-  const toMap = new Map<string, Check>()
+  // Build maps: by name and by expression (for system-named checks)
+  const toByName = new Map<string, Check>()
+  const toByExpr = new Map<string, Check>()
   for (const c of toChecks) {
-    const key = c.name ?? c.expr
-    toMap.set(key, c)
+    if (c.name) toByName.set(c.name, c)
+    toByExpr.set(c.expr, c)
   }
-  const fromMap = new Map<string, Check>()
+  const fromByName = new Map<string, Check>()
+  const fromByExpr = new Map<string, Check>()
   for (const c of fromChecks) {
-    const key = c.name ?? c.expr
-    fromMap.set(key, c)
+    if (c.name) fromByName.set(c.name, c)
+    fromByExpr.set(c.expr, c)
   }
 
   // Drop or modify checks
+  const matched = new Set<string>()
   for (const c1 of fromChecks) {
-    const key = c1.name ?? c1.expr
-    const c2 = toMap.get(key)
+    // Try matching by name first
+    let c2 = c1.name ? toByName.get(c1.name) : undefined
+    // Fallback: match by expression (handles system-named constraints with different hex suffixes)
+    if (!c2) c2 = toByExpr.get(c1.expr)
     if (!c2) {
       changes.push({ type: 'drop_check', C: c1 })
       continue
     }
+    matched.add(c2.expr)
     if (c1.expr !== c2.expr) {
       changes.push({ type: 'modify_check', from: c1, to: c2, change: ChangeKind.ChangeAttr })
     }
@@ -481,10 +516,10 @@ function checkDiff(from: Table, to: Table, _opts?: DiffOptions): Change[] {
 
   // Add checks
   for (const c1 of toChecks) {
-    const key = c1.name ?? c1.expr
-    if (!fromMap.has(key)) {
-      changes.push({ type: 'add_check', C: c1 })
-    }
+    if (matched.has(c1.expr)) continue
+    if (c1.name && fromByName.has(c1.name)) continue
+    if (fromByExpr.has(c1.expr)) continue
+    changes.push({ type: 'add_check', C: c1 })
   }
 
   return changes

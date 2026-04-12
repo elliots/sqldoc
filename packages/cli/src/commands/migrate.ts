@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
-import { loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
+import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { Change, Rename, RenameCandidate } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
@@ -123,11 +123,17 @@ async function migrateProject(
   // Inspect all schemas (no scope restriction) but strip the default schema from output.
   let defaultSchemaOpt: string | undefined
   if (dialect === 'postgres') defaultSchemaOpt = 'public'
+  else if (dialect === 'mssql') defaultSchemaOpt = 'dbo'
   else if (dialect === 'sqlite') defaultSchemaOpt = 'main'
 
   const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)
-  const runner = await createRunner({ dialect, devUrl: config.devUrl, extensions })
+  const runner = await createRunner({
+    dialect,
+    devUrl: config.devUrl,
+    extensions,
+    sqldocDir: findSqldocDir(configRoot) ?? undefined,
+  })
 
   let upStatements: string[]
   let upChanges: Change[] | undefined

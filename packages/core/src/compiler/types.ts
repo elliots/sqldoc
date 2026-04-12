@@ -1,5 +1,6 @@
 import type { SqlStatement } from '../ast/types.ts'
 import type { FileProvenance } from '../directives.ts'
+import type { Dialect } from '../sql-emitter.ts'
 import type { SqlTarget, TagNamespace } from '../types.ts'
 
 // ── Project config ──────────────────────────────────────────────────
@@ -17,7 +18,7 @@ export interface ProjectConfig<Namespaces = Record<string, unknown>> {
   /** Schema source: file or directory of SQL files with sqldoc tags */
   schema?: string
   /** SQL dialect — mandatory */
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: Dialect
   /** Dev database URL. Default: pglite */
   devUrl?: string
   /** Migration settings */
@@ -67,7 +68,7 @@ export type NamespaceConfig = Record<string, unknown>
 /** Rich context passed to onTag for each tag occurrence */
 export interface TagContext {
   /** Target database dialect */
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: Dialect
   /** The SQL object this tag is attached to */
   target: SqlTarget
   /** Name of the SQL object (table name, function name, etc.) */
@@ -124,7 +125,7 @@ export type CompilerContext = TagContext
 /** Context for afterCompile hook — receives ALL compiled file data */
 export interface ProjectContext {
   /** Target database dialect */
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: Dialect
   /** All compiled file outputs */
   outputs: CompilerOutput[]
   /** The merged SQL from all files combined */
@@ -320,7 +321,7 @@ export interface NamespacePlugin extends TagNamespace {
   /** API version for forward compatibility. Must be 1 for v1. */
   apiVersion: 1
   /** Which databases this plugin supports. Omit = all databases. */
-  databases?: Array<'postgres' | 'mysql' | 'sqlite'>
+  databases?: Array<Dialect>
   /** Human-readable description of the plugin */
   description?: string
   /** Discovery keywords for plugin search */

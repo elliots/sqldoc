@@ -33,13 +33,19 @@ interface AuditTable {
 /** Generate the audit log table DDL with dialect-correct types. */
 function generateAuditTableSql(destination: string, dialect: Dialect): string {
   const q = (name: string) => quoteIdentifier(name, dialect)
-  return `CREATE TABLE IF NOT EXISTS ${q(destination)} (
+  const createPrefix =
+    dialect === 'mssql'
+      ? `IF OBJECT_ID('${destination}', 'U') IS NULL CREATE TABLE ${q(destination)}`
+      : `CREATE TABLE IF NOT EXISTS ${q(destination)}`
+  const textType = dialect === 'mssql' ? 'NVARCHAR(MAX)' : 'TEXT'
+  const defaultTs = dialect === 'sqlite' ? `(${currentTimestamp(dialect)})` : currentTimestamp(dialect)
+  return `${createPrefix} (
   id ${autoIncrementType('bigint', dialect)} PRIMARY KEY,
-  table_name TEXT NOT NULL,
-  operation TEXT NOT NULL,
+  table_name ${textType} NOT NULL,
+  operation ${textType} NOT NULL,
   old_data ${jsonType(dialect)},
   new_data ${jsonType(dialect)},
-  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${dialect === 'sqlite' ? `(${currentTimestamp(dialect)})` : currentTimestamp(dialect)}
+  changed_at ${timestampType(dialect)} NOT NULL DEFAULT ${defaultTs}
 );`
 }
 
@@ -178,15 +184,21 @@ const plugin: NamespacePlugin = {
     const extraAnnotations: Array<{ object: string; text: string }> = []
 
     if (dialect === 'postgres') {
-      // Postgres: PL/pgSQL function + multi-event trigger (unchanged behavior)
+      // Postgres: PL/pgSQL function + multi-event trigger
       triggerSqls = generatePostgresTriggers(objectName, destination, operations)
-    } else {
+    } else if (dialect === 'mssql') {
+      // MSSQL: trigger generation not yet implemented — emit table DDL only
+      triggerSqls = []
+      extraAnnotations.push({
+        object: objectName,
+        text: 'MSSQL audit triggers will use inserted/deleted tables (not yet implemented)',
+      })
+    } else if (dialect === 'mysql' || dialect === 'sqlite') {
       // MySQL/SQLite: need column info from atlasTable for JSON serialization
       const table = ctx.atlasTable as AuditTable | undefined
       const columns = table?.columns
 
       if (!columns || columns.length === 0) {
-        // Cannot generate triggers without column info -- emit table DDL only with annotation
         triggerSqls = []
         extraAnnotations.push({
           object: objectName,
@@ -195,6 +207,8 @@ const plugin: NamespacePlugin = {
       } else {
         triggerSqls = generatePerEventTriggers(objectName, destination, operations, columns, dialect)
       }
+    } else {
+      throw new Error(`ns-audit: unsupported dialect '${dialect}'`)
     }
 
     const sql: SqlOutput[] = [auditTableSql, ...triggerSqls]

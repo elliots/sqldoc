@@ -1,5 +1,6 @@
 import * as sp from '@sqldoc/sqlparser-ts'
 import { debug } from '../debug.ts'
+import type { Dialect } from '../sql-emitter.ts'
 import type { SqlAstAdapter } from './adapter.ts'
 import type { SqlColumn, SqlCommentOn, SqlStatement } from './types.ts'
 
@@ -12,7 +13,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
   private parseFn!: (sql: string, dialect?: any) => any[]
   private dialect: string
 
-  constructor(dialect: 'postgres' | 'mysql' | 'sqlite') {
+  constructor(dialect: Dialect) {
     this.dialect = dialect
   }
 
@@ -26,6 +27,13 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
   parseStatements(sql: string): SqlStatement[] {
     if (!this.initialized) {
       throw new Error('SqlparserTsAdapter not initialized. Call init() first.')
+    }
+
+    // MSSQL: split on GO batch separators first, parse each batch independently.
+    // GO is a client-side batch separator, not a SQL keyword. Parsing each batch
+    // in isolation prevents CREATE PROCEDURE bodies from interfering with other statements.
+    if (this.dialect === 'mssql') {
+      return this.parseMssqlBatches(sql)
     }
 
     let ast: any[]
@@ -43,6 +51,75 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
       if (mapped) results.push(mapped)
     }
     debug('ast', `parsed ${results.length} statement(s) (${this.dialect})`)
+    return results
+  }
+
+  /**
+   * MSSQL: split on GO batch separators, parse each batch independently.
+   * This isolates CREATE PROCEDURE/FUNCTION bodies so they don't interfere
+   * with parsing of other statements.
+   */
+  private parseMssqlBatches(sql: string): SqlStatement[] {
+    const results: SqlStatement[] = []
+    // Split on GO lines, tracking line offsets
+    const lines = sql.split('\n')
+    let batchStart = 0
+    const batches: Array<{ text: string; lineOffset: number }> = []
+
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\s*GO\s*$/i.test(lines[i])) {
+        const text = lines.slice(batchStart, i).join('\n')
+        if (text.trim()) batches.push({ text, lineOffset: batchStart })
+        batchStart = i + 1
+      }
+    }
+    // Last batch after final GO (or entire file if no GO)
+    const lastBatch = lines.slice(batchStart).join('\n')
+    if (lastBatch.trim()) batches.push({ text: lastBatch, lineOffset: batchStart })
+
+    for (const batch of batches) {
+      try {
+        const ast = this.parseFn(batch.text, this.dialect)
+        for (const stmt of ast) {
+          const mapped = mapStatement(stmt)
+          if (mapped) {
+            mapped.line += batch.lineOffset
+            if (mapped.columns) {
+              for (const col of mapped.columns) col.line += batch.lineOffset
+            }
+            results.push(mapped)
+          }
+        }
+      } catch {
+        // Batch failed full parse — split on `;` respecting BEGIN/END block depth
+        const chunks = splitMssqlStatements(batch.text)
+        for (const chunk of chunks) {
+          const trimmed = chunk.text.trim()
+          if (!trimmed) continue
+          const lineOffset = batch.lineOffset + chunk.lineOffset
+          try {
+            const ast = this.parseFn(`${trimmed};`, this.dialect)
+            for (const stmt of ast) {
+              const mapped = mapStatement(stmt)
+              if (mapped) {
+                mapped.line += lineOffset
+                if (mapped.columns) {
+                  for (const col of mapped.columns) col.line += lineOffset
+                }
+                results.push(mapped)
+              }
+            }
+          } catch (err: any) {
+            debug(
+              'ast',
+              `skipping unparseable MSSQL statement at line ${lineOffset + 1}: ${err?.message ?? String(err)}`,
+            )
+          }
+        }
+      }
+    }
+
+    debug('ast', `parsed ${results.length} statement(s) (mssql, ${batches.length} batch(es))`)
     return results
   }
 
@@ -141,6 +218,83 @@ function splitStatements(sql: string): string[] {
     current += sql[i]
   }
   if (current.trim()) results.push(current)
+  return results
+}
+
+/**
+ * Split MSSQL SQL on `;` while respecting BEGIN/END block depth.
+ * Treats everything inside a BEGIN...END block as a single statement
+ * (e.g., stored procedures, triggers). Returns chunks with line offsets.
+ */
+function splitMssqlStatements(sql: string): Array<{ text: string; lineOffset: number }> {
+  const results: Array<{ text: string; lineOffset: number }> = []
+  let current = ''
+  let depth = 0
+  let lineOffset = 0
+  let currentStartLine = 0
+  let inString = false
+
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i]
+
+    // Track string literals (skip content inside quotes)
+    if (ch === "'" && !inString) {
+      inString = true
+      current += ch
+      continue
+    }
+    if (ch === "'" && inString) {
+      // Check for escaped quote ''
+      if (sql[i + 1] === "'") {
+        current += "''"
+        i++
+        continue
+      }
+      inString = false
+      current += ch
+      continue
+    }
+    if (inString) {
+      if (ch === '\n') lineOffset++
+      current += ch
+      continue
+    }
+
+    // Track BEGIN/END block depth (case-insensitive, word boundary)
+    if (/\bBEGIN\b/i.test(sql.slice(i, i + 5)) && (i === 0 || /\s/.test(sql[i - 1]))) {
+      depth++
+    }
+    const isEnd =
+      /\bEND\b/i.test(sql.slice(i, i + 3)) &&
+      (i === 0 || /\s/.test(sql[i - 1])) &&
+      (i + 3 >= sql.length || /[\s;]/.test(sql[i + 3]))
+    if (isEnd && depth > 0) {
+      depth--
+      // When END closes a top-level block (depth 1→0), emit the entire block as one statement
+      if (depth === 0) {
+        current += sql.slice(i, i + 3) // append "END"
+        i += 2
+        if (current.trim()) results.push({ text: current, lineOffset: currentStartLine })
+        current = ''
+        currentStartLine = lineOffset + 1
+        continue
+      }
+    }
+
+    // Split on `;` only when outside BEGIN/END blocks
+    if (ch === ';' && depth === 0) {
+      if (current.trim()) results.push({ text: current, lineOffset: currentStartLine })
+      current = ''
+      currentStartLine = lineOffset + 1
+      continue
+    }
+
+    if (ch === '\n') lineOffset++
+    current += ch
+  }
+
+  // Last statement (may not end with `;`)
+  if (current.trim()) results.push({ text: current, lineOffset: currentStartLine })
   return results
 }
 

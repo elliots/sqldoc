@@ -45,6 +45,7 @@ export function startContainer(opts: {
   env: Record<string, string>
   port: number
   readyLog: string | RegExp
+  readyTimeout?: number
 }): DockerContainer {
   cleanupStaleContainers()
 
@@ -74,7 +75,7 @@ export function startContainer(opts: {
   const port = Number.parseInt(portMatch[1], 10)
 
   // Wait for ready log message
-  waitForLog(id, opts.readyLog, 30_000)
+  waitForLog(id, opts.readyLog, opts.readyTimeout ?? 30_000)
 
   return {
     id,

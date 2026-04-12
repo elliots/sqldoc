@@ -16,7 +16,7 @@ const mockColumns = [
   { name: 'price', type: { T: 'numeric' } },
 ]
 
-function getSql(dialect: 'postgres' | 'mysql' | 'sqlite', objectName: string): string[] {
+function getSql(dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql', objectName: string): string[] {
   const result = plugin.onTag!(
     makeTagCtx({
       dialect,

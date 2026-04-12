@@ -19,6 +19,8 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "@sqldoc/db": "workspace:*",
+    "@sqldoc/db-mssql": "workspace:*",
     "@sqldoc/db-pglite": "workspace:*"
   }
 }

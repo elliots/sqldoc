@@ -304,7 +304,10 @@ export function enrichRealm(ctx: TemplateContext): EnrichedSchema {
   const enums: EnrichedEnum[] = extractEnums(tables, views)
 
   // ── Functions ─────────────────────────────────────────────────
-  const rawFuncsWithSchema = ctx.realm.schemas.flatMap((s) => (s.funcs ?? []).map((f) => ({ ...f, _schema: s.name })))
+  const rawFuncsWithSchema = ctx.realm.schemas.flatMap((s) => [
+    ...(s.funcs ?? []).map((f) => ({ ...f, _schema: s.name })),
+    ...(s.procs ?? []).map((p) => ({ ...p, ret: undefined, _schema: s.name })),
+  ])
   const funcSchemas = new Set(rawFuncsWithSchema.map((f) => f._schema))
   const isMultiSchemaFuncs = funcSchemas.size > 1 || isMultiSchema
 

@@ -72,7 +72,7 @@ type InternalAttr = { kind: 'tag'; name: string; args: string } | Record<string,
  * Check if a plugin supports the current dialect.
  * Plugins without a databases field are compatible with all dialects.
  */
-function isPluginCompatible(plugin: NamespacePlugin, dialect: 'postgres' | 'mysql' | 'sqlite'): boolean {
+function isPluginCompatible(plugin: NamespacePlugin, dialect: Dialect): boolean {
   if (!plugin.databases) return true
   return plugin.databases.includes(dialect)
 }

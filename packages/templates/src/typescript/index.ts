@@ -169,7 +169,8 @@ export default defineTemplate({
       } else if (fn.returnType) {
         retType = pgToTs(fn.returnType.type, false, options, fn.returnType.category as any)
       } else {
-        retType = 'void'
+        // Procedures (no formal return type) return result sets — use unknown[]
+        retType = 'unknown[]'
       }
 
       lines.push(`export type ${fn.pascalName} = (${params}) => ${retType}`)

@@ -1,16 +1,20 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/dev.go
 
+import type { Dialect } from '../inspector.ts'
 import type { Stmt } from '../migrate/lex.ts'
+import { mssqlScanStmts } from '../mssql/driver.ts'
 import { mysqlScanStmts } from '../mysql/driver.ts'
 import { postgresScanStmts } from '../postgres/driver.ts'
 import { sqliteScanStmts } from '../sqlite/driver.ts'
 
 /** Get the dialect-specific statement scanner. Matches Go Driver.ScanStmts per dialect. */
-function dialectScanner(dialect?: string): (input: string) => Stmt[] {
+function dialectScanner(dialect?: Dialect): (input: string) => Stmt[] {
   switch (dialect) {
     case 'mysql':
       return mysqlScanStmts
+    case 'mssql':
+      return mssqlScanStmts
     case 'sqlite':
       return sqliteScanStmts
     default:
@@ -29,7 +33,7 @@ export interface SnapshotOptions {
   /** Schema name to inspect. If empty, inspects the default/attached schema. */
   schema?: string
   /** SQL dialect for quoting. */
-  dialect?: 'postgres' | 'mysql' | 'sqlite'
+  dialect?: Dialect
 }
 
 /**
@@ -52,9 +56,10 @@ export function createRestoreFunc(
   dialect: string,
   diffAndApply: (current: Realm, desired: Realm) => Promise<void>,
 ): RestoreFunc {
-  const isSqlite = dialect === 'sqlite'
-  const isMySQL = dialect === 'mysql'
-  const isPostgres = !isSqlite && !isMySQL
+  const _isSqlite = dialect === 'sqlite'
+  const _isMySQL = dialect === 'mysql'
+  const isMssql = dialect === 'mssql'
+  const isPostgres = dialect === 'postgres'
 
   // Fast path for Postgres with single empty public schema (matches Go Atlas RealmRestoreFunc)
   if (
@@ -94,6 +99,62 @@ export function createRestoreFunc(
     }
   }
 
+  // MSSQL fast path: drop all user objects in dbo (can't DROP SCHEMA dbo)
+  if (isMssql) {
+    return async () => {
+      // Drop in dependency order: FKs, then tables, views, procs, funcs, triggers, sequences
+      await db.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'ALTER TABLE [' + s.name + '].[' + t.name + '] DROP CONSTRAINT [' + fk.name + '];'
+        FROM sys.foreign_keys fk
+        JOIN sys.tables t ON fk.parent_object_id = t.object_id
+        JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+      await db.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'DROP TABLE [' + s.name + '].[' + t.name + '];'
+        FROM sys.tables t
+        JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+      await db.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'DROP VIEW [' + s.name + '].[' + v.name + '];'
+        FROM sys.views v
+        JOIN sys.schemas s ON v.schema_id = s.schema_id
+        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+      await db.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'DROP PROCEDURE [' + s.name + '].[' + o.name + '];'
+        FROM sys.objects o
+        JOIN sys.schemas s ON o.schema_id = s.schema_id
+        WHERE o.type = 'P' AND s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+      await db.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'DROP FUNCTION [' + s.name + '].[' + o.name + '];'
+        FROM sys.objects o
+        JOIN sys.schemas s ON o.schema_id = s.schema_id
+        WHERE o.type IN ('FN', 'IF', 'TF') AND s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+      await db.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'DROP SEQUENCE [' + s.name + '].[' + seq.name + '];'
+        FROM sys.sequences seq
+        JOIN sys.schemas s ON seq.schema_id = s.schema_id
+        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+    }
+  }
+
   // General path: diff current→desired and apply changes (matches Go Atlas)
   return async () => {
     const current = await inspector.inspectRealm()
@@ -126,7 +187,8 @@ export async function snapshot(
   for (const sql of files) {
     if (sql.trim() === '') continue
     const statements = dialectScan(sql).filter((s) => s.text.trim() !== '')
-    const BATCH_SIZE = 50
+    // MSSQL: no batching — CREATE PROCEDURE/FUNCTION must be the only statement in a batch
+    const BATCH_SIZE = opts.dialect === 'mssql' ? 1 : 50
     for (let i = 0; i < statements.length; i += BATCH_SIZE) {
       const batch = statements.slice(i, i + BATCH_SIZE)
       const batchSQL = `${batch.map((s) => s.text).join(';\n')};`

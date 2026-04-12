@@ -281,7 +281,10 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
   let cascadeSqls: SqlOutput[]
   if (dialect === 'postgres') {
     cascadeSqls = generatePostgresCascade(objectName, parentTable, columnName, parentPkColumn, softDeleteColumn)
-  } else {
+  } else if (dialect === 'mssql') {
+    // MSSQL: trigger generation not yet implemented
+    cascadeSqls = []
+  } else if (dialect === 'mysql' || dialect === 'sqlite') {
     cascadeSqls = generatePerEventCascade(
       objectName,
       parentTable,
@@ -290,6 +293,8 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
       softDeleteColumn,
       dialect,
     )
+  } else {
+    throw new Error(`ns-softdelete: unsupported dialect '${dialect}'`)
   }
 
   return {

@@ -6,7 +6,7 @@
  * and by plugins that generate dialect-aware SQL.
  */
 
-export type Dialect = 'postgres' | 'mysql' | 'sqlite'
+export type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
 
 /**
  * Quote a SQL identifier for the target dialect.
@@ -17,6 +17,8 @@ export function quoteIdentifier(name: string, dialect: Dialect): string {
   switch (dialect) {
     case 'mysql':
       return `\`${name.replace(/`/g, '``')}\``
+    case 'mssql':
+      return `[${name.replace(/]/g, ']]')}]`
     case 'postgres':
     case 'sqlite':
       return `"${name.replace(/"/g, '""')}"`
@@ -28,8 +30,7 @@ export function quoteIdentifier(name: string, dialect: Dialect): string {
  * All dialects: single quotes with '' escaping.
  */
 export function escapeString(value: string, _dialect: Dialect): string {
-  const escaped = value.replace(/'/g, "''")
-  return `'${escaped}'`
+  return `'${value.replace(/'/g, "''")}'`
 }
 
 /**
@@ -45,6 +46,7 @@ export function escapeStringWithNewlines(value: string, dialect: Dialect): strin
         return `E'${escaped}'`
       case 'mysql':
       case 'sqlite':
+      case 'mssql':
         return `'${escaped}'`
     }
   }
@@ -66,7 +68,8 @@ export function commentOn(objectType: string, objectName: string, comment: strin
       return `COMMENT ON ${objectType} ${quoteIdentifier(objectName, dialect)} IS ${escapeString(comment, dialect)};`
     case 'mysql':
     case 'sqlite':
-      // Stub: MySQL and SQLite comment support is handled per-plugin in Phase 3
+    case 'mssql':
+      // Stub: MySQL, SQLite, and MSSQL comment support is handled per-plugin
       return null
   }
 }
@@ -83,6 +86,8 @@ export function autoIncrementType(size: 'int' | 'bigint', dialect: Dialect): str
       return size === 'bigint' ? 'BIGSERIAL' : 'SERIAL'
     case 'mysql':
       return size === 'bigint' ? 'BIGINT AUTO_INCREMENT' : 'INT AUTO_INCREMENT'
+    case 'mssql':
+      return size === 'bigint' ? 'BIGINT IDENTITY(1,1)' : 'INT IDENTITY(1,1)'
     case 'sqlite':
       return 'INTEGER'
   }
@@ -94,9 +99,10 @@ export function autoIncrementType(size: 'int' | 'bigint', dialect: Dialect): str
 export function currentTimestamp(dialect: Dialect): string {
   switch (dialect) {
     case 'postgres':
-      return 'NOW()'
     case 'mysql':
       return 'NOW()'
+    case 'mssql':
+      return 'GETDATE()'
     case 'sqlite':
       return "datetime('now')"
   }
@@ -113,6 +119,7 @@ export function jsonObjectFunction(dialect: Dialect): string {
     case 'postgres':
       return 'jsonb_build_object'
     case 'mysql':
+    case 'mssql':
       return 'JSON_OBJECT'
     case 'sqlite':
       return 'json_object'
@@ -131,6 +138,8 @@ export function timestampType(dialect: Dialect): string {
       return 'TIMESTAMPTZ'
     case 'mysql':
       return 'TIMESTAMP'
+    case 'mssql':
+      return 'DATETIME2'
     case 'sqlite':
       return 'TEXT'
   }
@@ -148,6 +157,8 @@ export function jsonType(dialect: Dialect): string {
       return 'JSONB'
     case 'mysql':
       return 'JSON'
+    case 'mssql':
+      return 'NVARCHAR(MAX)'
     case 'sqlite':
       return 'TEXT'
   }

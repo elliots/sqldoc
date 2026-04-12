@@ -10,7 +10,7 @@ import { createAdapter, type DatabaseAdapter } from '@sqldoc/db'
 import { after, describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
-function getSql(dialect: 'postgres' | 'mysql' | 'sqlite', objectName: string): string[] {
+function getSql(dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql', objectName: string): string[] {
   const result = plugin.onTag!(makeTagCtx({ dialect, objectName, tag: { name: null, args: {} } })) as any
   return result?.sql?.map((s: any) => s.sql) ?? []
 }

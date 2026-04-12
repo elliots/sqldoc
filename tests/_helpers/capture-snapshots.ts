@@ -17,7 +17,7 @@ const testsDir = path.resolve(import.meta.dirname, '..')
 
 interface SchemaConfig {
   name: string
-  dialect: 'postgres' | 'mysql' | 'sqlite'
+  dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql'
   files: string[]
   devUrl?: string
   /** SQL to prepend before the schema files (e.g. role creation) */

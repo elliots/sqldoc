@@ -1,6 +1,13 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
+import type {
+  CompilerOutput,
+  Dialect,
+  FileProvenance,
+  NamespacePlugin,
+  ResolvedConfig,
+  SqlStatement,
+} from '@sqldoc/core'
 import {
   compile,
   debug,
@@ -18,6 +25,17 @@ import pc from 'picocolors'
 import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
 import { discoverSqlFiles } from './discover.ts'
 import { formatDiagnostic } from './format.ts'
+
+function defaultSchemaForDialect(dialect: Dialect): string | undefined {
+  switch (dialect) {
+    case 'postgres':
+      return 'public'
+    case 'mssql':
+      return 'dbo'
+    default:
+      return undefined
+  }
+}
 
 /** Result from running the compile pipeline */
 export interface PipelineResult {
@@ -153,7 +171,7 @@ export async function runCompilePipeline(
       // Inspection 1: external files only -> externalRealm
       const externalContents = resolved.externalFiles.map((f) => stripMigrationDown(fs.readFileSync(f, 'utf-8')))
       const externalResult = await atlasRunner.inspect(externalContents, {
-        schema: dialect === 'postgres' ? 'public' : undefined,
+        schema: defaultSchemaForDialect(dialect),
       })
       if (!externalResult.schema) {
         throw new Error(externalResult.error ?? 'Atlas failed to parse external schema')

@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schema Documentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; }
+    .sidebar { width: 260px; height: 100vh; position: fixed; overflow-y: auto; background: #f8f9fa; border-right: 1px solid #dee2e6; padding: 16px; }
+    .sidebar h1 { font-size: 18px; margin-bottom: 16px; }
+    .sidebar h2 { font-size: 14px; text-transform: uppercase; color: #6c757d; margin: 16px 0 8px; }
+    .sidebar a { display: block; padding: 4px 8px; color: #212529; text-decoration: none; font-size: 14px; border-radius: 4px; }
+    .sidebar a:hover { background: #e9ecef; }
+    .sidebar a.active { background: #0d6efd; color: white; }
+    .content { margin-left: 260px; padding: 32px; max-width: 1100px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }
+    th { background: #f8f9fa; }
+    .annotation { display: inline-block; background: #d1ecf1; color: #0c5460; border-radius: 4px; padding: 2px 8px; font-size: 12px; margin: 2px; }
+    .annotations { margin: 8px 0; }
+    .generated-badge { display: inline-block; background: #fff3cd; color: #856404; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+    .description { color: #495057; margin: 8px 0; }
+    .previously { color: #6c757d; font-style: italic; font-size: 13px; margin: 4px 0; display: block; }
+    h3 { margin-top: 32px; padding-top: 16px; border-top: 1px solid #dee2e6; }
+    .mermaid { margin: 24px 0; padding: 16px; background: #f8f9fa; border-radius: 8px; }
+    .timestamp { color: #6c757d; font-size: 14px; }
+    h4 { margin: 16px 0 8px; font-size: 15px; }
+    ul { margin: 0 0 16px 24px; }
+    li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <h1>Schema Documentation</h1>
+    <h2>Tables</h2>
+    <a href="#adoptions">adoptions</a>
+    <a href="#adoptions_audit_log">adoptions_audit_log</a>
+    <a href="#categories">categories</a>
+    <a href="#locations">locations</a>
+    <a href="#medical_records">medical_records</a>
+    <a href="#owners">owners</a>
+    <a href="#pets">pets</a>
+    <a href="#reviews">reviews</a>
+    <a href="#staff">staff</a>
+    <a href="#staff_audit_log">staff_audit_log</a>
+  </nav>
+  <main class="content">
+    <section id="er-diagram">
+      <h2>Entity Relationship Diagram</h2>
+      <pre class="mermaid">erDiagram
+    adoptions {
+        int id PK
+        int pet_id FK
+        int owner_id FK
+        datetime2(7) adopted_at
+        decimal(10,2) adoption_fee
+        nvarchar(max) updated_by
+    }
+    adoptions_audit_log {
+        bigint id PK
+        nvarchar(max) table_name
+        nvarchar(max) operation
+        nvarchar(max) old_data
+        nvarchar(max) new_data
+        datetime2(7) changed_at
+    }
+    categories {
+        int id PK
+        nvarchar(100) name
+        nvarchar(max) description
+    }
+    legacy_inventory {
+        int id PK
+        nvarchar(200) item_name
+        nvarchar(50) old_sku
+        int quantity
+    }
+    locations {
+        int id PK
+        nvarchar(200) name
+        nvarchar(max) address
+        nvarchar(100) city
+        nvarchar(20) zip
+    }
+    medical_records {
+        int id PK
+        int pet_id FK
+        date visit_date
+        nvarchar(max) diagnosis
+        nvarchar(max) treatment
+        nvarchar(150) vet_name
+    }
+    owners {
+        int id PK
+        nvarchar(150) name
+        nvarchar(255) email
+        nvarchar(20) phone
+        datetime2(7) created_at
+    }
+    pets {
+        int id PK
+        int category_id FK
+        nvarchar(100) name
+        nvarchar(20) sku
+        decimal(10,2) price
+        nvarchar(max) internal_notes
+        nvarchar(20) status
+        datetime2(7) created_at
+    }
+    reviews {
+        int id PK
+        int pet_id FK
+        int owner_id FK
+        int rating
+        nvarchar(max) body
+        int location_id FK
+        datetime2(7) created_at
+    }
+    staff {
+        int id PK
+        nvarchar(150) name
+        nvarchar(50) role
+        date hired_at
+    }
+    staff_audit_log {
+        bigint id PK
+        nvarchar(max) table_name
+        nvarchar(max) operation
+        nvarchar(max) old_data
+        nvarchar(max) new_data
+        datetime2(7) changed_at
+    }
+    adoptions }o--|| owners : &quot;FK__adoptions__owner__407B4EF6&quot;
+    adoptions }o--|| pets : &quot;FK__adoptions__pet_i__3F872ABD&quot;
+    medical_records }o--|| pets : &quot;FK__medical_r__pet_i__444BDFDA&quot;
+    pets }o--|| categories : &quot;FK__pets__category_i__36F1E4BC&quot;
+    reviews }o--|| locations : &quot;FK__reviews__locatio__51A5DAF8&quot;
+    reviews }o--|| owners : &quot;FK__reviews__owner_i__50B1B6BF&quot;
+    reviews }o--|| pets : &quot;FK__reviews__pet_id__4FBD9286&quot;
+    adoptions ||..o{ adoptions_audit_log : "audit events"
+    staff ||..o{ staff_audit_log : "audit events"</pre>
+    </section>
+  <section id="adoptions">
+    <h3>adoptions</h3>
+    <p class="description">Tracks each adoption event with timestamps and fees</p>
+    <div class="annotations">
+      <span class="annotation">Audited (insert, update, delete)</span>
+      <span class="annotation">MSSQL audit triggers will use inserted/deleted tables (not yet implemented)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>owner_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>adopted_at</td>
+        <td>datetime2(7)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>adoption_fee</td>
+        <td>decimal(10,2)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>updated_by</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>FK__adoptions__owner__407B4EF6: owner_id -&gt; owners(id)</li>
+      <li>FK__adoptions__pet_i__3F872ABD: pet_id -&gt; pets(id)</li>
+    </ul>
+  </section>
+  <section id="adoptions_audit_log">
+    <h3>adoptions_audit_log</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>bigint</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>table_name</td>
+        <td>nvarchar(max)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>operation</td>
+        <td>nvarchar(max)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>old_data</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>new_data</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>changed_at</td>
+        <td>datetime2(7)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="categories">
+    <h3>categories</h3>
+    <p class="description">Lookup table for pet species and breed categories</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>nvarchar(100)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+      </tr>
+      <tr>
+        <td>description</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="locations">
+    <h3>locations</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>nvarchar(200)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>address</td>
+        <td>nvarchar(max)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>city</td>
+        <td>nvarchar(100)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>zip</td>
+        <td>nvarchar(20)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="medical_records">
+    <h3>medical_records</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>visit_date</td>
+        <td>date</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>diagnosis</td>
+        <td>nvarchar(max)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>treatment</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>vet_name</td>
+        <td>nvarchar(150)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>FK__medical_r__pet_i__444BDFDA: pet_id -&gt; pets(id)</li>
+    </ul>
+  </section>
+  <section id="owners">
+    <h3>owners</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>nvarchar(150)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+      </tr>
+      <tr>
+        <td>email</td>
+        <td>nvarchar(255)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>phone</td>
+        <td>nvarchar(20)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Length: 7–20</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>datetime2(7)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Indexes</h4>
+    <ul>
+      <li>UQ__owners__AB6E61640FCE553D (email) UNIQUE</li>
+    </ul>
+  </section>
+  <section id="pets">
+    <h3>pets</h3>
+    <p class="description">Central registry of all pets available for adoption</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>category_id</td>
+        <td>int</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>nvarchar(100)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Not empty</td>
+      </tr>
+      <tr>
+        <td>sku</td>
+        <td>nvarchar(20)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>price</td>
+        <td>decimal(10,2)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>Range: 0–99999</td>
+      </tr>
+      <tr>
+        <td>internal_notes</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>status</td>
+        <td>nvarchar(20)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>datetime2(7)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>FK__pets__category_i__36F1E4BC: category_id -&gt; categories(id)</li>
+    </ul>
+    <h4>Indexes</h4>
+    <ul>
+      <li>UQ__pets__DDDF4BE702756D4A (sku) UNIQUE</li>
+    </ul>
+  </section>
+  <section id="reviews">
+    <h3>reviews</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>pet_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>owner_id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>rating</td>
+        <td>int</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>body</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>location_id</td>
+        <td>int</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>created_at</td>
+        <td>datetime2(7)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+    <h4>Foreign Keys</h4>
+    <ul>
+      <li>FK__reviews__locatio__51A5DAF8: location_id -&gt; locations(id)</li>
+      <li>FK__reviews__owner_i__50B1B6BF: owner_id -&gt; owners(id)</li>
+      <li>FK__reviews__pet_id__4FBD9286: pet_id -&gt; pets(id)</li>
+    </ul>
+  </section>
+  <section id="staff">
+    <h3>staff</h3>
+    <div class="annotations">
+      <span class="annotation">Audited (insert, update, delete)</span>
+      <span class="annotation">MSSQL audit triggers will use inserted/deleted tables (not yet implemented)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>int</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>nvarchar(150)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>role</td>
+        <td>nvarchar(50)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>hired_at</td>
+        <td>date</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="staff_audit_log">
+    <h3>staff_audit_log</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Nullable</th>
+          <th>PK</th>
+          <th>FK</th>
+          <th>Description</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>id</td>
+        <td>bigint</td>
+        <td>No</td>
+        <td>Y</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>table_name</td>
+        <td>nvarchar(max)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>operation</td>
+        <td>nvarchar(max)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>old_data</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>new_data</td>
+        <td>nvarchar(max)</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>changed_at</td>
+        <td>datetime2(7)</td>
+        <td>No</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  </main>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+          const link = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>
