@@ -97,6 +97,7 @@ export class MssqlInspector implements Inspector {
   // -- Public Interface --
 
   async inspectSchema(name: string, opts?: InspectOptions): Promise<Schema> {
+    await this.detectVersion()
     const schemas = await this.querySchemas({ schemas: [name] })
     if (schemas.length === 0) {
       throw new NotExistError(`mssql: schema "${name}" was not found`)

@@ -302,10 +302,10 @@ function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string)
         }
         if (col) {
           col.name = r.newName
-          const found = findTableInRealm(fromRealm, r.table)
+          const found = findTableInRealm(fromRealm, tableName)
           const schemaPrefix =
             found?.schema.name && found.schema.name !== defaultSchema ? `${q(found.schema.name)}.` : ''
-          stmts.push(`ALTER TABLE ${schemaPrefix}${q(r.table)} RENAME COLUMN ${q(r.oldName)} TO ${q(r.newName)}`)
+          stmts.push(`ALTER TABLE ${schemaPrefix}${q(tableName)} RENAME COLUMN ${q(r.oldName)} TO ${q(r.newName)}`)
         }
         break
       }
@@ -443,24 +443,68 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
   const eq = new ExecQuerierAdapter(db)
 
   // Create a diff+apply function for the general restore path (matches Go Atlas)
+  // This runs only against dev databases, so CASCADE is safe for Postgres drops.
   async function diffAndApply(current: Realm, desired: Realm): Promise<void> {
     let changes = realmDiff(differ, current, desired)
     if (changes.length === 0) return
     changes = detachCycles(changes)
     changes = sortChanges(changes)
-    // MySQL/MSSQL: disable FK checks during apply (drops may reference other tables)
+    // MySQL: disable FK checks during apply (drops may reference other tables)
     if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 0')
-    if (dialect === 'mssql') await eq.exec('EXEC sp_MSforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT ALL"')
+    // MSSQL: drop all FK constraints first (NOCHECK alone doesn't allow DROP TABLE)
+    if (dialect === 'mssql') {
+      await eq.exec(`
+        DECLARE @sql NVARCHAR(MAX) = ''
+        SELECT @sql += 'ALTER TABLE [' + s.name + '].[' + t.name + '] DROP CONSTRAINT [' + fk.name + '];'
+        FROM sys.foreign_keys fk
+        JOIN sys.tables t ON fk.parent_object_id = t.object_id
+        JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
+        EXEC(@sql)
+      `)
+    }
     try {
       for (const change of changes) {
-        const stmts = changeToSQL(planner, change)
+        let stmts = changeToSQL(planner, change)
+        // Postgres dev restore: add CASCADE to DROP statements to handle type/domain
+        // dependencies. CASCADE may drop dependent objects early, so subsequent drops
+        // that fail with "does not exist" are silently ignored.
+        if (dialect === 'postgres') {
+          stmts = stmts.map((s) => {
+            const upper = s.trimEnd().toUpperCase()
+            if (
+              (upper.startsWith('DROP TYPE') ||
+                upper.startsWith('DROP TABLE') ||
+                upper.startsWith('DROP VIEW') ||
+                upper.startsWith('DROP FUNCTION') ||
+                upper.startsWith('DROP PROCEDURE') ||
+                upper.startsWith('DROP SCHEMA') ||
+                upper.startsWith('DROP EXTENSION') ||
+                upper.startsWith('DROP DOMAIN') ||
+                upper.startsWith('DROP SEQUENCE')) &&
+              !upper.endsWith('CASCADE')
+            ) {
+              return `${s.trimEnd()} CASCADE`
+            }
+            return s
+          })
+        }
         for (const stmt of stmts) {
-          await eq.exec(stmt)
+          try {
+            await eq.exec(stmt)
+          } catch (err: any) {
+            // Ignore "does not exist" errors — CASCADE may have already dropped the object
+            const code = err?.code ?? ''
+            const msg = err?.message ?? String(err)
+            if (code === '42P01' || code === '42883' || code === '3F000' || msg.includes('does not exist')) {
+              continue
+            }
+            throw err
+          }
         }
       }
     } finally {
       if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 1')
-      if (dialect === 'mssql') await eq.exec('EXEC sp_MSforeachtable "ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL"')
     }
   }
 

@@ -10,9 +10,9 @@ import { parseTags } from './tag.ts'
 /** A migration file with name and content. */
 export interface File {
   /** The file name. */
-  name: string
+  readonly name: string
   /** The raw file content. */
-  content: string
+  readonly content: string
   /** The SQL statements in this file (parsed via Scanner). */
   stmts(): string[]
   /** The Stmt declarations in this file (parsed via Scanner). */
@@ -37,8 +37,8 @@ export interface Dir {
 
 /** A file with name and content stored in memory. */
 export class LocalFile implements File {
-  name: string
-  content: string
+  readonly name: string
+  readonly content: string
 
   constructor(name: string, content: string) {
     this.name = name

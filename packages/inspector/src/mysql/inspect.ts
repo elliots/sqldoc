@@ -1,7 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/inspect_oss.go
 
-import { isQuoted, mayWrap, validString } from '../internal/sqlx.ts'
+import { isQuoted, mayWrap, scanString, validString } from '../internal/sqlx.ts'
 import type { ExecQuerier, InspectOptions, Inspector, InspectRealmOption } from '../schema/inspect.ts'
 import { InspectMode, NotExistError } from '../schema/inspect.ts'
 import type {
@@ -243,12 +243,25 @@ export class MysqlInspector implements Inspector {
   protected db: ExecQuerier
   protected v: MysqlVersion
 
+  private versionDetected = false
+
   constructor(db: ExecQuerier, version?: string) {
     this.db = db
     this.v = version ? parseVersion(version) : { version: '8.0.31', maria: false, major: 8, minor: 0, patch: 31 }
   }
 
+  private async detectVersion(): Promise<void> {
+    if (this.versionDetected) return
+    this.versionDetected = true
+    const result = await this.db.query('SELECT VERSION()', [])
+    const versionStr = scanString(result.rows[0] as unknown[], 0)
+    if (versionStr) {
+      this.v = parseVersion(versionStr)
+    }
+  }
+
   async inspectSchema(name: string, opts?: InspectOptions): Promise<Schema> {
+    await this.detectVersion()
     const schemas = await this.querySchemas({ schemas: [name] })
     if (schemas.length === 0) {
       throw new NotExistError(`mysql: schema "${name}" was not found`)
@@ -277,6 +290,7 @@ export class MysqlInspector implements Inspector {
   }
 
   async inspectRealm(opts?: InspectRealmOption): Promise<Realm> {
+    await this.detectVersion()
     const schemas = await this.querySchemas(opts)
     const mode = opts?.mode ?? InspectMode.InspectAll
     // Set realm-level charset/collation from connection defaults (matches Go)
