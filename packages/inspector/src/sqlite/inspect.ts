@@ -580,6 +580,12 @@ export class SqliteInspector {
       }
     }
   }
+
+  // -- Current Schema --
+
+  async currentSchema(): Promise<string> {
+    return 'main'
+  }
 }
 
 // -- Helper Functions --

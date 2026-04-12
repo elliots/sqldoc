@@ -83,6 +83,9 @@ export interface Inspector {
 
   /** Returns the description of the connected database. */
   inspectRealm(opts?: InspectRealmOption): Promise<Realm>
+
+  /** Returns the current/default schema name for this connection. */
+  currentSchema(): Promise<string>
 }
 
 /**

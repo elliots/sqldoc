@@ -903,6 +903,15 @@ ORDER BY c.column_id`
       s.sequences.push(seq)
     }
   }
+
+  // -- Current Schema --
+
+  async currentSchema(): Promise<string> {
+    const result = await this.db.query('SELECT SCHEMA_NAME() AS s', [])
+    const schema = (result.rows[0] as any)?.s
+    if (!schema) throw new Error('failed to detect current schema from database connection')
+    return schema
+  }
 }
 
 // -- Internal Helpers --

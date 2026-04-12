@@ -1606,6 +1606,15 @@ export class PostgresInspector implements Inspector {
 
     return { query, args }
   }
+
+  // -- Current Schema --
+
+  async currentSchema(): Promise<string> {
+    const result = await this.db.query('SELECT current_schema()', [])
+    const schema = scanString(result.rows[0] as unknown[], 0)
+    if (!schema) throw new Error('failed to detect current schema from database connection')
+    return schema
+  }
 }
 
 // -- Column Type Resolution (matches Go resolveColumnTypes) --

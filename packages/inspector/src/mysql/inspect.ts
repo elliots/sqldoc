@@ -968,6 +968,15 @@ export class MysqlInspector implements Inspector {
       }
     }
   }
+
+  // -- Current Schema --
+
+  async currentSchema(): Promise<string> {
+    const result = await this.db.query('SELECT DATABASE() AS s', [])
+    const schema = (result.rows[0] as any)?.s
+    if (!schema) throw new Error('failed to detect current schema from database connection')
+    return schema
+  }
 }
 
 // -- Internal Helpers --

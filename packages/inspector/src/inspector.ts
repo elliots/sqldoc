@@ -357,19 +357,13 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
 // -- Schema Normalization --
 
 /** Compute the canonical default schema name for a dialect. */
-function dialectDefaultSchema(dialect: string): string {
-  return dialect === 'sqlite' ? 'main' : dialect === 'mssql' ? 'dbo' : 'public'
-}
-
 /**
- * Stamp defaultSchema on a realm.
- * For single-schema realms, that schema IS the default.
- * For multi-schema, the canonical default (public/main/dbo) is the default.
+ * Stamp defaultSchema on a realm using the detected current schema.
  * Does NOT rename schemas — the diff needs actual names for correct SQL.
  * Schema stripping from output SQL happens after diff generation.
  */
-function stampDefaultSchema(realm: Realm, dialect: string): Realm {
-  realm.defaultSchema = realm.schemas.length === 1 ? realm.schemas[0].name : dialectDefaultSchema(dialect)
+function stampDefaultSchema(realm: Realm, currentSchema: string): Realm {
+  realm.defaultSchema = currentSchema
   return realm
 }
 
@@ -470,6 +464,9 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     }
   }
 
+  // Detect the current/default schema from the live connection
+  const currentSchema = await inspector.currentSchema()
+
   // Capture initial dev DB state for snapshot/restore pattern (matches Go Atlas Snapshot)
   const initialRealm = await inspector.inspectRealm()
   const restore = createRestoreFunc(eq, inspector, initialRealm, dialect, diffAndApply)
@@ -480,7 +477,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         // No files -- inspect existing database state
         let realm = await inspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
         realm = filterSystemSchemas(realm, dialect)
-        stampDefaultSchema(realm, dialect)
+        stampDefaultSchema(realm, currentSchema)
         return { schema: realm }
       }
 
@@ -491,7 +488,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         restore,
       })
       const filtered = filterSystemSchemas(realm, dialect)
-      stampDefaultSchema(filtered, dialect)
+      stampDefaultSchema(filtered, currentSchema)
 
       // Extract and apply tags from original SQL comments
       applyTags(filtered, files, opts?.fileNames)
@@ -544,8 +541,8 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       }
 
       // Normalize schema names and stamp defaultSchema on both realms
-      stampDefaultSchema(fromRealm, dialect)
-      stampDefaultSchema(toRealm, dialect)
+      stampDefaultSchema(fromRealm, currentSchema)
+      stampDefaultSchema(toRealm, currentSchema)
 
       // Apply known renames
       let renameStmts: string[] = []
