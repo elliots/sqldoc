@@ -140,6 +140,15 @@ export class PostgresPlan implements PlanDriver {
         const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
         return [`DROP DOMAIN ${ident}`]
       }
+      case 'range_type': {
+        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        return [`DROP TYPE ${ident}`]
+      }
+      case 'aggregate': {
+        const ident = obj.schema ? `"${obj.schema}"."${obj.name}"` : `"${obj.name}"`
+        const argList = (obj.args ?? []).join(', ')
+        return [`DROP AGGREGATE ${ident}(${argList})`]
+      }
       default:
         if (obj.name && obj.version !== undefined) {
           return [`DROP EXTENSION IF EXISTS "${obj.name}"`]

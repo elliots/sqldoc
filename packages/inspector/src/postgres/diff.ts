@@ -444,6 +444,7 @@ export class PostgresDiff implements DiffDriver {
     if (fromOp && toOp) {
       return fromOp.name !== toOp.name
     }
+    if (fromOp !== toOp) return true
 
     return false
   }

@@ -17,6 +17,7 @@ export function detectDestructiveChanges(changes: Change[]): Change[] {
   const result: Change[] = []
   for (const c of changes) {
     switch (c.type) {
+      case 'drop_schema':
       case 'drop_table':
       case 'drop_column':
         result.push(c)
