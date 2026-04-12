@@ -382,8 +382,8 @@ export class PostgresDiff implements DiffDriver {
     const hasTo = toGen !== undefined
 
     if (hasFrom && hasTo) {
-      // Changing generated expression is not supported; only DROP EXPRESSION
-      return false
+      // Compare expressions and types — the planner handles drop+recreate
+      return fromGen!.expr !== toGen!.expr || fromGen!.type !== toGen!.type
     }
 
     // DROP EXPRESSION is supported
