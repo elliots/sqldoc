@@ -65,7 +65,10 @@ export interface InspectorRunner {
       defaultSchema?: string
       fromSchema?: string
       toSchema?: string
-      normalizeSchemas?: boolean
+      /** When true, treat default schemas as equivalent even if names differ. */
+      matchDefaultSchemas: boolean
+      /** When true, strip default schema qualifier from output SQL. */
+      stripDefaultSchema: boolean
       renames?: Rename[]
     },
   ): Promise<InspectorResult>
@@ -84,8 +87,10 @@ export type DiffSource = string[] | DatabaseAdapter
  */
 class ExecQuerierAdapter implements ExecQuerier {
   private db: DatabaseAdapter
+  currentSchema: string
   constructor(db: DatabaseAdapter) {
     this.db = db
+    this.currentSchema = db.currentSchema
   }
 
   async query(sql: string, args?: unknown[]): Promise<QueryResult> {
@@ -354,19 +359,6 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
   return result.table.columns.find((c) => c.name === colName)
 }
 
-// -- Schema Normalization --
-
-/** Compute the canonical default schema name for a dialect. */
-/**
- * Stamp defaultSchema on a realm using the detected current schema.
- * Does NOT rename schemas — the diff needs actual names for correct SQL.
- * Schema stripping from output SQL happens after diff generation.
- */
-function stampDefaultSchema(realm: Realm, currentSchema: string): Realm {
-  realm.defaultSchema = currentSchema
-  return realm
-}
-
 // -- Create Dialect Components --
 
 function createComponents(
@@ -449,7 +441,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     desired: Realm,
     transformChanges?: (changes: Change[]) => Change[],
   ): Promise<void> {
-    let changes = realmDiff(differ, current, desired)
+    let changes = realmDiff(differ, current, desired, { matchDefaultSchemas: false })
     if (changes.length === 0) return
     changes = detachCycles(changes)
     changes = sortChanges(changes)
@@ -462,14 +454,11 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     }
   }
 
-  // Detect the current/default schema from the live connection
-  const currentSchema = await inspector.currentSchema()
-
   // Capture initial dev DB state for snapshot/restore pattern (matches Go Atlas Snapshot)
   const initialRealm = await inspector.inspectRealm()
-  // Postgres restore uses withCascade to annotate drops with IF EXISTS + CASCADE (matches Go Atlas).
+  // Postgres: withCascade adds IF EXISTS + CASCADE to drops (matches Go Atlas).
   const restoreTransform = dialect === 'postgres' ? withCascade : undefined
-  const restore = createRestoreFunc(eq, inspector, initialRealm, dialect, diffAndApply, restoreTransform)
+  const restore = createRestoreFunc(inspector, initialRealm, diffAndApply, restoreTransform)
 
   return {
     async inspect(files, opts) {
@@ -477,7 +466,6 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         // No files -- inspect existing database state
         let realm = await inspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
         realm = filterSystemSchemas(realm, dialect)
-        stampDefaultSchema(realm, currentSchema)
         return { schema: realm }
       }
 
@@ -488,7 +476,6 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         restore,
       })
       const filtered = filterSystemSchemas(realm, dialect)
-      stampDefaultSchema(filtered, currentSchema)
 
       // Extract and apply tags from original SQL comments
       applyTags(filtered, files, opts?.fileNames)
@@ -540,10 +527,6 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         toRealm = filterSystemSchemas(toRealm, dialect)
       }
 
-      // Normalize schema names and stamp defaultSchema on both realms
-      stampDefaultSchema(fromRealm, currentSchema)
-      stampDefaultSchema(toRealm, currentSchema)
-
       // Apply known renames
       let renameStmts: string[] = []
       if (opts?.renames && opts.renames.length > 0) {
@@ -554,7 +537,8 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       const renameCandidates = detectRenameCandidates(fromRealm, toRealm, opts?.renames)
 
       // Compute diff
-      let changes = realmDiff(differ, fromRealm, toRealm)
+      const diffOpts = opts ? { matchDefaultSchemas: opts.matchDefaultSchemas } : undefined
+      let changes = realmDiff(differ, fromRealm, toRealm, diffOpts)
 
       if (changes.length === 0 && renameStmts.length === 0) {
         return { renameCandidates, changes }
@@ -573,7 +557,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
 
       // Strip default schema qualifier from output SQL
       let statements = [...renameStmts, ...diffStmts]
-      const defSchema = opts?.defaultSchema
+      const defSchema = opts?.stripDefaultSchema ? (opts.defaultSchema ?? fromRealm.defaultSchema) : opts?.defaultSchema
       if (defSchema) {
         const prefix =
           dialect === 'mysql' ? `\`${defSchema}\`.` : dialect === 'mssql' ? `[${defSchema}].` : `"${defSchema}".`

@@ -145,6 +145,8 @@ async function migrateProject(
     // Include files are only in desiredSql, so they produce migration changes (D-10)
     const upResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
       defaultSchema: defaultSchemaOpt,
+      matchDefaultSchemas: true,
+      stripDefaultSchema: true,
       renames: knownRenames.length > 0 ? knownRenames : undefined,
     })
 
@@ -164,6 +166,8 @@ async function migrateProject(
         const allRenames = [...knownRenames, ...accepted]
         const rediffResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
           defaultSchema: defaultSchemaOpt,
+          matchDefaultSchemas: true,
+          stripDefaultSchema: true,
           renames: allRenames,
         })
 
@@ -179,6 +183,8 @@ async function migrateProject(
     // Down diff also uses currentWithExternals so external objects cancel out
     const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], {
       defaultSchema: defaultSchemaOpt,
+      matchDefaultSchemas: true,
+      stripDefaultSchema: true,
     })
 
     if (downResult.error) {

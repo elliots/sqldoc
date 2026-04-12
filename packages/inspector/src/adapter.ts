@@ -6,6 +6,8 @@ export interface DatabaseAdapter {
   query(sql: string, args?: unknown[]): Promise<QueryResult>
   exec(sql: string, args?: unknown[]): Promise<ExecResult>
   close(): Promise<void>
+  /** The current/default schema name, detected at connection time. */
+  currentSchema: string
 }
 
 /**

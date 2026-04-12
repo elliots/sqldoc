@@ -55,6 +55,7 @@ export async function createMysqlDockerAdapter(
   }
 
   return {
+    currentSchema: mysqlAdapter.currentSchema,
     query: mysqlAdapter.query,
     exec: mysqlAdapter.exec,
     async close() {

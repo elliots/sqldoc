@@ -183,7 +183,12 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
     const client = new Client(directUrl)
     await client.connect()
 
+    // Detect current schema at connection time
+    const schemaResult = await client.query({ text: 'SELECT current_schema()', rowMode: 'array' })
+    const currentSchema = (schemaResult.rows as unknown[][])[0]?.[0] as string
+
     const adapter: DatabaseAdapter = {
+      currentSchema,
       async query(sql: string, args?: unknown[]): Promise<QueryResult> {
         const result = await client.query({ text: sql, values: args, rowMode: 'array' })
         return {

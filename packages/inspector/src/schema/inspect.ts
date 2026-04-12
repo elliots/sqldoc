@@ -141,6 +141,8 @@ export interface DiffOptions {
   skipChanges?: Change[]
   /** The diffing mode. */
   mode?: DiffMode
+  /** When true, treat schemas matching their realm's defaultSchema as equivalent even if names differ. */
+  matchDefaultSchemas: boolean
 }
 
 // -- Query Interface --
@@ -163,4 +165,6 @@ export interface ExecResult {
 export interface ExecQuerier {
   query(sql: string, args?: unknown[]): Promise<QueryResult>
   exec(sql: string, args?: unknown[]): Promise<ExecResult>
+  /** The current/default schema name, detected at connection time. */
+  currentSchema: string
 }

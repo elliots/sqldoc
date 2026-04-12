@@ -13,6 +13,7 @@ async function createBunSqliteAdapter(filename: string): Promise<DatabaseAdapter
   const db = new Database(filename)
 
   return {
+    currentSchema: 'main',
     async query(sql: string, args?: unknown[]): Promise<QueryResult> {
       const stmt = db.query(sql)
       const columns = stmt.columnNames
@@ -42,6 +43,7 @@ async function createNodeSqliteAdapter(filename: string): Promise<DatabaseAdapte
   const db = new DatabaseSync(filename)
 
   return {
+    currentSchema: 'main',
     async query(sql: string, args?: unknown[]): Promise<QueryResult> {
       const stmt = db.prepare(sql)
       const rows = (args ? stmt.all(...(args as SQLInputValue[])) : stmt.all()) as Record<string, unknown>[]

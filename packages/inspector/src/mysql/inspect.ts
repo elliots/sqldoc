@@ -328,6 +328,7 @@ export class MysqlInspector implements Inspector {
       }
     }
 
+    realm.defaultSchema = await this.currentSchema()
     return realm
   }
 
@@ -400,7 +401,7 @@ export class MysqlInspector implements Inspector {
       const s = schemaMap.get(tSchema)
       if (!s) continue
 
-      const t: Table = { name: tName, columns: [] }
+      const t: Table = { name: tName, schema: tSchema, columns: [] }
       const attrs: Attr[] = []
 
       const charset = row.CHARACTER_SET_NAME as string | null
@@ -835,7 +836,7 @@ export class MysqlInspector implements Inspector {
       const s = schemaMap.get(sName)
       if (!s) continue
 
-      const v: View = { name: vName, def }
+      const v: View = { name: vName, schema: sName, def }
       if (checkOpt && checkOpt.toUpperCase() !== 'NONE') {
         if (!v.attrs) v.attrs = []
         v.attrs.push({ kind: 'comment' as const, text: `CHECK_OPTION=${checkOpt}` })
@@ -967,6 +968,7 @@ export class MysqlInspector implements Inspector {
       if (rtype === 'FUNCTION') {
         const f: Func = {
           name,
+          schema: sName,
           body: info.body,
           lang: info.lang || undefined,
           args: funcArgs.length > 0 ? funcArgs : undefined,
@@ -983,6 +985,7 @@ export class MysqlInspector implements Inspector {
       } else if (rtype === 'PROCEDURE') {
         const p: Proc = {
           name,
+          schema: sName,
           body: info.body,
           lang: info.lang || undefined,
           args: funcArgs.length > 0 ? funcArgs : undefined,
@@ -996,10 +999,7 @@ export class MysqlInspector implements Inspector {
   // -- Current Schema --
 
   async currentSchema(): Promise<string> {
-    const result = await this.db.query('SELECT DATABASE() AS s', [])
-    const schema = (result.rows[0] as any)?.s
-    if (!schema) throw new Error('failed to detect current schema from database connection')
-    return schema
+    return this.db.currentSchema
   }
 }
 

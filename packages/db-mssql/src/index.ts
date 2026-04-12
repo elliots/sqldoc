@@ -74,7 +74,12 @@ const plugin: DatabaseAdapterPlugin = {
     const pool = await mssql.default.connect(config as any)
     const log = process.env.DEBUG ? (msg: string) => console.error(`[mssql] ${msg}`) : () => {}
 
+    // Detect current schema at connection time
+    const schemaResult = await pool.request().query('SELECT SCHEMA_NAME() AS s')
+    const currentSchema = schemaResult.recordset[0]?.s as string
+
     return {
+      currentSchema,
       async query(sql: string, args?: unknown[]): Promise<QueryResult> {
         const request = pool.request()
         const { sql: boundSql } = bindArgs(request, sql, args)

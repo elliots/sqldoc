@@ -34,7 +34,12 @@ const plugin: DatabaseAdapterPlugin = {
       extensions: Object.keys(extModules).length > 0 ? extModules : undefined,
     })
 
+    // Detect current schema at connection time
+    const schemaResult = await db.query('SELECT current_schema()', [], { rowMode: 'array' })
+    const currentSchema = (schemaResult.rows as unknown[][])[0]?.[0] as string
+
     return {
+      currentSchema,
       async query(sql: string, args?: unknown[]): Promise<QueryResult> {
         const result = await db.query(sql, args, { rowMode: 'array' })
         return {
