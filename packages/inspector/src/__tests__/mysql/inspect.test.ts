@@ -32,6 +32,7 @@ if (!optIn) {
 
     after(async () => {
       if (inspector) await inspector.close()
+      if (db) await db.close()
     })
 
     it('inspects a basic table with columns, PK, and AUTO_INCREMENT', async () => {
