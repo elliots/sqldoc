@@ -25,7 +25,7 @@
     "typecheck": "tsgo -noEmit"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=25"
   },
   "dependencies": {
     "@npmcli/arborist": "^9.4.2",
