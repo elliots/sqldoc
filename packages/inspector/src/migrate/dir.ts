@@ -39,6 +39,7 @@ export interface Dir {
 export class LocalFile implements File {
   readonly name: string
   readonly content: string
+  private _stmtDecls: Stmt[] | undefined
 
   constructor(name: string, content: string) {
     this.name = name
@@ -65,11 +66,13 @@ export class LocalFile implements File {
   }
 
   stmtDecls(): Stmt[] {
+    if (this._stmtDecls) return this._stmtDecls
     const scanner = new Scanner({
       matchBeginAtomic: true,
       matchDollarQuote: true,
     })
-    return scanner.scan(this.content)
+    this._stmtDecls = scanner.scan(this.content)
+    return this._stmtDecls
   }
 
   fileDirective(name: string): string[] {

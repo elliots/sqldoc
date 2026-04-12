@@ -1,5 +1,9 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/migrate/migrate.go
+//
+// The migrate-layer interfaces (ExecQuerier, Inspector, Differ, etc.) intentionally
+// differ from the schema inspection layer. They model migration execution concerns
+// and are re-exported with Migrate* prefixes (e.g. MigrateInspector) via index.ts.
 
 import type { Realm } from '../schema/schema.ts'
 

@@ -4,7 +4,7 @@
 import type { PlanDriver } from '../internal/plan.ts'
 import { Builder, mayWrap } from '../internal/sqlx.ts'
 import type { Change } from '../schema/migrate.ts'
-import type { Attr, Check, Column, ForeignKey, Func, Index, Proc, Table, Trigger, View } from '../schema/schema.ts'
+import type { Attr, Check, Column, ForeignKey, Func, Index, Table, Trigger, View } from '../schema/schema.ts'
 import { typeDDL } from './convert.ts'
 import { IndexTypeBTree, IndexTypeFullText, IndexTypeHash, IndexTypeSpatial, quote } from './driver.ts'
 import type { AutoIncrementAttr, EngineAttr, IndexTypeAttr, OnUpdateAttr, SubPartAttr } from './inspect.ts'
@@ -14,10 +14,6 @@ import type { AutoIncrementAttr, EngineAttr, IndexTypeAttr, OnUpdateAttr, SubPar
 function findAttr<T>(attrs: Attr[] | undefined, kind: string): T | undefined {
   if (!attrs) return undefined
   return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
-}
-
-function _hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
-  return findAttr(attrs, kind) !== undefined
 }
 
 // -- MySQL Builder Factory --
@@ -502,32 +498,6 @@ function buildMySQLFuncDDL(f: Func): string {
   }
   result += '\n'
   result += f.body ?? ''
-  return result
-}
-
-// -- Build MySQL PROCEDURE DDL --
-
-function _buildMySQLProcDDL(p: Proc): string {
-  let result = 'CREATE PROCEDURE '
-  if (p.schema) result += `\`${p.schema}\`.`
-  result += `\`${p.name}\`(`
-  for (let i = 0; i < (p.args ?? []).length; i++) {
-    if (i > 0) result += ', '
-    const a = p.args![i]
-    if (a.mode && a.mode !== 'IN') {
-      result += `${a.mode} `
-    }
-    if (a.name) result += `\`${a.name}\` `
-    if (a.type) {
-      try {
-        result += typeDDL(a.type.type)
-      } catch {
-        result += a.type.raw ?? a.type.type.T
-      }
-    }
-  }
-  result += ')\n'
-  result += p.body ?? ''
   return result
 }
 
