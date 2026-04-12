@@ -61,7 +61,7 @@ export const ChangeKind = {
   ChangeUpdateAction: 1 << 13,
   ChangeDeleteAction: 1 << 14,
 } as const
-export type ChangeKind = (typeof ChangeKind)[keyof typeof ChangeKind]
+export type ChangeKind = number
 
 // -- Schema Changes --
 

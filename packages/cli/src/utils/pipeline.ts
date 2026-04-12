@@ -30,7 +30,7 @@ export interface PipelineResult {
   /** Count of errors encountered */
   totalErrors: number
   /** Atlas realm from initial inspect (pre-compile schema) */
-  atlasRealm?: unknown
+  atlasRealm?: Realm
   /** Set of external object names (from externalRealm). Empty when no @external directives. */
   externalObjectNames: Set<string>
   /** File provenance map (absolute path -> provenance) */

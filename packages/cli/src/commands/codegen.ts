@@ -2,7 +2,6 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { DocsMeta, ProjectContext } from '@sqldoc/core'
 import { loadConfig, loadImports, resolveAllProjects, resolveProject } from '@sqldoc/core'
-import type { Realm } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
@@ -121,7 +120,7 @@ export async function codegenCommand(
       // Apply skipExternal filtering if configured (D-20)
       let codegenRealm = postCompileRealm
       if (config.codegen?.skipExternal && result.externalObjectNames.size > 0 && codegenRealm) {
-        codegenRealm = filterExternalFromRealm(codegenRealm as Realm, result.externalObjectNames)
+        codegenRealm = filterExternalFromRealm(codegenRealm, result.externalObjectNames)
       }
 
       for (const [nsName, plugin] of projectPlugins) {
