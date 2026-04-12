@@ -148,7 +148,7 @@ export function typeDDL(t: SchemaType): string {
     case 'enum': {
       const values = (t.values ?? []).map((v) => {
         if (isQuoted(v, '"', "'")) return v
-        return `'${v}'`
+        return `'${v.replaceAll("'", "''")}'`
       })
       if (t.T === TypeSet) {
         return `set(${values.join(',')})`
@@ -177,7 +177,7 @@ export function formatValues(vs: string[]): string {
   return vs
     .map((v) => {
       if (isQuoted(v, '"', "'")) return v
-      return `'${v}'`
+      return `'${v.replaceAll("'", "''")}'`
     })
     .join(',')
 }

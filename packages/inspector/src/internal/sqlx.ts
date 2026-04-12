@@ -442,7 +442,8 @@ export class Builder {
   /** Write a quoted identifier. */
   Ident(s: string): this {
     if (s !== '') {
-      this.buf += `${this.quoteOpening + s + this.quoteClosing} `
+      const escaped = s.replaceAll(this.quoteClosing, this.quoteClosing + this.quoteClosing)
+      this.buf += `${this.quoteOpening}${escaped}${this.quoteClosing} `
     }
     return this
   }

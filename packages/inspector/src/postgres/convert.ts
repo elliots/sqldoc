@@ -105,9 +105,9 @@ export function normalizeDefault(expr: string | undefined, _typeName: string): s
 function trimCast(s: string): string {
   const i = s.lastIndexOf('::')
   if (i === -1) return s
-  // Verify the rest is only letters and spaces (a simple type reference)
+  // Verify the rest is a simple type reference (letters, digits, spaces, parens for precision)
   const rest = s.slice(i + 2)
-  if (/^[a-zA-Z\s]+$/.test(rest)) {
+  if (/^[a-zA-Z0-9_\s(),.]+$/.test(rest)) {
     return s.slice(0, i)
   }
   return s
