@@ -30,19 +30,27 @@ export function priority(change: Change): number {
     case 'modify_table':
     case 'modify_schema':
       // Each should have a single change since we apply `flat` before sorting
-      return (change as any).changes?.length > 0 ? priority((change as any).changes[0]) : 4
-    case 'add_column':
-      return 1
+      return (change as any).changes?.length > 0 ? priority((change as any).changes[0]) : 5
     case 'drop_index':
     case 'drop_foreign_key':
     case 'drop_attr':
     case 'drop_check':
+      return 1
+    case 'drop_column':
       return 2
+    case 'modify_column':
     case 'modify_index':
     case 'modify_foreign_key':
+    case 'modify_attr':
       return 3
-    default:
+    case 'add_column':
+    case 'add_index':
+    case 'add_foreign_key':
+    case 'add_check':
+    case 'add_attr':
       return 4
+    default:
+      return 5
   }
 }
 
