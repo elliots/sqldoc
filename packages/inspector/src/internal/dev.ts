@@ -38,10 +38,7 @@ export interface SnapshotOptions {
 
 /**
  * Create a restore function that reverts the dev database to the given desired state.
- * Matches Go Atlas's Snapshot/RestoreFunc pattern:
- *
- * - PostgreSQL (single public schema, empty): DROP SCHEMA CASCADE + recreate
- * - General: diff current→desired + apply changes
+ * Uses general diff+apply for all dialects — no fragile fast paths.
  *
  * @param db - Database connection
  * @param inspector - Schema inspector
@@ -50,112 +47,12 @@ export interface SnapshotOptions {
  * @param diffAndApply - Function to compute diff and apply changes (provided by caller)
  */
 export function createRestoreFunc(
-  db: ExecQuerier,
+  _db: ExecQuerier,
   inspector: Inspector,
   desired: Realm,
-  dialect: string,
+  _dialect: string,
   diffAndApply: (current: Realm, desired: Realm) => Promise<void>,
 ): RestoreFunc {
-  const _isSqlite = dialect === 'sqlite'
-  const _isMySQL = dialect === 'mysql'
-  const isMssql = dialect === 'mssql'
-  const isPostgres = dialect === 'postgres'
-
-  // Fast path for Postgres with single empty public schema (matches Go Atlas RealmRestoreFunc)
-  if (
-    isPostgres &&
-    desired.schemas.length <= 1 &&
-    desired.schemas[0]?.name === 'public' &&
-    (desired.schemas[0]?.tables?.length ?? 0) === 0 &&
-    (desired.schemas[0]?.views?.length ?? 0) === 0 &&
-    (desired.schemas[0]?.funcs?.length ?? 0) === 0 &&
-    (desired.schemas[0]?.procs?.length ?? 0) === 0
-  ) {
-    return async () => {
-      const current = await inspector.inspectRealm()
-      // Already clean
-      if (current.schemas.length === 0) return
-      if (
-        current.schemas.length === 1 &&
-        current.schemas[0].name === 'public' &&
-        (current.schemas[0].tables?.length ?? 0) === 0 &&
-        (current.schemas[0].views?.length ?? 0) === 0 &&
-        (current.schemas[0].funcs?.length ?? 0) === 0 &&
-        (current.schemas[0].procs?.length ?? 0) === 0 &&
-        (current.schemas[0].triggers?.length ?? 0) === 0 &&
-        ((current.schemas[0].attrs ?? []) as any[]).filter(
-          (a) => a?.kind === 'enum' || a?.kind === 'domain' || a?.kind === 'range_type' || a?.kind === 'aggregate',
-        ).length === 0
-      ) {
-        return
-      }
-      // Drop all schemas and recreate public
-      const stmts: string[] = []
-      for (const schema of current.schemas) {
-        stmts.push(`DROP SCHEMA IF EXISTS "${schema.name}" CASCADE`)
-      }
-      stmts.push('CREATE SCHEMA IF NOT EXISTS "public"')
-      await db.exec(stmts.join(';\n'))
-    }
-  }
-
-  // MSSQL fast path: drop all user objects in dbo (can't DROP SCHEMA dbo)
-  if (isMssql) {
-    return async () => {
-      // Drop in dependency order: FKs, then tables, views, procs, funcs, triggers, sequences
-      await db.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'ALTER TABLE [' + s.name + '].[' + t.name + '] DROP CONSTRAINT [' + fk.name + '];'
-        FROM sys.foreign_keys fk
-        JOIN sys.tables t ON fk.parent_object_id = t.object_id
-        JOIN sys.schemas s ON t.schema_id = s.schema_id
-        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-      await db.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'DROP TABLE [' + s.name + '].[' + t.name + '];'
-        FROM sys.tables t
-        JOIN sys.schemas s ON t.schema_id = s.schema_id
-        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-      await db.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'DROP VIEW [' + s.name + '].[' + v.name + '];'
-        FROM sys.views v
-        JOIN sys.schemas s ON v.schema_id = s.schema_id
-        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-      await db.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'DROP PROCEDURE [' + s.name + '].[' + o.name + '];'
-        FROM sys.objects o
-        JOIN sys.schemas s ON o.schema_id = s.schema_id
-        WHERE o.type = 'P' AND s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-      await db.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'DROP FUNCTION [' + s.name + '].[' + o.name + '];'
-        FROM sys.objects o
-        JOIN sys.schemas s ON o.schema_id = s.schema_id
-        WHERE o.type IN ('FN', 'IF', 'TF') AND s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-      await db.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'DROP SEQUENCE [' + s.name + '].[' + seq.name + '];'
-        FROM sys.sequences seq
-        JOIN sys.schemas s ON seq.schema_id = s.schema_id
-        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-    }
-  }
-
-  // General path: diff current→desired and apply changes (matches Go Atlas)
   return async () => {
     const current = await inspector.inspectRealm()
     await diffAndApply(current, desired)
