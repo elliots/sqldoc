@@ -101,6 +101,10 @@ export class MysqlPlan implements PlanDriver {
           phase1.push({ type: 'drop_index', I: c.from })
           phase2.push({ type: 'add_index', I: c.to })
           break
+        case 'modify_check':
+          phase1.push({ type: 'drop_check', C: c.from })
+          phase2.push({ type: 'add_check', C: c.to })
+          break
         default:
           phase2.push(c)
           break
@@ -128,11 +132,10 @@ export class MysqlPlan implements PlanDriver {
 
   /** Generate SQL for adding a view. */
   addView(view: View): string[] {
+    if (!view.name) throw new Error('addView: view.name is required')
+    if (!view.def) throw new Error(`addView: view "${view.name}" is missing a definition`)
     const b = mysqlBuilder()
-    b.P('CREATE VIEW')
-      .View(view)
-      .P('AS')
-      .P(view.def ?? '')
+    b.P('CREATE VIEW').View(view).P('AS').P(view.def)
     return [b.toString()]
   }
 
@@ -247,11 +250,12 @@ export class MysqlPlan implements PlanDriver {
 
       case 'add_attr':
       case 'modify_attr':
-      case 'drop_attr': {
-        const attr = change.type === 'drop_attr' ? change.A : change.type === 'modify_attr' ? change.to : change.A
-        this.tableAttrClause(b, attr)
+        this.tableAttrClause(b, change.type === 'modify_attr' ? change.to : change.A)
         break
-      }
+
+      case 'drop_attr':
+        this.dropTableAttrClause(b, change.A)
+        break
 
       case 'rename_column':
         b.P('RENAME COLUMN').Ident(change.from.name).P('TO').Ident(change.to.name)
@@ -458,6 +462,30 @@ export class MysqlPlan implements PlanDriver {
         b.P('COMMENT', quote(cm.text))
         break
       }
+    }
+  }
+
+  /** Emit ALTER TABLE clause that clears/resets a table attribute. */
+  protected dropTableAttrClause(b: Builder, a: Attr): void {
+    if (!('kind' in a)) return
+    const kind = (a as any).kind
+    switch (kind) {
+      case 'auto_increment':
+        b.P('AUTO_INCREMENT', '1')
+        break
+      case 'engine':
+        // Cannot truly drop engine; reset to InnoDB (MySQL default)
+        b.P('ENGINE', 'InnoDB')
+        break
+      case 'charset':
+        b.P('CHARSET', 'utf8mb4')
+        break
+      case 'collation':
+        b.P('COLLATE', 'utf8mb4_0900_ai_ci')
+        break
+      case 'comment':
+        b.P('COMMENT', "''")
+        break
     }
   }
 

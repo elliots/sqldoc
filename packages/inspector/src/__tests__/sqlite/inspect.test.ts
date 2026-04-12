@@ -117,10 +117,12 @@ describe('SQLite Inspector', () => {
 
       const table = mainSchema!.tables?.find((t) => t.name === 'affinity_test')
       assert.ok(table, 'should find affinity_test table')
-      assert.equal(table!.columns!.length, 7, 'should have 7 columns')
+      const foundTable = table!
+      const cols = foundTable.columns!
+      assert.equal(cols.length, 7, 'should have 7 columns')
 
       // Each column should have a type
-      for (const col of table!.columns!) {
+      for (const col of cols) {
         assert.ok(col.type, `column ${col.name} should have type`)
         assert.ok(col.type.type.T || col.type.raw, `column ${col.name} should have T or raw type`)
       }
