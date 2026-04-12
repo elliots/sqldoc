@@ -285,18 +285,23 @@ function compileWithRealm(
     missingNamespaces,
     fileNamespaces,
   }
+  // Default schema names are stripped from object identity (e.g. public.users → users)
+  const defaultSchema = config.dialect === 'sqlite' ? 'main' : config.dialect === 'mssql' ? 'dbo' : 'public'
+
   for (const schema of realm.schemas) {
+    const qualify = (name: string) => (schema.name && schema.name !== defaultSchema ? `${schema.name}.${name}` : name)
+
     // Process tables
     if (schema.tables) {
       for (const table of schema.tables) {
-        processRealmObject(table, 'table', table.name, actx)
+        processRealmObject(table, 'table', qualify(table.name), actx)
       }
     }
 
     // Process views
     if (schema.views) {
       for (const view of schema.views) {
-        processRealmObject(view, 'view', view.name, actx)
+        processRealmObject(view, 'view', qualify(view.name), actx)
       }
     }
   }

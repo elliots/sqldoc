@@ -73,6 +73,7 @@ function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext<any> {
     config: { dialect: 'postgres' },
     output: './out',
     templateName: 'python-dataclasses',
+    defaultSchema: 'public',
     ...overrides,
   }
 }

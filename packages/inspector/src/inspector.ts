@@ -23,7 +23,7 @@ import { PostgresInspector } from './postgres/inspect.ts'
 import { PostgresPlan } from './postgres/migrate.ts'
 import type { ExecQuerier, ExecResult, Inspector, QueryResult } from './schema/inspect.ts'
 import type { Change } from './schema/migrate.ts'
-import type { Column, Realm, Rename, RenameCandidate, Table } from './schema/schema.ts'
+import type { Column, Realm, Rename, RenameCandidate, Schema, Table } from './schema/schema.ts'
 import { SqliteDiff } from './sqlite/diff.ts'
 import { SqliteInspector } from './sqlite/inspect.ts'
 import { SqlitePlan } from './sqlite/migrate.ts'
@@ -274,6 +274,7 @@ function columnsTypeMatch(a: Column, b: Column): boolean {
  */
 function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string): string[] {
   const stmts: string[] = []
+  const defaultSchema = dialect === 'sqlite' ? 'main' : dialect === 'mssql' ? 'dbo' : 'public'
   const q =
     dialect === 'mysql'
       ? (s: string) => `\`${s.replaceAll('`', '``')}\``
@@ -301,15 +302,20 @@ function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string)
         }
         if (col) {
           col.name = r.newName
-          stmts.push(`ALTER TABLE ${q(r.table)} RENAME COLUMN ${q(r.oldName)} TO ${q(r.newName)}`)
+          const found = findTableInRealm(fromRealm, r.table)
+          const schemaPrefix =
+            found?.schema.name && found.schema.name !== defaultSchema ? `${q(found.schema.name)}.` : ''
+          stmts.push(`ALTER TABLE ${schemaPrefix}${q(r.table)} RENAME COLUMN ${q(r.oldName)} TO ${q(r.newName)}`)
         }
         break
       }
       case 'table': {
-        const table = findTableInRealm(fromRealm, r.oldName)
-        if (table) {
-          table.name = r.newName
-          stmts.push(`ALTER TABLE ${q(r.oldName)} RENAME TO ${q(r.newName)}`)
+        const found = findTableInRealm(fromRealm, r.oldName)
+        if (found) {
+          found.table.name = r.newName
+          const schemaPrefix =
+            found.schema.name && found.schema.name !== defaultSchema ? `${q(found.schema.name)}.` : ''
+          stmts.push(`ALTER TABLE ${schemaPrefix}${q(r.oldName)} RENAME TO ${q(r.newName)}`)
         }
         break
       }
@@ -319,19 +325,33 @@ function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string)
   return stmts
 }
 
-function findTableInRealm(realm: Realm, name: string): Table | undefined {
+function findTableInRealm(realm: Realm, name: string): { table: Table; schema: Schema } | undefined {
+  // Support schema-qualified names (e.g. "audit.users")
+  const dotIdx = name.indexOf('.')
+  if (dotIdx !== -1) {
+    const schemaName = name.slice(0, dotIdx)
+    const tableName = name.slice(dotIdx + 1)
+    for (const s of realm.schemas) {
+      if (s.name !== schemaName) continue
+      for (const t of s.tables ?? []) {
+        if (t.name === tableName) return { table: t, schema: s }
+      }
+    }
+    return undefined
+  }
+  // Bare name: search all schemas
   for (const s of realm.schemas) {
     for (const t of s.tables ?? []) {
-      if (t.name === name) return t
+      if (t.name === name) return { table: t, schema: s }
     }
   }
   return undefined
 }
 
 function findColumnInRealm(realm: Realm, tableName: string, colName: string): Column | undefined {
-  const table = findTableInRealm(realm, tableName)
-  if (!table) return undefined
-  return table.columns.find((c) => c.name === colName)
+  const result = findTableInRealm(realm, tableName)
+  if (!result) return undefined
+  return result.table.columns.find((c) => c.name === colName)
 }
 
 // -- Schema Normalization --

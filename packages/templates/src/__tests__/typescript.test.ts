@@ -73,6 +73,7 @@ function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext {
     config: { dialect: 'postgres' },
     output: './out',
     templateName: 'typescript',
+    defaultSchema: 'public',
     ...overrides,
   }
 }

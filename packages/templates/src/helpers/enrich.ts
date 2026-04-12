@@ -201,7 +201,9 @@ export function enrichRealm(ctx: TemplateContext): EnrichedSchema {
 
   const tables: EnrichedTable[] = rawTables.map((table) => {
     const schema = table._schema
-    const tableTags = findTagsForObject(ctx.allFileTags, table.name)
+    // Schema-qualified name for non-default schemas (matches compiler objectName)
+    const tagLookupName = schema && schema !== defaultSchema ? `${schema}.${table.name}` : table.name
+    const tableTags = findTagsForObject(ctx.allFileTags, tagLookupName)
     const skipped = isSkipped(tableTags, ctx.templateName)
 
     // Compute pascalName with schema-awareness

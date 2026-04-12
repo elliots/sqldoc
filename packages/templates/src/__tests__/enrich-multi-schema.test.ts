@@ -181,7 +181,7 @@ describe('multi-schema enrichment', () => {
           sourceFile: 'test.sql',
           objects: [
             {
-              objectName: 'users',
+              objectName: 'auth.users',
               target: 'table',
               tags: [{ namespace: 'codegen', tag: 'rename', args: ['Account'] }],
             },
@@ -203,12 +203,12 @@ describe('multi-schema enrichment', () => {
           sourceFile: 'test.sql',
           objects: [
             {
-              objectName: 'users',
+              objectName: 'auth.users',
               target: 'table',
               tags: [{ namespace: 'codegen', tag: 'rename', args: ['Account'] }],
             },
             {
-              objectName: 'projects',
+              objectName: 'core.projects',
               target: 'table',
               tags: [{ namespace: 'codegen', tag: 'rename', args: ['Account'] }],
             },
@@ -261,10 +261,9 @@ describe('multi-schema enrichment', () => {
           sourceFile: 'test.sql',
           objects: [
             {
-              objectName: 'users',
+              objectName: 'core.users',
               target: 'table',
-              // Skip the core.users (will be matched by first occurrence — but since both have same name,
-              // we mark with codegen.skip which applies to all "users" objects)
+              // Skip the core.users so only auth.users remains — no clash
               tags: [{ namespace: 'codegen', tag: 'skip', args: [] }],
             },
           ],

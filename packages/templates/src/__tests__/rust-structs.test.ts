@@ -55,6 +55,7 @@ function makeCtx(overrides: Partial<TemplateContext> = {}): TemplateContext<any>
     config: { dialect: 'postgres' },
     output: './generated',
     templateName: 'rust-structs',
+    defaultSchema: 'public',
     ...overrides,
   }
 }
