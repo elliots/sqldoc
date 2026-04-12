@@ -132,7 +132,7 @@ describe('PostgreSQL Inspector', () => {
     }
   })
 
-  it('inspects advanced Postgres types (enum, json, uuid, timestamp tz, serial)', async () => {
+  it('inspects advanced Postgres types (enum, jsonb, timestamptz, bigserial, numeric)', async () => {
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
     const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
 

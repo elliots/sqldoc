@@ -157,19 +157,21 @@ export class PostgresDiff implements DiffDriver {
     // Aggregate diff (stored in attrs)
     const fromAggs = ((from.attrs ?? []) as any[]).filter((a) => a?.kind === 'aggregate')
     const toAggs = ((to.attrs ?? []) as any[]).filter((a) => a?.kind === 'aggregate')
-    const toAggMap = new Map(toAggs.map((a) => [a.name, a]))
-    const fromAggMap = new Map(fromAggs.map((a) => [a.name, a]))
+    const aggKey = (a: any): string => `${a.name}(${(a.args ?? []).join(',')})`
+    const toAggMap = new Map(toAggs.map((a) => [aggKey(a), a]))
+    const fromAggMap = new Map(fromAggs.map((a) => [aggKey(a), a]))
 
     for (const a of fromAggs) {
-      if (!toAggMap.has(a.name)) {
+      const k = aggKey(a)
+      if (!toAggMap.has(k)) {
         changes.push({ type: 'drop_object', O: a } as any)
-      } else if (objectChanged(a, toAggMap.get(a.name))) {
+      } else if (objectChanged(a, toAggMap.get(k))) {
         changes.push({ type: 'drop_object', O: a } as any)
-        changes.push({ type: 'add_object', O: toAggMap.get(a.name) } as any)
+        changes.push({ type: 'add_object', O: toAggMap.get(k) } as any)
       }
     }
     for (const a of toAggs) {
-      if (!fromAggMap.has(a.name)) {
+      if (!fromAggMap.has(aggKey(a))) {
         changes.push({ type: 'add_object', O: a } as any)
       }
     }

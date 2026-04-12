@@ -33,11 +33,16 @@ function mssqlBuilder(schema?: string): Builder {
 
 // -- Helper: bracket-quoted table reference --
 
+/** Bracket-quote an identifier for MSSQL, escaping any ] inside. */
+function quoteName(s: string): string {
+  return `[${s.replaceAll(']', ']]')}]`
+}
+
 function tableRef(table: Table): string {
   if (table.schema) {
-    return `[${table.schema}].[${table.name}]`
+    return `${quoteName(table.schema)}.${quoteName(table.name)}`
   }
-  return `[${table.name}]`
+  return quoteName(table.name)
 }
 
 // -- Helper: format default expression for DDL --
@@ -447,12 +452,15 @@ export class MssqlPlan implements PlanDriver {
    */
   private dropDefaultConstraint(table: Table, colName: string): string[] {
     const schemaName = table.schema ?? 'dbo'
+    const safeSchema = schemaName.replaceAll("'", "''")
+    const safeTable = table.name.replaceAll("'", "''")
+    const safeCol = colName.replaceAll("'", "''")
     return [
       `DECLARE @DF_Name NVARCHAR(256)\n` +
         `SELECT @DF_Name = dc.name\n` +
         `FROM sys.default_constraints dc\n` +
         `JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id\n` +
-        `WHERE dc.parent_object_id = OBJECT_ID('${schemaName}.${table.name}') AND c.name = '${colName}'\n` +
+        `WHERE dc.parent_object_id = OBJECT_ID('${safeSchema}.${safeTable}') AND c.name = '${safeCol}'\n` +
         `IF @DF_Name IS NOT NULL\n` +
         `  EXEC('ALTER TABLE ${tableRef(table)} DROP CONSTRAINT [' + @DF_Name + ']')`,
     ]
@@ -519,9 +527,9 @@ export class MssqlPlan implements PlanDriver {
     if (idx.unique) b.P('UNIQUE')
 
     // Index type
-    const idxType = findAttr<{ kind: 'index_type'; T: string }>(idx.attrs, 'index_type')
-    if (idxType) {
-      b.P(idxType.T)
+    const clustered = findAttr<{ kind: 'clustered'; V: boolean }>(idx.attrs, 'clustered')
+    if (clustered?.V === true) {
+      b.P('CLUSTERED')
     } else {
       b.P('NONCLUSTERED')
     }
@@ -545,9 +553,9 @@ export class MssqlPlan implements PlanDriver {
     }
 
     // WHERE (filtered index)
-    const pred = findAttr<{ kind: 'predicate'; P: string }>(idx.attrs, 'predicate')
-    if (pred?.P) {
-      b.P('WHERE').P(pred.P)
+    const filter = findAttr<{ kind: 'filter'; expr: string }>(idx.attrs, 'filter')
+    if (filter?.expr) {
+      b.P('WHERE').P(filter.expr)
     }
 
     return b.toString()
@@ -838,15 +846,15 @@ function addExtendedProperty(
   if (level === 'COLUMN' && columnName) {
     return (
       `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N${quote(value)}, ` +
-      `@level0type=N'SCHEMA', @level0name=N'${schema}', ` +
-      `@level1type=N'TABLE', @level1name=N'${tableName}', ` +
-      `@level2type=N'COLUMN', @level2name=N'${columnName}'`
+      `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
+      `@level1type=N'TABLE', @level1name=${quoteName(tableName)}, ` +
+      `@level2type=N'COLUMN', @level2name=${quoteName(columnName)}`
     )
   }
   return (
     `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N${quote(value)}, ` +
-    `@level0type=N'SCHEMA', @level0name=N'${schema}', ` +
-    `@level1type=N'TABLE', @level1name=N'${tableName}'`
+    `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
+    `@level1type=N'TABLE', @level1name=${quoteName(tableName)}`
   )
 }
 
@@ -864,15 +872,15 @@ function updateExtendedProperty(
   if (level === 'COLUMN' && columnName) {
     return (
       `EXEC sp_updateextendedproperty @name=N'MS_Description', @value=N${quote(value)}, ` +
-      `@level0type=N'SCHEMA', @level0name=N'${schema}', ` +
-      `@level1type=N'TABLE', @level1name=N'${tableName}', ` +
-      `@level2type=N'COLUMN', @level2name=N'${columnName}'`
+      `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
+      `@level1type=N'TABLE', @level1name=${quoteName(tableName)}, ` +
+      `@level2type=N'COLUMN', @level2name=${quoteName(columnName)}`
     )
   }
   return (
     `EXEC sp_updateextendedproperty @name=N'MS_Description', @value=N${quote(value)}, ` +
-    `@level0type=N'SCHEMA', @level0name=N'${schema}', ` +
-    `@level1type=N'TABLE', @level1name=N'${tableName}'`
+    `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
+    `@level1type=N'TABLE', @level1name=${quoteName(tableName)}`
   )
 }
 
@@ -889,14 +897,14 @@ function dropExtendedProperty(
   if (level === 'COLUMN' && columnName) {
     return (
       `EXEC sp_dropextendedproperty @name=N'MS_Description', ` +
-      `@level0type=N'SCHEMA', @level0name=N'${schema}', ` +
-      `@level1type=N'TABLE', @level1name=N'${tableName}', ` +
-      `@level2type=N'COLUMN', @level2name=N'${columnName}'`
+      `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
+      `@level1type=N'TABLE', @level1name=${quoteName(tableName)}, ` +
+      `@level2type=N'COLUMN', @level2name=${quoteName(columnName)}`
     )
   }
   return (
     `EXEC sp_dropextendedproperty @name=N'MS_Description', ` +
-    `@level0type=N'SCHEMA', @level0name=N'${schema}', ` +
-    `@level1type=N'TABLE', @level1name=N'${tableName}'`
+    `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
+    `@level1type=N'TABLE', @level1name=${quoteName(tableName)}`
   )
 }

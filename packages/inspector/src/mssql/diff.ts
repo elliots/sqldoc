@@ -107,6 +107,8 @@ export class MssqlDiff implements DiffDriver {
         changes.push({ type: 'modify_attr', from: fromComment as Attr, to: toComment as Attr })
       } else if (toComment) {
         changes.push({ type: 'add_attr', A: toComment as Attr })
+      } else if (fromComment) {
+        changes.push({ type: 'drop_attr', A: fromComment as Attr })
       }
     }
     return changes
@@ -170,9 +172,9 @@ export class MssqlDiff implements DiffDriver {
     if (fromType !== toType) return true
 
     // Compare filter (WHERE clause for filtered indexes)
-    const fromFilter = findAttr<{ kind: 'predicate'; P: string }>(from, 'predicate')
-    const toFilter = findAttr<{ kind: 'predicate'; P: string }>(to, 'predicate')
-    if ((fromFilter?.P ?? '') !== (toFilter?.P ?? '')) return true
+    const fromFilter = findAttr<{ kind: 'filter'; expr: string }>(from, 'filter')
+    const toFilter = findAttr<{ kind: 'filter'; expr: string }>(to, 'filter')
+    if ((fromFilter?.expr ?? '') !== (toFilter?.expr ?? '')) return true
 
     // Compare INCLUDE columns
     const fromInclude = findAttr<{ kind: 'include'; columns: string[] }>(from, 'include')
@@ -367,7 +369,8 @@ export class MssqlDiff implements DiffDriver {
 
   /** Get the index type from attributes, defaulting to NONCLUSTERED. */
   private getIndexType(attrs: Attr[]): string {
-    const it = findAttr<{ kind: 'index_type'; T: string }>(attrs, 'index_type')
-    return (it?.T ?? 'NONCLUSTERED').toUpperCase()
+    const cl = findAttr<{ kind: 'clustered'; V: boolean }>(attrs, 'clustered')
+    if (cl?.V === true) return 'CLUSTERED'
+    return 'NONCLUSTERED'
   }
 }

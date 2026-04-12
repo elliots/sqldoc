@@ -1,7 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/inspect_oss.go
 
-import { isQuoted, mayWrap, scanString, validString } from '../internal/sqlx.ts'
+import { isQuoted, mayWrap, validString } from '../internal/sqlx.ts'
 import type { ExecQuerier, InspectOptions, Inspector, InspectRealmOption } from '../schema/inspect.ts'
 import { InspectMode, NotExistError } from '../schema/inspect.ts'
 import type {
@@ -253,8 +253,9 @@ export class MysqlInspector implements Inspector {
   private async detectVersion(): Promise<void> {
     if (this.versionDetected) return
     this.versionDetected = true
-    const result = await this.db.query('SELECT VERSION()', [])
-    const versionStr = scanString(result.rows[0] as unknown[], 0)
+    const result = await this.db.query('SELECT VERSION() AS v', [])
+    const row = result.rows[0] as any
+    const versionStr = row?.v ?? row?.['VERSION()']
     if (versionStr) {
       this.v = parseVersion(versionStr)
     }
