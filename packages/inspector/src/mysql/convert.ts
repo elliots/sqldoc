@@ -94,7 +94,7 @@ export function typeDDL(t: SchemaType): string {
       const p = t.precision ?? 0
       const s = t.scale ?? 0
       if (p < 0 || s < 0) {
-        throw new Error(`decimal type must have precision > 0 and scale >= 0: ${p}, ${s}`)
+        throw new Error(`decimal type must have precision >= 0 and scale >= 0: ${p}, ${s}`)
       }
       if (p > 0 && p < s) {
         throw new Error(`decimal type must have precision >= scale: ${p} < ${s}`)

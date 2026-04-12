@@ -276,10 +276,10 @@ function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string)
   const stmts: string[] = []
   const q =
     dialect === 'mysql'
-      ? (s: string) => `\`${s}\``
+      ? (s: string) => `\`${s.replaceAll('`', '``')}\``
       : dialect === 'mssql'
         ? (s: string) => `[${s}]`
-        : (s: string) => `"${s}"`
+        : (s: string) => `"${s.replaceAll('"', '""')}"`
 
   // Build table rename map for cross-reference
   const tableRenameMap = new Map<string, string>()

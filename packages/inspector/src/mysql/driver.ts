@@ -360,13 +360,15 @@ export function parseType(raw: string): SchemaType {
       return { kind: 'boolean', T: TypeBool }
 
     case TypeTinyInt:
+      if (size === 1) {
+        return { kind: 'boolean', T: TypeBool }
+      }
+      return { kind: 'integer', T: t, unsigned }
+
     case TypeSmallInt:
     case TypeMediumInt:
     case TypeInt:
     case TypeBigInt:
-      if (size === 1) {
-        return { kind: 'boolean', T: TypeBool }
-      }
       return { kind: 'integer', T: t, unsigned }
 
     case TypeNumeric:
@@ -503,10 +505,8 @@ export function isHex(x: string): boolean {
 // -- Helper: quote string for SQL --
 
 export function quote(s: string): string {
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    return s
-  }
-  return JSON.stringify(s)
+  if (s.startsWith("'") && s.endsWith("'")) return s
+  return `'${s.replaceAll("'", "''")}'`
 }
 
 /** Returns 'STORED' or 'VIRTUAL' from a generation type string. */
