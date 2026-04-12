@@ -196,17 +196,9 @@ export async function snapshot(
         try {
           await db.exec(batchSQL)
         } catch {
-          // On batch failure, fall back to one-by-one for precise errors.
-          // Re-execute each statement individually — idempotent DDL (CREATE IF NOT EXISTS,
-          // DROP IF EXISTS) handles already-applied statements safely.
+          // On batch failure, fall back to one-by-one for precise errors
           for (const stmt of batch) {
-            try {
-              await db.exec(stmt.text)
-            } catch (stmtErr) {
-              throw new Error(
-                `failed to execute statement: ${stmt.text.slice(0, 200)}: ${(stmtErr as any)?.message ?? stmtErr}`,
-              )
-            }
+            await db.exec(stmt.text)
           }
         }
       }

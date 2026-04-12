@@ -89,19 +89,12 @@ export class LocalFile implements File {
     return parseTags(allComments)
   }
 
-  /** Extract top-of-file comments (before the first double newline or non-comment line). */
+  /** Extract top-of-file comments (before the first blank line). */
   private topComments(): string[] {
     const lines: string[] = []
     for (const line of this.content.split(/\r?\n/)) {
       const trimmed = line.trim()
       if (trimmed === '') break
-      if (
-        !trimmed.startsWith('--') &&
-        !trimmed.startsWith('#') &&
-        !trimmed.startsWith('/*') &&
-        !trimmed.startsWith('*')
-      )
-        break
       lines.push(trimmed)
     }
     return lines
