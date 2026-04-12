@@ -220,6 +220,9 @@ export function excludeSchema(schema: Schema, patterns: string[]): Schema {
   if (patterns.length === 0) return schema
   const globs = splitPatterns(patterns)
   for (const glob of globs) {
+    if (glob.length > 2) {
+      throw new Error(`schema exclude pattern has too many parts (max 2): "${glob.join('.')}"`)
+    }
     excludeSchemaObjects(schema, glob)
   }
   return schema

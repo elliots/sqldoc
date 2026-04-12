@@ -12,6 +12,7 @@ import { extractTagsFromStmts } from './migrate/tag.ts'
 import { MysqlDiff } from './mysql/diff.ts'
 import { MysqlInspector } from './mysql/inspect.ts'
 import { MysqlPlan } from './mysql/migrate.ts'
+import { TidbDiff, TidbInspect, TidbPlan } from './mysql/tidb.ts'
 import { CrdbDiff, CrdbInspector } from './postgres/crdb.ts'
 import { PostgresDiff } from './postgres/diff.ts'
 import { PostgresInspector } from './postgres/inspect.ts'
@@ -358,12 +359,15 @@ function createComponents(
         planner: new PostgresPlan(),
       }
     case 'mysql': {
-      // TiDB uses the same inspector with minor dialect patches
-      const inspector = opts.tidb
-        ? new MysqlInspector(eq) // TiDB uses MysqlInspector with version detection
-        : new MysqlInspector(eq)
+      if (opts.tidb) {
+        return {
+          inspector: new TidbInspect(eq),
+          differ: new TidbDiff(),
+          planner: new TidbPlan(),
+        }
+      }
       return {
-        inspector,
+        inspector: new MysqlInspector(eq),
         differ: new MysqlDiff(),
         planner: new MysqlPlan(),
       }
