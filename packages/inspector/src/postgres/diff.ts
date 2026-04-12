@@ -318,9 +318,9 @@ export class PostgresDiff implements DiffDriver {
       return false
     }
 
-    // For enum types, compare by name
+    // For enum types, compare by name and schema
     if (fromT.kind === 'enum' && toT.kind === 'enum') {
-      return fromT.T !== toT.T
+      return fromT.T !== toT.T || (fromT.schema ?? '') !== (toT.schema ?? '')
     }
 
     // For composite types, compare by name and schema

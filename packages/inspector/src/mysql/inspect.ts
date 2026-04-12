@@ -244,20 +244,29 @@ export class MysqlInspector implements Inspector {
   protected v: MysqlVersion
 
   private versionDetected = false
+  private versionProvided: boolean
 
   constructor(db: ExecQuerier, version?: string) {
     this.db = db
+    this.versionProvided = !!version
     this.v = version ? parseVersion(version) : { version: '8.0.31', maria: false, major: 8, minor: 0, patch: 31 }
   }
 
   private async detectVersion(): Promise<void> {
     if (this.versionDetected) return
     this.versionDetected = true
-    const result = await this.db.query('SELECT VERSION() AS v', [])
-    const row = result.rows[0] as any
-    const versionStr = row?.v ?? row?.['VERSION()']
-    if (versionStr) {
-      this.v = parseVersion(versionStr)
+    // If a version was provided in the constructor, skip the query
+    if (!this.versionProvided) {
+      const result = await this.db.query('SELECT VERSION() AS v', [])
+      const row = result.rows[0] as any
+      const versionStr = row?.v ?? row?.['VERSION()']
+      if (versionStr) {
+        this.v = parseVersion(versionStr)
+      }
+    }
+    // Require MySQL 8.0+ (or any MariaDB version)
+    if (!this.v.maria && this.v.major < 8) {
+      throw new Error(`MySQL ${this.v.version} is not supported. Minimum required version is 8.0.`)
     }
   }
 

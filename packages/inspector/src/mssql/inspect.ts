@@ -89,8 +89,11 @@ export class MssqlInspector implements Inspector {
   protected db: ExecQuerier
   protected v: MssqlVersion
 
+  private versionProvided: boolean
+
   constructor(db: ExecQuerier, version?: string) {
     this.db = db
+    this.versionProvided = !!version
     this.v = version ? parseMssqlVersion(version) : { version: '16.0.0', major: 16, minor: 0, build: 0 }
   }
 
@@ -160,6 +163,7 @@ export class MssqlInspector implements Inspector {
   // -- Version Detection --
 
   protected async detectVersion(): Promise<void> {
+    if (this.versionProvided) return
     if (this.v.major > 0 && this.v.version !== '16.0.0') return
     try {
       const result = await this.db.query("SELECT SERVERPROPERTY('ProductVersion') AS version")
@@ -171,6 +175,10 @@ export class MssqlInspector implements Inspector {
       }
     } catch {
       // Use default version if detection fails
+    }
+    // Require SQL Server 2016+ (version 13.x)
+    if (this.v.major < 13) {
+      throw new Error(`SQL Server ${this.v.version} is not supported. Minimum required version is 2016 (13.x).`)
     }
   }
 
@@ -585,7 +593,7 @@ export class MssqlInspector implements Inspector {
       const s = schemaMap.get(sName)
       if (!s) continue
 
-      const v: View = { name: vName }
+      const v: View = { name: vName, schema: sName }
 
       // Extract the SELECT body from the view definition
       if (def && validString(def)) {
@@ -828,6 +836,7 @@ ORDER BY c.column_id`
       if (info.objType.trim() === 'FN' || info.objType.trim() === 'IF' || info.objType.trim() === 'TF') {
         const f: Func = {
           name,
+          schema: sName,
           body: info.body || undefined,
           args: funcArgs.length > 0 ? funcArgs : undefined,
         }
@@ -850,6 +859,7 @@ ORDER BY c.column_id`
         // Stored procedure
         const p: Proc = {
           name,
+          schema: sName,
           body: info.body || undefined,
           args: funcArgs.length > 0 ? funcArgs : undefined,
         }
@@ -891,6 +901,7 @@ ORDER BY c.column_id`
 
       const seq: Sequence = {
         name: seqName,
+        schema: sName,
         type: { type: schemaType, raw: typeName },
         start: toBigIntOrNumber(startValue),
         increment: toBigIntOrNumber(incrementBy),

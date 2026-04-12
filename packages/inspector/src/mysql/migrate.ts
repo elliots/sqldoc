@@ -3,7 +3,7 @@
 
 import type { PlanDriver } from '../internal/plan.ts'
 import { Builder, mayWrap } from '../internal/sqlx.ts'
-import type { Change } from '../schema/migrate.ts'
+import type { Change, Clause } from '../schema/migrate.ts'
 import type { Attr, Check, Column, ForeignKey, Func, Index, Table, Trigger, View } from '../schema/schema.ts'
 import { typeDDL } from './convert.ts'
 import { IndexTypeBTree, IndexTypeFullText, IndexTypeHash, IndexTypeSpatial, quote } from './driver.ts'
@@ -77,7 +77,7 @@ export class MysqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a table. */
-  dropTable(table: Table): string[] {
+  dropTable(table: Table, _extra?: Clause[]): string[] {
     const b = mysqlBuilder()
     b.P('DROP TABLE').Table(table)
     return [b.toString()]
@@ -140,7 +140,7 @@ export class MysqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a view. */
-  dropView(view: View): string[] {
+  dropView(view: View, _extra?: Clause[]): string[] {
     const b = mysqlBuilder()
     b.P('DROP VIEW').View(view)
     return [b.toString()]
@@ -158,11 +158,13 @@ export class MysqlPlan implements PlanDriver {
 
   /** Generate SQL for adding a function. */
   addFunc(func: Func): string[] {
+    if (!func.name) throw new Error('addFunc: func.name is required')
+    if (!func.body && !func.args && !func.ret) throw new Error(`addFunc: func "${func.name}" is missing a body`)
     return [buildMySQLFuncDDL(func)]
   }
 
   /** Generate SQL for dropping a function. */
-  dropFunc(func: Func): string[] {
+  dropFunc(func: Func, _extra?: Clause[]): string[] {
     const b = mysqlBuilder()
     b.P('DROP FUNCTION IF EXISTS').Func(func)
     return [b.toString()]
@@ -170,16 +172,17 @@ export class MysqlPlan implements PlanDriver {
 
   /** Generate SQL for adding a trigger. */
   addTrigger(trigger: Trigger): string[] {
+    if (!trigger.name) throw new Error('addTrigger: trigger.name is required')
     if (trigger.body) return [trigger.body]
     // Fallback: construct from components
+    if (!trigger.table) throw new Error(`addTrigger: trigger "${trigger.name}" is missing a table`)
     const timing = trigger.timing ?? 'BEFORE'
     const event = (trigger.events ?? ['INSERT'])[0]
-    const table = trigger.table ?? ''
-    return [`CREATE TRIGGER \`${trigger.name}\` ${timing} ${event} ON \`${table}\` FOR EACH ROW BEGIN END`]
+    return [`CREATE TRIGGER \`${trigger.name}\` ${timing} ${event} ON \`${trigger.table}\` FOR EACH ROW BEGIN END`]
   }
 
   /** Generate SQL for dropping a trigger. */
-  dropTrigger(trigger: Trigger): string[] {
+  dropTrigger(trigger: Trigger, _extra?: Clause[]): string[] {
     const b = mysqlBuilder()
     b.P('DROP TRIGGER IF EXISTS').Ident(trigger.name)
     return [b.toString()]

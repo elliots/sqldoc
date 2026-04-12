@@ -29,8 +29,13 @@ export interface IfNotExists {
   type: 'if_not_exists'
 }
 
+/** Clause that indicates CASCADE semantics for DROP statements. */
+export interface Cascade {
+  type: 'cascade'
+}
+
 /** A clause carried by schema changes for additional information. */
-export type Clause = IfExists | IfNotExists
+export type Clause = IfExists | IfNotExists | Cascade
 
 // -- ChangeKind (bit flags for what changed) --
 

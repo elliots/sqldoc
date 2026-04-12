@@ -1,7 +1,15 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/plan.go, sql/internal/sqlx/sqlx_oss.go
 
-import type { AddTable, Change, DropObject, DropTable, ModifyTable, Plan } from '../schema/migrate.ts'
+import type { AddTable, Change, Clause, DropObject, DropTable, ModifyTable, Plan } from '../schema/migrate.ts'
+
+// -- Clause Helpers --
+
+/** Check if a change's extra clauses contain a specific clause type. Like Atlas's sqlx.Has. */
+export function hasClause(extra: Clause[] | undefined, type: string): boolean {
+  return extra?.some((c) => c.type === type) ?? false
+}
+
 import type { ForeignKey, Func, ObjectRef, Proc, Schema, Sequence, Table, Trigger, View } from '../schema/schema.ts'
 
 // -- PlanDriver Interface --
@@ -13,42 +21,42 @@ import type { ForeignKey, Func, ObjectRef, Proc, Schema, Sequence, Table, Trigge
 export interface PlanDriver {
   /** Generate SQL for creating a schema. */
   addSchema?(schema: Schema): string[]
-  /** Generate SQL for dropping a schema. */
-  dropSchema?(schema: Schema): string[]
+  /** Generate SQL for dropping a schema. Extra clauses may include IF EXISTS, CASCADE. */
+  dropSchema?(schema: Schema, extra?: Clause[]): string[]
   /** Generate SQL for adding a table. */
   addTable(table: Table): string[]
-  /** Generate SQL for dropping a table. */
-  dropTable(table: Table): string[]
+  /** Generate SQL for dropping a table. Extra clauses may include IF EXISTS, CASCADE. */
+  dropTable(table: Table, extra?: Clause[]): string[]
   /** Generate SQL for modifying a table (column/index/FK changes). */
   modifyTable(from: Table, to: Table, changes: Change[]): string[]
   /** Generate SQL for adding a view. */
   addView?(view: View): string[]
-  /** Generate SQL for dropping a view. */
-  dropView?(view: View): string[]
+  /** Generate SQL for dropping a view. Extra clauses may include IF EXISTS, CASCADE. */
+  dropView?(view: View, extra?: Clause[]): string[]
   /** Generate SQL for modifying a view. */
   modifyView?(from: View, to: View): string[]
   /** Generate SQL for adding a function. */
   addFunc?(func: Func): string[]
-  /** Generate SQL for dropping a function. */
-  dropFunc?(func: Func): string[]
+  /** Generate SQL for dropping a function. Extra clauses may include IF EXISTS, CASCADE. */
+  dropFunc?(func: Func, extra?: Clause[]): string[]
   /** Generate SQL for adding a trigger. */
   addTrigger?(trigger: Trigger): string[]
-  /** Generate SQL for dropping a trigger. */
-  dropTrigger?(trigger: Trigger): string[]
+  /** Generate SQL for dropping a trigger. Extra clauses may include IF EXISTS, CASCADE. */
+  dropTrigger?(trigger: Trigger, extra?: Clause[]): string[]
   /** Generate SQL for adding a sequence. */
   addSequence?(seq: Sequence): string[]
-  /** Generate SQL for dropping a sequence. */
-  dropSequence?(seq: Sequence): string[]
+  /** Generate SQL for dropping a sequence. Extra clauses may include IF EXISTS, CASCADE. */
+  dropSequence?(seq: Sequence, extra?: Clause[]): string[]
   /** Generate SQL for modifying a sequence. */
   modifySequence?(from: Sequence, to: Sequence): string[]
   /** Generate SQL for adding a schema-level object (enum, domain, composite, extension). */
   addObject?(obj: any): string[]
-  /** Generate SQL for dropping a schema-level object. */
-  dropObject?(obj: any): string[]
+  /** Generate SQL for dropping a schema-level object. Extra clauses may include IF EXISTS, CASCADE. */
+  dropObject?(obj: any, extra?: Clause[]): string[]
   /** Generate SQL for adding a procedure. */
   addProc?(proc: Proc): string[]
-  /** Generate SQL for dropping a procedure. */
-  dropProc?(proc: Proc): string[]
+  /** Generate SQL for dropping a procedure. Extra clauses may include IF EXISTS, CASCADE. */
+  dropProc?(proc: Proc, extra?: Clause[]): string[]
 }
 
 /** Options for the plan engine. */
@@ -1066,13 +1074,13 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
       return driver.addSchema?.(change.S) ?? []
 
     case 'drop_schema':
-      return driver.dropSchema?.(change.S) ?? []
+      return driver.dropSchema?.(change.S, change.extra) ?? []
 
     case 'add_table':
       return driver.addTable(change.T)
 
     case 'drop_table':
-      return driver.dropTable(change.T)
+      return driver.dropTable(change.T, change.extra)
 
     case 'modify_table':
       return driver.modifyTable(change.T, change.T, change.changes)
@@ -1081,7 +1089,7 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
       return driver.addView?.(change.V) ?? []
 
     case 'drop_view':
-      return driver.dropView?.(change.V) ?? []
+      return driver.dropView?.(change.V, change.extra) ?? []
 
     case 'modify_view':
       return driver.modifyView?.(change.from, change.to) ?? []
@@ -1090,19 +1098,19 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
       return driver.addFunc?.(change.F) ?? []
 
     case 'drop_func':
-      return driver.dropFunc?.(change.F) ?? []
+      return driver.dropFunc?.(change.F, change.extra) ?? []
 
     case 'add_trigger':
       return driver.addTrigger?.(change.T) ?? []
 
     case 'drop_trigger':
-      return driver.dropTrigger?.(change.T) ?? []
+      return driver.dropTrigger?.(change.T, change.extra) ?? []
 
     case 'add_sequence':
       return driver.addSequence?.(change.S) ?? []
 
     case 'drop_sequence':
-      return driver.dropSequence?.(change.S) ?? []
+      return driver.dropSequence?.(change.S, change.extra) ?? []
 
     case 'modify_sequence':
       return driver.modifySequence?.(change.from, change.to) ?? []
@@ -1111,13 +1119,10 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
       return driver.addObject?.(change.O) ?? []
 
     case 'drop_object':
-      return driver.dropObject?.(change.O) ?? []
+      return driver.dropObject?.(change.O, change.extra) ?? []
 
     case 'add_proc':
       return driver.addProc?.(change.P) ?? []
-
-    case 'drop_proc':
-      return driver.dropProc?.(change.P) ?? []
 
     default:
       return []
