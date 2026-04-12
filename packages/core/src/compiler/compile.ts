@@ -36,6 +36,7 @@ import type {
 
 interface InternalRealm {
   schemas: InternalSchema[]
+  defaultSchema?: string
   attrs?: InternalAttr[]
 }
 
@@ -285,11 +286,8 @@ function compileWithRealm(
     missingNamespaces,
     fileNamespaces,
   }
-  // Default schema names are stripped from object identity (e.g. public.users → users)
-  // For single-schema realms, that schema is always the default.
-  // For multi-schema, use the dialect's canonical default (public/main/dbo).
-  const canonicalDefault = config.dialect === 'sqlite' ? 'main' : config.dialect === 'mssql' ? 'dbo' : 'public'
-  const defaultSchema = realm.schemas.length === 1 ? realm.schemas[0].name : canonicalDefault
+  // Default schema is set by the inspector on the realm
+  const defaultSchema = realm.defaultSchema ?? ''
 
   for (const schema of realm.schemas) {
     const qualify = (name: string) => (schema.name && schema.name !== defaultSchema ? `${schema.name}.${name}` : name)

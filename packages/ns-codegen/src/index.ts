@@ -81,9 +81,8 @@ const plugin: NamespacePlugin = {
 
       const templateName =
         typeof entry.template === 'string' ? extractTemplateName(entry.template) : (template.name ?? 'unknown')
-      // Must match the default schema logic in compile.ts
-      const canonicalDefault = ctx.dialect === 'sqlite' ? 'main' : ctx.dialect === 'mssql' ? 'dbo' : 'public'
-      const defaultSchema = realm.schemas.length === 1 ? realm.schemas[0].name : canonicalDefault
+      // Default schema is set by the inspector on the realm
+      const defaultSchema = realm.defaultSchema
 
       const templateCtx: TemplateContext = {
         realm,

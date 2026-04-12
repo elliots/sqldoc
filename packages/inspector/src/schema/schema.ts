@@ -497,6 +497,8 @@ export interface Schema {
  */
 export interface Realm {
   schemas: Schema[]
+  /** The default schema name for this realm (e.g. "public", "main", "dbo"). Set by the inspector. */
+  defaultSchema?: string
   attrs?: Attr[]
 }
 
