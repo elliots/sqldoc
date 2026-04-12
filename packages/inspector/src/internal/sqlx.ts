@@ -177,7 +177,10 @@ export function buildIndexes(
  * This is dialect-independent base resolution (each dialect overrides for specifics).
  */
 export function typeFromString(typeName: string): SchemaType {
-  const lower = typeName.toLowerCase().trim()
+  // Strip parenthesized modifiers for matching (e.g. varchar(255) -> varchar)
+  // but keep the original typeName for the returned T value
+  const stripped = typeName.replace(/\([^)]*\)/g, '').trim()
+  const lower = stripped.toLowerCase()
 
   // Integer types
   if (/^(int|integer|bigint|smallint|tinyint|mediumint|int2|int4|int8)$/i.test(lower)) {

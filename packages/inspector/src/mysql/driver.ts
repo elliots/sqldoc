@@ -418,7 +418,13 @@ export function parseType(raw: string): SchemaType {
       if (!rv) {
         throw new Error(`unexpected enum type: "${raw}"`)
       }
-      const values = rv.split("','").map((v) => v.replace(/^'|'$/g, ''))
+      // Parse SQL quoted literals properly (handles escaped quotes like 'Bob''s')
+      const values: string[] = []
+      const re = /'((?:[^']|'')*)'/g
+      let m: RegExpExecArray | null
+      while ((m = re.exec(rv)) !== null) {
+        values.push(m[1].replaceAll("''", "'"))
+      }
       if (t === TypeEnum) {
         return { kind: 'enum', T: TypeEnum, values }
       }

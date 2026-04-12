@@ -92,7 +92,7 @@ export class LocalFile implements File {
   /** Extract top-of-file comments (before the first double newline). */
   private topComments(): string[] {
     const lines: string[] = []
-    for (const line of this.content.split('\n')) {
+    for (const line of this.content.split(/\r?\n/)) {
       const trimmed = line.trim()
       if (trimmed === '') break
       lines.push(trimmed)

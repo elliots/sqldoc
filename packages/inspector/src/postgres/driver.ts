@@ -1327,7 +1327,7 @@ export function parseFuncArgs(
 
   const result: Array<{ name?: string; type: SchemaType; mode?: string; default?: string }> = []
 
-  for (let part of argsStr.split(',')) {
+  for (let part of splitTopLevelCommas(argsStr)) {
     part = part.trim()
     if (!part) continue
 
@@ -1380,6 +1380,48 @@ export function parseFuncArgs(
   }
 
   return result
+}
+
+/** Split a string on commas, but only at the top level (respecting parentheses, brackets, and quotes). */
+function splitTopLevelCommas(s: string): string[] {
+  const parts: string[] = []
+  let current = ''
+  let depth = 0
+  let inSingle = false
+  let inDouble = false
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (inSingle) {
+      current += ch
+      if (ch === "'" && s[i + 1] === "'") {
+        current += s[++i]
+      } else if (ch === "'") {
+        inSingle = false
+      }
+    } else if (inDouble) {
+      current += ch
+      if (ch === '"') inDouble = false
+    } else if (ch === "'") {
+      inSingle = true
+      current += ch
+    } else if (ch === '"') {
+      inDouble = true
+      current += ch
+    } else if (ch === '(' || ch === '[') {
+      depth++
+      current += ch
+    } else if (ch === ')' || ch === ']') {
+      depth--
+      current += ch
+    } else if (ch === ',' && depth === 0) {
+      parts.push(current)
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  if (current) parts.push(current)
+  return parts
 }
 
 // -- Helper: Strip own schema from type strings --
