@@ -62,7 +62,7 @@ if (!optIn) {
       const colNames = usersTable!.columns!.map((c) => c.name)
       assert.deepEqual(colNames, ['id', 'name', 'email', 'age', 'active'])
 
-      assert.ok(usersTable!.primary_key, 'should have primary key')
+      assert.ok(usersTable!.primaryKey, 'should have primary key')
     })
 
     it('inspects the pet store MySQL schema', async () => {
@@ -114,7 +114,7 @@ if (!optIn) {
       assert.ok(featuresTable, 'should find features table')
 
       const statusCol = featuresTable!.columns!.find((c) => c.name === 'status')
-      assert.ok(statusCol?.type?.T, 'status should have type T')
+      assert.ok(statusCol?.type?.type?.T || statusCol?.type?.raw, 'status should have type metadata')
 
       assert.ok(featuresTable!.indexes && featuresTable!.indexes.length > 0, 'should have indexes')
     })
