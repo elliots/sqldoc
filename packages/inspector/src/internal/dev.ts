@@ -2,8 +2,8 @@
 // Source: sql/internal/sqlx/dev.go
 
 import type { Stmt } from '../migrate/lex.ts'
-import { postgresScanStmts } from '../postgres/driver.ts'
 import { mysqlScanStmts } from '../mysql/driver.ts'
+import { postgresScanStmts } from '../postgres/driver.ts'
 import { sqliteScanStmts } from '../sqlite/driver.ts'
 
 /** Get the dialect-specific statement scanner. Matches Go Driver.ScanStmts per dialect. */
@@ -17,6 +17,7 @@ function dialectScanner(dialect?: string): (input: string) => Stmt[] {
       return postgresScanStmts
   }
 }
+
 import type { ExecQuerier, Inspector } from '../schema/inspect.ts'
 import type { Realm } from '../schema/schema.ts'
 
@@ -128,7 +129,7 @@ export async function snapshot(
     const BATCH_SIZE = 50
     for (let i = 0; i < statements.length; i += BATCH_SIZE) {
       const batch = statements.slice(i, i + BATCH_SIZE)
-      const batchSQL = batch.map((s) => s.text).join(';\n') + ';'
+      const batchSQL = `${batch.map((s) => s.text).join(';\n')};`
       try {
         await db.exec(batchSQL)
       } catch {

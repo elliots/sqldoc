@@ -2,8 +2,8 @@
 // Source: sql/sqlite/driver.go, sql/sqlite/driver_oss.go, sql/sqlite/inspect.go
 
 import { isLiteralBool, isLiteralNumber, isQuoted, isUint } from '../internal/sqlx.ts'
-import { Scanner } from '../migrate/lex.ts'
 import type { Stmt } from '../migrate/lex.ts'
+import { Scanner } from '../migrate/lex.ts'
 import type { Attr, SchemaType } from '../schema/schema.ts'
 
 // -- SQLite Standard Data Types --

@@ -1,6 +1,8 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/postgres/driver_oss.go, sql/postgres/convert.go
 
+import type { Stmt } from '../migrate/lex.ts'
+import { Scanner } from '../migrate/lex.ts'
 import type {
   ArrayType,
   BinaryType,
@@ -22,8 +24,6 @@ import type {
   UnsupportedType,
   UUIDType,
 } from '../schema/schema.ts'
-import { Scanner } from '../migrate/lex.ts'
-import type { Stmt } from '../migrate/lex.ts'
 
 // -- Standard PostgreSQL column types and their aliases --
 

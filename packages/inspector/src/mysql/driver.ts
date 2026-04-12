@@ -1,9 +1,9 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/mysql/driver_oss.go, sql/mysql/inspect_oss.go
 
-import type { SchemaType } from '../schema/schema.ts'
-import { Scanner } from '../migrate/lex.ts'
 import type { Stmt } from '../migrate/lex.ts'
+import { Scanner } from '../migrate/lex.ts'
+import type { SchemaType } from '../schema/schema.ts'
 
 // -- MySQL Type Constants --
 

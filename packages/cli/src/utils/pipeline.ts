@@ -142,7 +142,7 @@ export async function runCompilePipeline(
   const allOutputs: CompilerOutput[] = []
   const allPlugins = new Map<string, NamespacePlugin>()
   let totalErrors = 0
-  let atlasRealm: unknown
+  let atlasRealm: Realm
   const externalObjectNames = new Set<string>()
 
   try {
