@@ -80,6 +80,7 @@ export type {
   AddTable,
   AddTrigger,
   AddView,
+  Cascade,
   Change,
   Clause,
   DropAttr,

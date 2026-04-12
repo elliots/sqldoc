@@ -3,7 +3,7 @@
 
 import type { PlanDriver } from '../internal/plan.ts'
 import { Builder, mayWrap } from '../internal/sqlx.ts'
-import type { Change } from '../schema/migrate.ts'
+import type { Change, Clause } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
 import type { Check, Column, ForeignKey, Index, Table, Trigger, View } from '../schema/schema.ts'
 import { formatType } from './convert.ts'
@@ -75,7 +75,7 @@ export class SqlitePlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a table. */
-  dropTable(table: Table): string[] {
+  dropTable(table: Table, _extra?: Clause[]): string[] {
     return [`DROP TABLE ${quoteIdent(table.name)}`]
   }
 
@@ -97,7 +97,7 @@ export class SqlitePlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a view. */
-  dropView(view: View): string[] {
+  dropView(view: View, _extra?: Clause[]): string[] {
     return [`DROP VIEW ${quoteIdent(view.name)}`]
   }
 
@@ -114,7 +114,7 @@ export class SqlitePlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a trigger. */
-  dropTrigger(trigger: Trigger): string[] {
+  dropTrigger(trigger: Trigger, _extra?: Clause[]): string[] {
     return [`DROP TRIGGER IF EXISTS ${quoteIdent(trigger.name)}`]
   }
 

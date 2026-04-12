@@ -2,8 +2,9 @@
 // Source: sql/postgres/migrate_oss.go
 
 import type { PlanDriver } from '../internal/plan.ts'
+import { hasClause } from '../internal/plan.ts'
 import { Builder, mayWrap } from '../internal/sqlx.ts'
-import type { Change } from '../schema/migrate.ts'
+import type { Change, Clause } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
 import type {
   Attr,
@@ -68,9 +69,16 @@ export class PostgresPlan implements PlanDriver {
     return stmts
   }
 
-  /** Generate SQL for dropping a schema. */
-  dropSchema(schema: Schema): string[] {
-    return [`DROP SCHEMA "${schema.name}" CASCADE`]
+  /** Generate SQL for dropping a schema. Checks extra clauses for IF EXISTS. Always emits CASCADE. */
+  dropSchema(schema: Schema, extra?: Clause[]): string[] {
+    const b = pgBuilder()
+    b.P('DROP SCHEMA')
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
+    }
+    b.Ident(schema.name)
+    b.P('CASCADE')
+    return [b.toString()]
   }
 
   /** Generate SQL for adding a schema-level object (enum, domain, composite, extension, sequence). */
@@ -126,32 +134,34 @@ export class PostgresPlan implements PlanDriver {
     }
   }
 
-  /** Generate SQL for dropping a schema-level object. */
-  dropObject(obj: any): string[] {
+  /** Generate SQL for dropping a schema-level object. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropObject(obj: any, extra?: Clause[]): string[] {
     if (!obj) return []
+    const ifExists = hasClause(extra, 'if_exists') ? ' IF EXISTS' : ''
+    const cascade = hasClause(extra, 'cascade') ? ' CASCADE' : ''
     switch (obj.kind) {
       case 'enum':
-        return this.dropEnum(obj.T, obj.schema)
+        return this.dropEnum(obj.T, obj.schema, ifExists, cascade)
       case 'composite': {
         const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
-        return [`DROP TYPE ${ident}`]
+        return [`DROP TYPE${ifExists} ${ident}${cascade}`]
       }
       case 'domain': {
         const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
-        return [`DROP DOMAIN ${ident}`]
+        return [`DROP DOMAIN${ifExists} ${ident}${cascade}`]
       }
       case 'range_type': {
         const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
-        return [`DROP TYPE ${ident}`]
+        return [`DROP TYPE${ifExists} ${ident}${cascade}`]
       }
       case 'aggregate': {
         const ident = obj.schema ? `"${obj.schema}"."${obj.name}"` : `"${obj.name}"`
         const argList = (obj.args ?? []).join(', ')
-        return [`DROP AGGREGATE ${ident}(${argList})`]
+        return [`DROP AGGREGATE${ifExists} ${ident}(${argList})${cascade}`]
       }
       default:
         if (obj.name && obj.version !== undefined) {
-          return [`DROP EXTENSION IF EXISTS "${obj.name}"`]
+          return [`DROP EXTENSION IF EXISTS "${obj.name}"${cascade}`]
         }
         return []
     }
@@ -257,10 +267,17 @@ export class PostgresPlan implements PlanDriver {
     return stmts
   }
 
-  /** Generate SQL for dropping a table. */
-  dropTable(table: Table): string[] {
+  /** Generate SQL for dropping a table. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropTable(table: Table, extra?: Clause[]): string[] {
     const b = pgBuilder()
-    b.P('DROP TABLE').Table(table)
+    b.P('DROP TABLE')
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
+    }
+    b.Table(table)
+    if (hasClause(extra, 'cascade')) {
+      b.P('CASCADE')
+    }
     return [b.toString()]
   }
 
@@ -574,13 +591,20 @@ export class PostgresPlan implements PlanDriver {
     return stmts
   }
 
-  /** Generate SQL for dropping a view. */
-  dropView(view: View): string[] {
+  /** Generate SQL for dropping a view. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropView(view: View, extra?: Clause[]): string[] {
     const b = pgBuilder()
     if (view.materialized) {
-      b.P('DROP MATERIALIZED VIEW').View(view)
+      b.P('DROP MATERIALIZED VIEW')
     } else {
-      b.P('DROP VIEW').View(view)
+      b.P('DROP VIEW')
+    }
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
+    }
+    b.View(view)
+    if (hasClause(extra, 'cascade')) {
+      b.P('CASCADE')
     }
     return [b.toString()]
   }
@@ -634,10 +658,14 @@ export class PostgresPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a function. */
-  dropFunc(func: Func): string[] {
+  /** Generate SQL for dropping a function. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropFunc(func: Func, extra?: Clause[]): string[] {
     const b = pgBuilder()
-    b.P('DROP FUNCTION').Func(func)
+    b.P('DROP FUNCTION')
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
+    }
+    b.Func(func)
     // Include arg types for overloaded functions
     if (func.args && func.args.length > 0) {
       b.raw('(')
@@ -646,6 +674,9 @@ export class PostgresPlan implements PlanDriver {
         b.P(typeDDL(arg.type.type))
       })
       b.raw(')')
+    }
+    if (hasClause(extra, 'cascade')) {
+      b.P('CASCADE')
     }
     return [b.toString()]
   }
@@ -672,10 +703,14 @@ export class PostgresPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a procedure. */
-  dropProc(proc: Proc): string[] {
+  /** Generate SQL for dropping a procedure. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropProc(proc: Proc, extra?: Clause[]): string[] {
     const b = pgBuilder(proc.schema)
-    b.P('DROP PROCEDURE').Func(proc)
+    b.P('DROP PROCEDURE')
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
+    }
+    b.Func(proc)
     if (proc.args && proc.args.length > 0) {
       b.raw('(')
       b.MapComma(proc.args, (arg, _i, b) => {
@@ -683,6 +718,9 @@ export class PostgresPlan implements PlanDriver {
         b.P(typeDDL(arg.type.type))
       })
       b.raw(')')
+    }
+    if (hasClause(extra, 'cascade')) {
+      b.P('CASCADE')
     }
     return [b.toString()]
   }
@@ -709,12 +747,21 @@ export class PostgresPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a trigger. */
-  dropTrigger(trigger: Trigger): string[] {
-    if (trigger.table) {
-      return [`DROP TRIGGER "${trigger.name}" ON "${trigger.table}"`]
+  /** Generate SQL for dropping a trigger. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropTrigger(trigger: Trigger, extra?: Clause[]): string[] {
+    const b = pgBuilder()
+    b.P('DROP TRIGGER')
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
     }
-    return [`DROP TRIGGER "${trigger.name}"`]
+    b.Ident(trigger.name)
+    if (trigger.table) {
+      b.P('ON').Ident(trigger.table)
+    }
+    if (hasClause(extra, 'cascade')) {
+      b.P('CASCADE')
+    }
+    return [b.toString()]
   }
 
   /** Generate SQL for adding a sequence. */
@@ -736,14 +783,20 @@ export class PostgresPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a sequence. */
-  dropSequence(seq: Sequence): string[] {
+  /** Generate SQL for dropping a sequence. Checks extra clauses for IF EXISTS and CASCADE. */
+  dropSequence(seq: Sequence, extra?: Clause[]): string[] {
     const b = pgBuilder()
     b.P('DROP SEQUENCE')
+    if (hasClause(extra, 'if_exists')) {
+      b.P('IF EXISTS')
+    }
     if (seq.schema) {
       b.SchemaResource(seq.schema, seq.name)
     } else {
       b.Ident(seq.name)
+    }
+    if (hasClause(extra, 'cascade')) {
+      b.P('CASCADE')
     }
     return [b.toString()]
   }
@@ -799,13 +852,19 @@ export class PostgresPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping an enum type. */
-  dropEnum(name: string, schema?: string): string[] {
+  dropEnum(name: string, schema?: string, ifExistsSuffix?: string, cascadeSuffix?: string): string[] {
     const b = pgBuilder()
     b.P('DROP TYPE')
+    if (ifExistsSuffix) {
+      b.P('IF EXISTS')
+    }
     if (schema) {
       b.SchemaResource(schema, name)
     } else {
       b.Ident(name)
+    }
+    if (cascadeSuffix) {
+      b.P('CASCADE')
     }
     return [b.toString()]
   }
@@ -1066,4 +1125,36 @@ function formatTypeRef(t: string): string {
     return `"${ns}"."${name}"`
   }
   return t
+}
+
+// -- withCascade --
+
+/**
+ * Annotates all drop changes with IfExists + Cascade clauses.
+ * Used by the restore function to ensure clean teardown of Postgres schemas.
+ * When CASCADE drops a dependency, the diff may still generate an explicit
+ * drop for that object — IF EXISTS prevents failures when the object is already gone.
+ *
+ * Matches Go Atlas: sql/postgres/driver.go:withCascade
+ */
+export function withCascade(changes: Change[]): Change[] {
+  const cascadeExtra: Clause[] = [{ type: 'if_exists' }, { type: 'cascade' }]
+  for (const c of changes) {
+    switch (c.type) {
+      case 'drop_table':
+      case 'drop_object':
+      case 'drop_view':
+      case 'drop_func':
+      case 'drop_proc':
+      case 'drop_schema':
+      case 'drop_index':
+      case 'drop_foreign_key':
+      case 'drop_sequence':
+      case 'drop_trigger':
+      case 'drop_policy':
+        c.extra = [...(c.extra ?? []), ...cascadeExtra]
+        break
+    }
+  }
+  return changes
 }

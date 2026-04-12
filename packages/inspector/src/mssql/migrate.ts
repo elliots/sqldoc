@@ -1,6 +1,6 @@
 import type { PlanDriver } from '../internal/plan.ts'
 import { Builder } from '../internal/sqlx.ts'
-import type { Change } from '../schema/migrate.ts'
+import type { Change, Clause } from '../schema/migrate.ts'
 import { ChangeKind } from '../schema/migrate.ts'
 import type {
   Attr,
@@ -77,7 +77,7 @@ export class MssqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a schema. */
-  dropSchema(schema: Schema): string[] {
+  dropSchema(schema: Schema, _extra?: Clause[]): string[] {
     return [`DROP SCHEMA [${schema.name}]`]
   }
 
@@ -145,7 +145,7 @@ export class MssqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a table. */
-  dropTable(table: Table): string[] {
+  dropTable(table: Table, _extra?: Clause[]): string[] {
     return [`DROP TABLE ${tableRef(table)}`]
   }
 
@@ -235,7 +235,7 @@ export class MssqlPlan implements PlanDriver {
         }
 
         case 'rename_index': {
-          const oldPath = `${to.schema ? `${to.schema}.` : ''}${change.from.name}`
+          const oldPath = `${to.schema ? `${to.schema}.` : ''}${to.name}.${change.from.name}`
           stmts.push(`EXEC sp_rename '${oldPath}', '${change.to.name}', 'INDEX'`)
           break
         }
@@ -424,17 +424,16 @@ export class MssqlPlan implements PlanDriver {
 
     // Handle identity change (MSSQL does not support altering identity — requires table rebuild)
     if (k & ChangeKind.ChangeAttr) {
-      // Identity cannot be added/removed via ALTER COLUMN in MSSQL.
-      // This would require a full table rebuild (drop + recreate).
-      // Emit a comment noting the limitation.
-      k &= ~ChangeKind.ChangeAttr
+      throw new Error(
+        `mssql: cannot alter IDENTITY on column "${to.name}" in table "${table.name}" — requires table rebuild (drop + recreate)`,
+      )
     }
 
     // Handle generated/computed column change
     if (k & ChangeKind.ChangeGenerated) {
-      // Computed columns cannot be altered in-place in MSSQL.
-      // Must drop and re-add the column.
-      k &= ~ChangeKind.ChangeGenerated
+      throw new Error(
+        `mssql: cannot alter computed column "${to.name}" in table "${table.name}" in-place — must drop and re-add the column`,
+      )
     }
 
     // Comment changes are handled separately (not in ALTER TABLE)
@@ -635,9 +634,9 @@ export class MssqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a view. */
-  dropView(view: View): string[] {
+  dropView(view: View, _extra?: Clause[]): string[] {
     const ref = view.schema ? `[${view.schema}].[${view.name}]` : `[${view.name}]`
-    return [`DROP VIEW IF EXISTS ${ref}`]
+    return [`IF OBJECT_ID('${objectIdArg(view.schema, view.name)}', 'V') IS NOT NULL DROP VIEW ${ref}`]
   }
 
   /** Generate SQL for modifying a view. MSSQL has no CREATE OR REPLACE — drop and recreate. */
@@ -669,10 +668,10 @@ export class MssqlPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a function. MSSQL does not support DROP ... IF EXISTS before 2016. */
-  dropFunc(func: Func): string[] {
+  /** Generate SQL for dropping a function. Uses pre-2016 compatible syntax. */
+  dropFunc(func: Func, _extra?: Clause[]): string[] {
     const ref = func.schema ? `[${func.schema}].[${func.name}]` : `[${func.name}]`
-    return [`DROP FUNCTION IF EXISTS ${ref}`]
+    return [`IF OBJECT_ID('${objectIdArg(func.schema, func.name)}', 'FN') IS NOT NULL DROP FUNCTION ${ref}`]
   }
 
   // -- Procedure Operations --
@@ -698,10 +697,10 @@ export class MssqlPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a procedure. */
-  dropProc(proc: Proc): string[] {
+  /** Generate SQL for dropping a procedure. Uses pre-2016 compatible syntax. */
+  dropProc(proc: Proc, _extra?: Clause[]): string[] {
     const ref = proc.schema ? `[${proc.schema}].[${proc.name}]` : `[${proc.name}]`
-    return [`DROP PROCEDURE IF EXISTS ${ref}`]
+    return [`IF OBJECT_ID('${objectIdArg(proc.schema, proc.name)}', 'P') IS NOT NULL DROP PROCEDURE ${ref}`]
   }
 
   // -- Trigger Operations --
@@ -736,11 +735,11 @@ export class MssqlPlan implements PlanDriver {
     return [b.toString()]
   }
 
-  /** Generate SQL for dropping a trigger. */
-  dropTrigger(trigger: Trigger): string[] {
+  /** Generate SQL for dropping a trigger. Uses pre-2016 compatible syntax. */
+  dropTrigger(trigger: Trigger, _extra?: Clause[]): string[] {
     const schemaName = (trigger as any).schema
     const ref = schemaName ? `[${schemaName}].[${trigger.name}]` : `[${trigger.name}]`
-    return [`DROP TRIGGER IF EXISTS ${ref}`]
+    return [`IF OBJECT_ID('${objectIdArg(schemaName, trigger.name)}', 'TR') IS NOT NULL DROP TRIGGER ${ref}`]
   }
 
   // -- Sequence Operations --
@@ -765,7 +764,7 @@ export class MssqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a sequence. */
-  dropSequence(seq: Sequence): string[] {
+  dropSequence(seq: Sequence, _extra?: Clause[]): string[] {
     const b = mssqlBuilder()
     b.P('DROP SEQUENCE')
     if (seq.schema) {
@@ -820,7 +819,7 @@ export class MssqlPlan implements PlanDriver {
   }
 
   /** Generate SQL for dropping a schema-level object. */
-  dropObject(obj: any): string[] {
+  dropObject(obj: any, _extra?: Clause[]): string[] {
     if (!obj) return []
     if (obj.name && obj.increment !== undefined) {
       return this.dropSequence(obj)
@@ -907,4 +906,16 @@ function dropExtendedProperty(
     `@level0type=N'SCHEMA', @level0name=${quoteName(schema)}, ` +
     `@level1type=N'TABLE', @level1name=${quoteName(tableName)}`
   )
+}
+
+// -- OBJECT_ID Helper --
+
+/** Build the schema-qualified name argument for OBJECT_ID(), with single-quote escaping. */
+function objectIdArg(schema: string | undefined, name: string): string {
+  const safeName = name.replaceAll("'", "''")
+  if (schema) {
+    const safeSchema = schema.replaceAll("'", "''")
+    return `${safeSchema}.${safeName}`
+  }
+  return safeName
 }

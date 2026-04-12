@@ -23,10 +23,14 @@ function dialectScanner(dialect?: Dialect): (input: string) => Stmt[] {
 }
 
 import type { ExecQuerier, Inspector } from '../schema/inspect.ts'
+import type { Change } from '../schema/migrate.ts'
 import type { Realm } from '../schema/schema.ts'
 
 /** A function that restores the dev database to its pre-snapshot state. */
 export type RestoreFunc = () => Promise<void>
+
+/** Optional function to transform changes before applying (e.g. Postgres withCascade). */
+export type TransformChanges = (changes: Change[]) => Change[]
 
 /** Options for the dev database snapshot. */
 export interface SnapshotOptions {
@@ -45,17 +49,19 @@ export interface SnapshotOptions {
  * @param desired - The desired (usually empty) state to restore to
  * @param dialect - SQL dialect
  * @param diffAndApply - Function to compute diff and apply changes (provided by caller)
+ * @param transformChanges - Optional transform applied before executing changes (e.g. Postgres withCascade)
  */
 export function createRestoreFunc(
   _db: ExecQuerier,
   inspector: Inspector,
   desired: Realm,
   _dialect: string,
-  diffAndApply: (current: Realm, desired: Realm) => Promise<void>,
+  diffAndApply: (current: Realm, desired: Realm, transformChanges?: TransformChanges) => Promise<void>,
+  transformChanges?: TransformChanges,
 ): RestoreFunc {
   return async () => {
     const current = await inspector.inspectRealm()
-    await diffAndApply(current, desired)
+    await diffAndApply(current, desired, transformChanges)
   }
 }
 

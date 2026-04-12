@@ -20,7 +20,7 @@ import { TidbDiff, TidbInspect, TidbPlan } from './mysql/tidb.ts'
 import { CrdbDiff, CrdbInspector } from './postgres/crdb.ts'
 import { PostgresDiff } from './postgres/diff.ts'
 import { PostgresInspector } from './postgres/inspect.ts'
-import { PostgresPlan } from './postgres/migrate.ts'
+import { PostgresPlan, withCascade } from './postgres/migrate.ts'
 import type { ExecQuerier, ExecResult, Inspector, QueryResult } from './schema/inspect.ts'
 import type { Change } from './schema/migrate.ts'
 import type { Column, Realm, Rename, RenameCandidate, Schema, Table } from './schema/schema.ts'
@@ -442,69 +442,23 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
   const { inspector, differ, planner } = createComponents(dialect, db, options)
   const eq = new ExecQuerierAdapter(db)
 
-  // Create a diff+apply function for the general restore path (matches Go Atlas)
-  // This runs only against dev databases, so CASCADE is safe for Postgres drops.
-  async function diffAndApply(current: Realm, desired: Realm): Promise<void> {
+  // Diff two realms and apply changes. Used by restore and other internal paths.
+  // transformChanges allows dialect-specific change annotation (e.g. Postgres withCascade).
+  async function diffAndApply(
+    current: Realm,
+    desired: Realm,
+    transformChanges?: (changes: Change[]) => Change[],
+  ): Promise<void> {
     let changes = realmDiff(differ, current, desired)
     if (changes.length === 0) return
     changes = detachCycles(changes)
     changes = sortChanges(changes)
-    // MySQL: disable FK checks during apply (drops may reference other tables)
-    if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 0')
-    // MSSQL: drop all FK constraints first (NOCHECK alone doesn't allow DROP TABLE)
-    if (dialect === 'mssql') {
-      await eq.exec(`
-        DECLARE @sql NVARCHAR(MAX) = ''
-        SELECT @sql += 'ALTER TABLE [' + s.name + '].[' + t.name + '] DROP CONSTRAINT [' + fk.name + '];'
-        FROM sys.foreign_keys fk
-        JOIN sys.tables t ON fk.parent_object_id = t.object_id
-        JOIN sys.schemas s ON t.schema_id = s.schema_id
-        WHERE s.name NOT IN ('sys', 'INFORMATION_SCHEMA')
-        EXEC(@sql)
-      `)
-    }
-    try {
-      for (const change of changes) {
-        let stmts = changeToSQL(planner, change)
-        // Postgres dev restore: add CASCADE to DROP statements to handle type/domain
-        // dependencies. CASCADE may drop dependent objects early, so subsequent drops
-        // that fail with "does not exist" are silently ignored.
-        if (dialect === 'postgres') {
-          stmts = stmts.map((s) => {
-            const upper = s.trimEnd().toUpperCase()
-            if (
-              (upper.startsWith('DROP TYPE') ||
-                upper.startsWith('DROP TABLE') ||
-                upper.startsWith('DROP VIEW') ||
-                upper.startsWith('DROP FUNCTION') ||
-                upper.startsWith('DROP PROCEDURE') ||
-                upper.startsWith('DROP SCHEMA') ||
-                upper.startsWith('DROP EXTENSION') ||
-                upper.startsWith('DROP DOMAIN') ||
-                upper.startsWith('DROP SEQUENCE')) &&
-              !upper.endsWith('CASCADE')
-            ) {
-              return `${s.trimEnd()} CASCADE`
-            }
-            return s
-          })
-        }
-        for (const stmt of stmts) {
-          try {
-            await eq.exec(stmt)
-          } catch (err: any) {
-            // Ignore "does not exist" errors — CASCADE may have already dropped the object
-            const code = err?.code ?? ''
-            const msg = err?.message ?? String(err)
-            if (code === '42P01' || code === '42883' || code === '3F000' || msg.includes('does not exist')) {
-              continue
-            }
-            throw err
-          }
-        }
+    if (transformChanges) changes = transformChanges(changes)
+    for (const change of changes) {
+      const stmts = changeToSQL(planner, change)
+      for (const stmt of stmts) {
+        await eq.exec(stmt)
       }
-    } finally {
-      if (dialect === 'mysql') await eq.exec('SET FOREIGN_KEY_CHECKS = 1')
     }
   }
 
@@ -513,7 +467,9 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
 
   // Capture initial dev DB state for snapshot/restore pattern (matches Go Atlas Snapshot)
   const initialRealm = await inspector.inspectRealm()
-  const restore = createRestoreFunc(eq, inspector, initialRealm, dialect, diffAndApply)
+  // Postgres restore uses withCascade to annotate drops with IF EXISTS + CASCADE (matches Go Atlas).
+  const restoreTransform = dialect === 'postgres' ? withCascade : undefined
+  const restore = createRestoreFunc(eq, inspector, initialRealm, dialect, diffAndApply, restoreTransform)
 
   return {
     async inspect(files, opts) {
