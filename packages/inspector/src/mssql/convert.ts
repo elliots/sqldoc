@@ -293,7 +293,11 @@ export function typeDDL(t: SchemaType): string {
  */
 export function quote(s: string): string {
   if (s.length >= 2 && s[0] === "'" && s[s.length - 1] === "'") {
-    return s
+    // Verify internal content has properly escaped single quotes (all '' pairs)
+    const inner = s.slice(1, -1)
+    if (!inner.includes("'") || inner.replace(/''/g, '').indexOf("'") === -1) {
+      return s
+    }
   }
   return `'${s.replace(/'/g, "''")}'`
 }

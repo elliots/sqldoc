@@ -26,8 +26,8 @@ function parseConnectionUrl(url: string): Record<string, unknown> {
  * Replace `?` placeholders with `@p1, @p2, ...` for the mssql driver,
  * and bind the corresponding args to the request.
  */
-function bindArgs(request: any, sql: string, args?: unknown[]): string {
-  if (!args || args.length === 0) return sql
+function bindArgs(request: any, sql: string, args?: unknown[]): { sql: string; consumed: number } {
+  if (!args || args.length === 0) return { sql, consumed: 0 }
 
   let paramIndex = 0
   const replaced = sql.replace(/\?/g, () => {
@@ -35,11 +35,12 @@ function bindArgs(request: any, sql: string, args?: unknown[]): string {
     return `@p${paramIndex}`
   })
 
-  for (let i = 0; i < args.length; i++) {
+  const consumed = paramIndex
+  for (let i = 0; i < consumed; i++) {
     request.input(`p${i + 1}`, args[i])
   }
 
-  return replaced
+  return { sql: replaced, consumed }
 }
 
 /** Split SQL text on GO batch separators (case-insensitive, standalone on a line). */
@@ -76,7 +77,7 @@ const plugin: DatabaseAdapterPlugin = {
     return {
       async query(sql: string, args?: unknown[]): Promise<QueryResult> {
         const request = pool.request()
-        const boundSql = bindArgs(request, sql, args)
+        const { sql: boundSql } = bindArgs(request, sql, args)
         log(`query: ${boundSql.replace(/\n/g, ' ').slice(0, 120)}`)
         const result = await request.query(boundSql)
         const recordset = result.recordset
@@ -91,9 +92,12 @@ const plugin: DatabaseAdapterPlugin = {
       async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
         const batches = splitGoBatches(sql)
         let totalAffected = 0
+        let argOffset = 0
         for (const batch of batches) {
           const request = pool.request()
-          const boundSql = bindArgs(request, batch, args)
+          const batchArgs = args ? args.slice(argOffset) : undefined
+          const { sql: boundSql, consumed } = bindArgs(request, batch, batchArgs)
+          argOffset += consumed
           log(`exec: ${boundSql.replace(/\n/g, ' ').slice(0, 120)}`)
           const result = await request.query(boundSql)
           totalAffected += result.rowsAffected.reduce((a: number, b: number) => a + b, 0)

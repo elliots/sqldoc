@@ -55,7 +55,7 @@ function getContainerPort(): number | null {
 }
 
 /** Ensure the named MSSQL container is running. Returns the mapped port. */
-function ensureContainer(image: string): number {
+async function ensureContainer(image: string): Promise<number> {
   // Check if already running
   const existingPort = getContainerPort()
   if (existingPort) {
@@ -116,7 +116,7 @@ function ensureContainer(image: string): number {
     } catch {
       // Container might not be ready yet
     }
-    spawnSync('sleep', ['1'])
+    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 
   throw new Error(`MSSQL container did not become ready within ${timeout / 1000}s`)
@@ -171,7 +171,7 @@ export async function createMssqlDockerAdapter(
   pluginOpts?: MssqlDockerOptions,
 ): Promise<DatabaseAdapter> {
   const image = devUrl.startsWith('docker://') ? devUrl.slice('docker://'.length) : DEFAULT_IMAGE
-  const port = ensureContainer(image)
+  const port = await ensureContainer(image)
 
   // Connect to master and ensure dev database exists
   const masterUri = `mssql://sa:${SA_PASSWORD}@127.0.0.1:${port}/master`

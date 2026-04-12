@@ -237,7 +237,7 @@ export class MssqlInspector implements Inspector {
       const s = schemaMap.get(tSchema)
       if (!s) continue
 
-      const t: Table = { name: tName, columns: [] }
+      const t: Table = { name: tName, schema: tSchema, columns: [] }
       const attrs: Attr[] = []
 
       const comment = row.table_comment as string | null
