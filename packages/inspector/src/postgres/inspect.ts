@@ -934,7 +934,7 @@ export class PostgresInspector implements Inspector {
       if (!s) continue
       for (const attr of s.attrs ?? []) {
         if ((attr as any).kind === 'domain' && (attr as any).T === typName) {
-          if (!(attr as any).checks) (attr as any).checks = []
+          ;(attr as any).checks ??= []
           ;(attr as any).checks.push({ name: conName, expr })
           break
         }

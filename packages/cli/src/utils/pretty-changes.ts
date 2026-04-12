@@ -52,6 +52,9 @@ export function renderChanges(changes: Change[]): string[] {
       case 'modify_schema':
         lines.push(...renderChanges(c.changes))
         break
+      default:
+        lines.push(pc.dim(`  ${c.type}`))
+        break
     }
   }
 

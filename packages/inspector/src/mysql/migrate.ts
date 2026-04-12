@@ -67,9 +67,6 @@ export class MysqlPlan implements PlanDriver {
     }
 
     // Check constraints
-    for (const attr of table.attrs ?? []) {
-      if ('kind' in attr) continue // Skip non-check attrs
-    }
     for (const check of table.checks ?? []) {
       b.raw(',\n  ')
       this.checkDef(b, check)

@@ -77,7 +77,7 @@ export function schemaDiff(driver: DiffDriver, from: Schema, to: Schema, opts?: 
     const viewChanges = viewDiff(driver, v1, v2, opts)
     changes.push(...viewChanges)
     // View trigger diff
-    const vTriggerChanges = triggerDiff(driver, v1.attrs ? [] : [], v2.attrs ? [] : [], opts)
+    const vTriggerChanges = triggerDiff(driver, [], [], opts)
     changes.push(...vTriggerChanges)
   }
 
