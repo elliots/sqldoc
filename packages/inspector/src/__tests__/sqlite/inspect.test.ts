@@ -153,6 +153,8 @@ describe('SQLite Inspector', () => {
       // Check constraints should be present - either on the table attrs or as separate checks
       // The SQLite inspector extracts CHECK from CREATE TABLE SQL
       assert.ok(table!.columns!.length === 3, 'validated should have 3 columns')
+      const checks = table!.checks ?? []
+      assert.ok(checks.length >= 1, `should have CHECK constraints, got ${checks.length}`)
     } finally {
       await inspector.close()
     }

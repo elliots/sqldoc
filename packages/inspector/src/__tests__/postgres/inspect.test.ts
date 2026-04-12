@@ -94,7 +94,7 @@ describe('PostgreSQL Inspector', () => {
       const publicSchema = result.schema!.schemas.find((s) => s.name === 'public')
       assert.ok(publicSchema, 'should have public schema')
 
-      const tableNames = (publicSchema!.tables ?? []).map((t) => t.name).sort()
+      const tableNames = (publicSchema!.tables ?? []).map((t) => t.name).sort((a, b) => a.localeCompare(b))
       const expectedTables = [
         'adoptions',
         'categories',
@@ -103,7 +103,7 @@ describe('PostgreSQL Inspector', () => {
         'owners',
         'pets',
         'staff',
-      ].sort()
+      ].sort((a, b) => a.localeCompare(b))
       assert.deepEqual(tableNames, expectedTables, 'should have all 7 pet store tables')
 
       // Check foreign keys on adoptions
