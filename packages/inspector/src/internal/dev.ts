@@ -180,42 +180,44 @@ export async function snapshot(
   files: string[],
   opts: SnapshotOptions & { restore: RestoreFunc },
 ): Promise<Realm> {
-  // Execute each SQL file's statements against the dev database.
-  // Uses dialect-specific scanner (matches Go Driver.ScanStmts per dialect).
-  // Batches up to 50 statements per exec call, falls back to one-by-one on failure.
-  const dialectScan = dialectScanner(opts.dialect)
-  for (const sql of files) {
-    if (sql.trim() === '') continue
-    const statements = dialectScan(sql).filter((s) => s.text.trim() !== '')
-    // MSSQL: no batching — CREATE PROCEDURE/FUNCTION must be the only statement in a batch
-    const BATCH_SIZE = opts.dialect === 'mssql' ? 1 : 50
-    for (let i = 0; i < statements.length; i += BATCH_SIZE) {
-      const batch = statements.slice(i, i + BATCH_SIZE)
-      const batchSQL = `${batch.map((s) => s.text).join(';\n')};`
-      try {
-        await db.exec(batchSQL)
-      } catch {
-        // On batch failure, fall back to one-by-one for precise errors.
-        // Re-execute each statement individually — idempotent DDL (CREATE IF NOT EXISTS,
-        // DROP IF EXISTS) handles already-applied statements safely.
-        for (const stmt of batch) {
-          try {
-            await db.exec(stmt.text)
-          } catch (stmtErr) {
-            throw new Error(
-              `failed to execute statement: ${stmt.text.slice(0, 200)}: ${(stmtErr as any)?.message ?? stmtErr}`,
-            )
+  try {
+    // Execute each SQL file's statements against the dev database.
+    // Uses dialect-specific scanner (matches Go Driver.ScanStmts per dialect).
+    // Batches up to 50 statements per exec call, falls back to one-by-one on failure.
+    const dialectScan = dialectScanner(opts.dialect)
+    for (const sql of files) {
+      if (sql.trim() === '') continue
+      const statements = dialectScan(sql).filter((s) => s.text.trim() !== '')
+      // MSSQL: no batching — CREATE PROCEDURE/FUNCTION must be the only statement in a batch
+      const BATCH_SIZE = opts.dialect === 'mssql' ? 1 : 50
+      for (let i = 0; i < statements.length; i += BATCH_SIZE) {
+        const batch = statements.slice(i, i + BATCH_SIZE)
+        const batchSQL = `${batch.map((s) => s.text).join(';\n')};`
+        try {
+          await db.exec(batchSQL)
+        } catch {
+          // On batch failure, fall back to one-by-one for precise errors.
+          // Re-execute each statement individually — idempotent DDL (CREATE IF NOT EXISTS,
+          // DROP IF EXISTS) handles already-applied statements safely.
+          for (const stmt of batch) {
+            try {
+              await db.exec(stmt.text)
+            } catch (stmtErr) {
+              throw new Error(
+                `failed to execute statement: ${stmt.text.slice(0, 200)}: ${(stmtErr as any)?.message ?? stmtErr}`,
+              )
+            }
           }
         }
       }
     }
+
+    // Inspect the resulting schema
+    const realm = await inspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
+
+    return realm
+  } finally {
+    // Restore the dev database to its pre-snapshot state
+    await opts.restore()
   }
-
-  // Inspect the resulting schema
-  const realm = await inspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
-
-  // Restore the dev database to its pre-snapshot state
-  await opts.restore()
-
-  return realm
 }

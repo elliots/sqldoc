@@ -72,11 +72,14 @@ function splitPatterns(patterns: string[]): string[][] {
         current += ch
       }
     }
+    if (inQuote) {
+      throw new Error(`unclosed quote in pattern: "${pattern}"`)
+    }
     if (current.length > 0) {
       parts.push(current)
     }
-    if (parts.length === 0) {
-      throw new Error(`empty pattern: "${pattern}"`)
+    if (parts.length === 0 || parts.some((p) => p === '')) {
+      throw new Error(`empty segment in pattern: "${pattern}"`)
     }
     result.push(parts)
   }
