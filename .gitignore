@@ -23,6 +23,7 @@ out.sql
 /sqldoc-*
 
 out/
+coverage/
 
 CLAUDE.md
 .bg-shell

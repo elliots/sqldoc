@@ -6,6 +6,7 @@
     "build": "cd vscode-sqldoc && node build.mjs && cd .. && bash scripts/build-binary.sh",
     "install-vscode-extension": "cd vscode-sqldoc && bun run install-ext",
     "test:node": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 node --test 'packages/**/*.test.ts' 'tests/**/*.test.ts'",
+    "test:node:coverage": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 node --experimental-test-coverage --test-coverage-exclude='**/*.test.ts' --test-coverage-exclude='tests/**' --test-coverage-exclude='**/node_modules/**' --test-coverage-exclude='**/dist/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test 'packages/**/*.test.ts' 'tests/**/*.test.ts'",
     "test:bun": "bun test ./packages ./tests --timeout ${TEST_TIMEOUT:-120000}",
     "test-docs": "./scripts/test-docs.sh",
     "format": "biome format --write .",
