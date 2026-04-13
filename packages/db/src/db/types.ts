@@ -1,5 +1,5 @@
 /**
- * DatabaseAdapter abstracts the database connection used by the Atlas WASI host.
+ * DatabaseAdapter abstracts the database connection used by the schema runner host.
  * Both pglite (in-memory, zero-config) and pg (external Postgres) implement this.
  */
 export interface DatabaseAdapter {
@@ -77,7 +77,7 @@ export async function createBunSqlAdapter(connectionString: string, connectionTi
   // @ts-expect-error -- bun global only exists in Bun runtime
   const { SQL } = await import('bun')
   const pool = new SQL({ url: connectionString, connectionTimeout })
-  // Reserve a dedicated connection — Atlas WASI bridge needs it to stay open
+  // Reserve a dedicated connection — the runner bridge needs it to stay open
   const db = await pool.reserve()
 
   // Detect current schema at connection time

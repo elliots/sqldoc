@@ -7,7 +7,7 @@
  */
 import { format as formatSql } from '@sqltools/formatter'
 
-/** Statements whose bodies are compared by Atlas as raw strings. */
+/** Statements whose bodies are compared by the inspector as raw strings. */
 const BODY_DIFFED_RE = /^\s*CREATE\s+(OR\s+REPLACE\s+)?(FUNCTION|PROCEDURE|TRIGGER)\b/i
 
 const FMT_OPTS = { language: 'sql' as const, indent: '  ', linesBetweenQueries: 'preserve' as const }

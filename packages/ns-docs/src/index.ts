@@ -1,10 +1,10 @@
 import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
 import type { Realm } from '@sqldoc/db'
-import { realmToDocsSchema } from './atlas.ts'
 import { mergeSchemaWithTags } from './merge.ts'
 import { generateMermaidERD } from './mermaid.ts'
 import { renderHtml } from './renderers/html.ts'
 import { renderMarkdown } from './renderers/markdown.ts'
+import { realmToDocsSchema } from './schema.ts'
 import type { DocsConfig } from './types.ts'
 
 const plugin: NamespacePlugin = {
@@ -42,13 +42,13 @@ const plugin: NamespacePlugin = {
     const { format, output: outputPath } = config
     const title = config.title ?? 'Schema Documentation'
 
-    // Atlas realm is provided by CLI compile (WASI inspect already ran)
-    const realm = ctx.atlasRealm as Realm | undefined
+    // The inspected schema realm is provided by CLI compile
+    const realm = ctx.schemaRealm as Realm | undefined
     if (!realm) {
-      throw new Error('ns-docs requires Atlas schema. Run with a database connection (devUrl in config).')
+      throw new Error('ns-docs requires inspected schema. Run with a database connection (devUrl in config).')
     }
 
-    // Convert Atlas WASI types to ns-docs types
+    // Convert inspector types to the docs schema types
     const schema = realmToDocsSchema(realm)
     const mermaid = generateMermaidERD(realm)
 

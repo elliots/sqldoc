@@ -2,7 +2,7 @@ import { makeTagCtx } from '@sqldoc/core/test'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
-const mockAtlasTable = {
+const mockSchemaTable = {
   name: 'orders',
   columns: [
     { name: 'id', type: { T: 'integer' } },
@@ -132,7 +132,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -148,7 +148,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -167,7 +167,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -187,7 +187,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -201,7 +201,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -215,7 +215,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -230,7 +230,7 @@ describe('ns-audit plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: { on: ['insert', 'update'] } },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -240,7 +240,7 @@ describe('ns-audit plugin', () => {
       expect(sql[2].sql).toContain('AFTER UPDATE ON')
     })
 
-    it('without atlasTable generates only audit table and annotation', () => {
+    it('without schemaTable generates only audit table and annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'mysql',
@@ -265,7 +265,7 @@ describe('ns-audit plugin', () => {
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -282,7 +282,7 @@ describe('ns-audit plugin', () => {
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -298,7 +298,7 @@ describe('ns-audit plugin', () => {
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -311,7 +311,7 @@ describe('ns-audit plugin', () => {
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -320,7 +320,7 @@ describe('ns-audit plugin', () => {
       expect(sql[1].sql).toContain('"orders_audit_after_insert"')
     })
 
-    it('without atlasTable generates only audit table and annotation', () => {
+    it('without schemaTable generates only audit table and annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'sqlite',

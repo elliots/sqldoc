@@ -1,43 +1,43 @@
-// ── Atlas CLI JSON output types ─────────────────────────────────────
+// ── Schema snapshot types ───────────────────────────────────────────
 
-export interface AtlasSchema {
-  schemas: AtlasSchemaEntry[]
+export interface SchemaSnapshot {
+  schemas: SchemaEntry[]
 }
 
-export interface AtlasSchemaEntry {
+export interface SchemaEntry {
   name: string
-  tables?: AtlasTable[]
-  views?: AtlasView[]
+  tables?: SchemaTable[]
+  views?: SchemaView[]
   comment?: string
 }
 
-export interface AtlasTable {
+export interface SchemaTable {
   name: string
-  columns: AtlasColumn[]
-  indexes?: AtlasIndex[]
-  primary_key?: AtlasPrimaryKey
-  foreign_keys?: AtlasForeignKey[]
-  checks?: AtlasCheck[]
+  columns: SchemaColumn[]
+  indexes?: SchemaIndex[]
+  primary_key?: SchemaPrimaryKey
+  foreign_keys?: SchemaForeignKey[]
+  checks?: SchemaCheck[]
 }
 
-export interface AtlasColumn {
+export interface SchemaColumn {
   name: string
   type: string
   null?: boolean
   default?: string
 }
 
-export interface AtlasIndex {
+export interface SchemaIndex {
   name: string
   unique?: boolean
   parts: Array<{ column: string }>
 }
 
-export interface AtlasPrimaryKey {
+export interface SchemaPrimaryKey {
   parts: Array<{ column: string }>
 }
 
-export interface AtlasForeignKey {
+export interface SchemaForeignKey {
   name: string
   columns: string[]
   references: {
@@ -46,18 +46,18 @@ export interface AtlasForeignKey {
   }
 }
 
-export interface AtlasCheck {
+export interface SchemaCheck {
   name: string
   expr: string
 }
 
-export interface AtlasView {
+export interface SchemaView {
   name: string
-  columns: AtlasColumn[]
+  columns: SchemaColumn[]
   definition?: string
 }
 
-// ── Merged schema types (Atlas + sqldoc tags combined) ──────────────
+// ── Merged schema types (schema snapshot + sqldoc tags combined) ────
 
 export interface DocsRelationship {
   from: string
@@ -102,9 +102,9 @@ export interface MergedTable {
   isGenerated: boolean
   generatedBy?: string
   columns: MergedColumn[]
-  indexes: AtlasIndex[]
-  primaryKey?: AtlasPrimaryKey
-  foreignKeys: AtlasForeignKey[]
+  indexes: SchemaIndex[]
+  primaryKey?: SchemaPrimaryKey
+  foreignKeys: SchemaForeignKey[]
   tags: MergedTag[]
 }
 

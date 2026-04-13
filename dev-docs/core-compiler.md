@@ -38,13 +38,13 @@ flowchart TD
 
 ## Where Tier 1 Ends And Tier 2 Begins
 
-Inside `packages/core`, “Tier 2” means `compile()` can accept an Atlas-style realm and use it instead of plain block resolution. The actual realm is not built inside `packages/core`; it is prepared by the CLI pipeline in [`packages/cli/src/utils/pipeline.ts`](../packages/cli/src/utils/pipeline.ts) using `packages/db` + `packages/inspector`.
+Inside `packages/core`, “Tier 2” means `compile()` can accept an inspected schema realm and use it instead of plain block resolution. The actual realm is not built inside `packages/core`; it is prepared by the CLI pipeline in [`packages/cli/src/utils/pipeline.ts`](../packages/cli/src/utils/pipeline.ts) using `packages/db` + `packages/inspector`.
 
 Key cross-package handoff:
 
 - `pipeline.ts` discovers files and resolves directives.
-- `pipeline.ts` inspects SQL through the dev DB runner to obtain an Atlas realm.
-- `compile()` receives `atlasRealm` and uses `compileWithRealm()` so plugins can see richer schema data.
+- `pipeline.ts` inspects SQL through the dev DB runner to obtain a schema realm.
+- `compile()` receives `schemaRealm` and uses `compileWithRealm()` so plugins can see richer schema data.
 
 That means edits to compile behavior often require reading both:
 

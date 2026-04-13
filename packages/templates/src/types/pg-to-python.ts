@@ -1,4 +1,4 @@
-/** Category-based mapping — used when Atlas provides a type category */
+/** Category-based mapping — used when schema inspection provides a type category */
 const CATEGORY_TO_PYTHON: Record<string, string> = {
   string: 'str',
   integer: 'int',

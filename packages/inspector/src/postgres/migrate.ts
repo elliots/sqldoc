@@ -628,7 +628,7 @@ export class PostgresPlan implements PlanDriver {
   /** Generate SQL for adding a function. */
   addFunc(func: Func): string[] {
     // Body contains the full CREATE [OR REPLACE] FUNCTION statement
-    // from pg_get_functiondef — use it directly (matches Go Atlas).
+    // from pg_get_functiondef — use it directly (matches the original Go behavior).
     if (func.body) {
       return [func.body]
     }
@@ -1135,7 +1135,7 @@ function formatTypeRef(t: string): string {
  * When CASCADE drops a dependency, the diff may still generate an explicit
  * drop for that object — IF EXISTS prevents failures when the object is already gone.
  *
- * Matches Go Atlas: sql/postgres/driver.go:withCascade
+ * Matches the original Go implementation in sql/postgres/driver.go:withCascade
  */
 export function withCascade(changes: Change[]): Change[] {
   const cascadeExtra: Clause[] = [{ type: 'if_exists' }, { type: 'cascade' }]

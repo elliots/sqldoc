@@ -5,8 +5,8 @@
  * and orchestrates generateSQL/generateCode for each tag occurrence.
  *
  * Supports two compilation tiers:
- * - Tier 1 (no Atlas): Uses block resolution from sqlparser-ts (VSCode, validation)
- * - Tier 2 (Atlas):    Uses Atlas-parsed schema with tags already matched to objects
+ * - Tier 1 (parser only): Uses block resolution from sqlparser-ts (VSCode, validation)
+ * - Tier 2 (schema-aware): Uses inspected schema with tags already matched to objects
  */
 
 import type { SqlAstAdapter } from '../ast/adapter.ts'
@@ -93,22 +93,30 @@ export interface CompileOptions {
   adapter: SqlAstAdapter
   /** Project config */
   config: ResolvedConfig
-  /** Atlas-parsed schema realm (Tier 2). When provided, uses Atlas tag-to-object matching instead of block resolution. */
-  atlasRealm?: unknown
+  /** Inspected schema realm (Tier 2). When provided, uses schema tag-to-object matching instead of block resolution. */
+  schemaRealm?: unknown
 }
 
 export function compile(options: CompileOptions): CompilerOutput {
-  const { source, filePath, plugins, statements, config, adapter, atlasRealm } = options
+  const { source, filePath, plugins, statements, config, adapter, schemaRealm } = options
   debug(
     'compile',
-    `file=${filePath}, tier=${atlasRealm ? 2 : 1}, plugins=[${[...plugins.keys()].join(', ')}], dialect=${config.dialect}`,
+    `file=${filePath}, tier=${schemaRealm ? 2 : 1}, plugins=[${[...plugins.keys()].join(', ')}], dialect=${config.dialect}`,
   )
 
-  // Tier 2: Atlas realm provided — use Atlas tag-to-object matching
-  if (atlasRealm) {
-    const result = compileWithRealm(atlasRealm as InternalRealm, filePath, plugins, statements, config, source, adapter)
-    // Merge parser-derived tags that Atlas doesn't see (e.g. @lint.ignore)
-    // These tags have no SQL output so Atlas never encounters them
+  // Tier 2: inspected schema realm provided — use schema tag-to-object matching
+  if (schemaRealm) {
+    const result = compileWithRealm(
+      schemaRealm as InternalRealm,
+      filePath,
+      plugins,
+      statements,
+      config,
+      source,
+      adapter,
+    )
+    // Merge parser-derived tags that schema inspection doesn't see (e.g. @lint.ignore)
+    // These tags have no SQL output so the inspector never encounters them
     const tags = parse(source).tags
     if (tags.length > 0) {
       const docLines = source.split('\n')
@@ -119,7 +127,7 @@ export function compile(options: CompileOptions): CompilerOutput {
     return result
   }
 
-  // Tier 1: No Atlas realm — use block resolution
+  // Tier 1: no schema realm — use block resolution
   return compileTier1(source, filePath, plugins, statements, config, adapter)
 }
 
@@ -237,7 +245,7 @@ function compileTier1(
   return { sourceFile: filePath, mergedSql, sqlOutputs, codeOutputs, errors, docsMeta, fileTags }
 }
 
-// ── Tier 2: Atlas realm compilation ───────────────────────────────────
+// ── Tier 2: schema realm compilation ──────────────────────────────────
 
 function compileWithRealm(
   realm: InternalRealm,
@@ -339,7 +347,7 @@ interface RealmObjectContext {
   fileNamespaces: Set<string>
 }
 
-/** Process a single Atlas object (table or view) and its columns for tag invocation */
+/** Process a single inspected object (table or view) and its columns for tag invocation */
 function processRealmObject(
   obj: InternalTable | InternalView,
   target: SqlTarget,
@@ -442,8 +450,8 @@ function processRealmObject(
       fileStatements: statements,
       config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
       filePath,
-      atlasTable: obj,
-      atlasRealm: realm,
+      schemaTable: obj,
+      schemaRealm: realm,
     }
 
     invokePlugin(
@@ -537,9 +545,9 @@ function processRealmObject(
           fileStatements: statements,
           config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
           filePath,
-          atlasTable: obj,
-          atlasColumn: col,
-          atlasRealm: realm,
+          schemaTable: obj,
+          schemaColumn: col,
+          schemaRealm: realm,
         }
 
         invokePlugin(
@@ -720,10 +728,10 @@ function buildMergedSql(
   return parts.join('\n')
 }
 
-// ── Atlas helpers ─────────────────────────────────────────────────────
+// ── Schema inspection helpers ────────────────────────────────────────
 
 /**
- * Split an Atlas tag Name into namespace and tag name.
+ * Split an inspected tag name into namespace and tag name.
  * - "audit.track" -> { namespace: "audit", tag: "track" }
  * - "searchable"  -> { namespace: "searchable", tag: null } ($self pattern)
  */
@@ -748,13 +756,13 @@ function findTags(attrs?: InternalAttr[]): Array<{ kind: 'tag'; name: string; ar
   return attrs.filter(isTag)
 }
 
-/** Parse Atlas tag args string into parsed values using the parser's parseArgs */
+/** Parse inspected tag args string into parsed values using the parser's parseArgs */
 function parseTagArgs(argsStr: string): Record<string, unknown> | unknown[] {
   if (!argsStr) return {}
   return parseArgs(argsStr).values
 }
 
-/** Build fileTags from collected Atlas tag occurrences */
+/** Build fileTags from collected inspected tag occurrences */
 function buildFileTags2(
   occurrences: Array<{
     objectName: string
@@ -796,7 +804,7 @@ function buildFileTags2(
 
 function buildFileTags(blocks: TagBlock[]): TagContext['fileTags'] {
   return blocks.map((block) => {
-    // Use table.column format for column targets (matches Atlas convention)
+    // Use table.column format for column targets (matches inspector convention)
     const objectName =
       block.ast.target === 'column' && block.ast.columnName
         ? `${block.ast.objectName ?? 'unknown'}.${block.ast.columnName}`
@@ -821,22 +829,22 @@ function parsedArgsToValue(rawArgs: string | null): Record<string, unknown> | un
 }
 
 /**
- * Merge parser-derived tags into Atlas-derived fileTags.
+ * Merge parser-derived tags into schema-derived fileTags.
  *
- * Atlas tag matching only sees tags that produce attrs in the Atlas schema inspection.
- * Tags like @lint.ignore that don't produce SQL output are invisible to Atlas, so the
+ * Schema tag matching only sees tags that produce attrs in schema inspection.
+ * Tags like @lint.ignore that don't produce SQL output are invisible to inspection, so the
  * parser-derived tags are merged in to ensure complete fileTags for lint rules and docs.
  */
-function mergeParserTags(atlasFileTags: TagContext['fileTags'], parserFileTags: TagContext['fileTags']): void {
+function mergeParserTags(schemaFileTags: TagContext['fileTags'], parserFileTags: TagContext['fileTags']): void {
   // Index existing objects by name
-  const byName = new Map<string, (typeof atlasFileTags)[0]>()
-  for (const obj of atlasFileTags) {
+  const byName = new Map<string, (typeof schemaFileTags)[0]>()
+  for (const obj of schemaFileTags) {
     byName.set(obj.objectName, obj)
   }
 
   for (const pObj of parserFileTags) {
     for (const pTag of pObj.tags) {
-      // Only add tags that Atlas doesn't already have (non-SQL-generating tags)
+      // Only add tags that inspection doesn't already have (non-SQL-generating tags)
       const existing = byName.get(pObj.objectName)
       if (existing) {
         // Check if this tag already exists
@@ -845,9 +853,9 @@ function mergeParserTags(atlasFileTags: TagContext['fileTags'], parserFileTags: 
           existing.tags.push(pTag)
         }
       } else {
-        // Object not in Atlas (e.g. it's on a function or something Atlas didn't process)
+        // Object not in inspected schema (e.g. it's on a function or something inspection didn't process)
         const newObj = { objectName: pObj.objectName, target: pObj.target, tags: [pTag] }
-        atlasFileTags.push(newObj)
+        schemaFileTags.push(newObj)
         byName.set(pObj.objectName, newObj)
       }
     }

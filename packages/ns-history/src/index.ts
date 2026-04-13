@@ -13,7 +13,7 @@
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import { autoIncrementType, currentTimestamp, type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
 
-// -- Minimal Atlas type shapes --
+// -- Minimal inspected schema type shapes --
 
 interface HistoryColumn {
   name: string
@@ -27,7 +27,7 @@ interface HistoryTable {
 
 // -- Helper functions --
 
-/** Get the raw SQL type string from an Atlas column type */
+/** Get the raw SQL type string from an inspected column type */
 function columnTypeSql(col: HistoryColumn): string {
   return col.type?.raw ?? col.type?.T ?? 'TEXT'
 }
@@ -144,8 +144,8 @@ const plugin: NamespacePlugin = {
     const operations = (args.on as string[] | undefined) ?? ['update', 'delete']
     const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_history`
 
-    // History table requires column info from Atlas for ALL dialects
-    const table = ctx.atlasTable as HistoryTable | undefined
+    // History table requires column info from schema inspection for ALL dialects
+    const table = ctx.schemaTable as HistoryTable | undefined
     const columns = table?.columns
 
     if (!columns || columns.length === 0) {

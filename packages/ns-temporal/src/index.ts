@@ -14,7 +14,7 @@
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import { currentTimestamp, type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
 
-// -- Minimal Atlas type shapes --
+// -- Minimal inspected schema type shapes --
 
 interface TemporalColumn {
   name: string
@@ -174,8 +174,8 @@ const plugin: NamespacePlugin = {
     const args = tag.args as Record<string, unknown>
     const viewName = (args.view as string) || (ctx.config.view as string) || `${objectName}_current`
 
-    // Triggers need atlasTable for PK columns (Postgres, SQLite) or column list
-    const table = ctx.atlasTable as TemporalTable | undefined
+    // Triggers need schemaTable for PK columns (Postgres, SQLite) or column list
+    const table = ctx.schemaTable as TemporalTable | undefined
     const pkColumns = table?.primary_key?.columns
 
     // Temporal column DDL + composite PK alteration
@@ -195,7 +195,7 @@ const plugin: NamespacePlugin = {
         text: 'MySQL does not support self-referential triggers for UPDATE/DELETE temporal behavior. Use application-level logic.',
       })
     } else if (!pkColumns || pkColumns.length === 0 || !columns || columns.length === 0) {
-      // Need atlasTable for Postgres triggers
+      // Need schemaTable for Postgres triggers
       triggerSqls = []
       extraAnnotations.push({
         object: objectName,

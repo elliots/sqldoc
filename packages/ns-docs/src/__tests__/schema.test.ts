@@ -1,6 +1,6 @@
 import type { Realm } from '@sqldoc/db'
 import { describe, expect, it } from '@sqldoc/test-utils'
-import { realmToDocsSchema } from '../atlas.ts'
+import { realmToDocsSchema } from '../schema.ts'
 
 const sampleRealm: Realm = {
   schemas: [
@@ -52,7 +52,7 @@ const sampleRealm: Realm = {
 }
 
 describe('realmToDocsSchema', () => {
-  it('converts realm to ns-docs AtlasSchema format', () => {
+  it('converts realm to the docs schema snapshot format', () => {
     const result = realmToDocsSchema(sampleRealm)
     expect(result.schemas).toHaveLength(1)
     expect(result.schemas[0].name).toBe('public')

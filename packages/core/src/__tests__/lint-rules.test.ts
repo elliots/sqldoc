@@ -159,12 +159,12 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      // Atlas realm with no primary_key on users
-      const atlasRealm = {
+      // Schema realm with no primary_key on users
+      const schemaRealm = {
         schemas: [{ name: 'public', tables: [{ name: 'users', columns: [] }] }],
       }
 
-      const results = lint([output], plugins, { dialect: 'postgres' }, atlasRealm)
+      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
       expect(results).toHaveLength(1)
       expect(results[0].ruleName).toBe('validate.require-pk')
       expect(results[0].message).toContain('users')
@@ -184,8 +184,8 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      // Atlas realm with primary_key on users
-      const atlasRealm = {
+      // Schema realm with primary_key on users
+      const schemaRealm = {
         schemas: [
           {
             name: 'public',
@@ -194,7 +194,7 @@ describe('built-in lint rules', () => {
         ],
       }
 
-      const results = lint([output], plugins, { dialect: 'postgres' }, atlasRealm)
+      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
       expect(results).toHaveLength(0)
     })
   })

@@ -9,7 +9,7 @@
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import { type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
 
-// -- Minimal type shapes for Atlas objects --
+// -- Minimal type shapes for inspected schema objects --
 
 interface SoftDeleteColumn {
   name: string
@@ -225,7 +225,7 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
 
   if (!columnName) return undefined
 
-  const table = ctx.atlasTable as SoftDeleteTable | undefined
+  const table = ctx.schemaTable as SoftDeleteTable | undefined
   if (!table) {
     return {
       sql: [],

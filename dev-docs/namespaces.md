@@ -41,7 +41,7 @@ Common things most namespace packages do:
 - Optionally ship `lintRules` consumed later by `core.lint()`.
 - Rely on dialect helpers from `@sqldoc/core/sql-emitter.ts`.
 
-Packages that depend heavily on Tier 2 / Atlas realm data:
+Packages that depend heavily on Tier 2 / inspected realm data:
 
 - `ns-audit` on MySQL/SQLite, because trigger bodies need explicit column enumeration
 - `ns-history`, because history tables mirror the inspected columns

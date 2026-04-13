@@ -65,7 +65,7 @@ export function createRestoreFunc(
 
 /**
  * Capture a schema snapshot from a dev database.
- * Matches Go Atlas's NormalizeRealm/NormalizeSchema pattern:
+ * Matches the original Go NormalizeRealm/NormalizeSchema pattern:
  *
  * 1. Take a snapshot (capture restore function for current empty state)
  * 2. Execute SQL files against the dev database

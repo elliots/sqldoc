@@ -17,7 +17,7 @@ import {
   timestampType,
 } from '@sqldoc/core'
 
-// -- Minimal type shapes for AtlasTable/AtlasColumn (ctx.atlasTable is typed as unknown) --
+// -- Minimal inspected schema shapes (ctx.schemaTable is typed as unknown) --
 
 interface AuditColumn {
   name: string
@@ -194,8 +194,8 @@ const plugin: NamespacePlugin = {
         text: 'MSSQL audit triggers will use inserted/deleted tables (not yet implemented)',
       })
     } else if (dialect === 'mysql' || dialect === 'sqlite') {
-      // MySQL/SQLite: need column info from atlasTable for JSON serialization
-      const table = ctx.atlasTable as AuditTable | undefined
+      // MySQL/SQLite: need column info from schemaTable for JSON serialization
+      const table = ctx.schemaTable as AuditTable | undefined
       const columns = table?.columns
 
       if (!columns || columns.length === 0) {

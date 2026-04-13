@@ -5,7 +5,7 @@ import type { AddTable, Change, Clause, DropObject, DropTable, ModifyTable, Plan
 
 // -- Clause Helpers --
 
-/** Check if a change's extra clauses contain a specific clause type. Like Atlas's sqlx.Has. */
+/** Check if a change's extra clauses contain a specific clause type. Equivalent to sqlx.Has in the original Go code. */
 export function hasClause(extra: Clause[] | undefined, type: string): boolean {
   return extra?.some((c) => c.type === type) ?? false
 }

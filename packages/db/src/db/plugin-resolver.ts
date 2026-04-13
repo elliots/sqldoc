@@ -54,7 +54,7 @@ if (isBun) {
   })
 
   // Bun SQL doesn't handle multi-statement DDL batches correctly (partial execution
-  // before error causes Atlas fallback to fail). Use @sqldoc/db-mysql (mysql2) instead.
+  // before error causes schema fallback to fail). Use @sqldoc/db-mysql (mysql2) instead.
 }
 
 // ── Scheme resolution ──────────────────────────────────────────────

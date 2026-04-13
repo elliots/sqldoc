@@ -30,8 +30,8 @@ export interface PipelineResult {
   plugins: Map<string, NamespacePlugin>
   /** Count of errors encountered */
   totalErrors: number
-  /** Atlas realm from initial inspect (pre-compile schema) */
-  atlasRealm?: Realm
+  /** Schema realm from initial inspect (pre-compile schema) */
+  schemaRealm?: Realm
   /** Set of external object names (from externalRealm). Empty when no @external directives. */
   externalObjectNames: Set<string>
   /** File provenance map (absolute path -> provenance) */
@@ -79,7 +79,7 @@ export async function runCompilePipeline(
 
   // Build merged content: inline @include content into each project file at the end.
   // This ensures included tables can FK-reference parent tables (they appear after).
-  // External files are kept separate — they go to Atlas first as the pre-existing baseline.
+  // External files are kept separate — they are inspected first as the pre-existing baseline.
   const mergedProjectContents = new Map<string, string>()
   for (const sqlFile of sqlFiles) {
     let content = fs.readFileSync(sqlFile, 'utf-8')
@@ -97,10 +97,10 @@ export async function runCompilePipeline(
     mergedProjectContents.set(sqlFile, content)
   }
 
-  // For Atlas: external files first, then merged project files (includes inlined)
+  // For schema inspection: external files first, then merged project files (includes inlined)
   const allFiles = [...resolved.externalFiles, ...sqlFiles]
 
-  // ── Atlas -- required for compilation ──────────────────────────────
+  // ── Schema inspection -- required for compilation ──────────────────
   const dialect = config.dialect
   const allRawContents = allFiles.map((f) =>
     resolved.provenanceMap.get(f) === 'external'
@@ -117,7 +117,7 @@ export async function runCompilePipeline(
 
   const { extensions } = extractExtensions(allSqlContents)
   const sqldocDir = findSqldocDir(configRoot) ?? undefined
-  const atlasRunner = await createRunner({
+  const runner = await createRunner({
     dialect,
     devUrl: config.devUrl,
     extensions,
@@ -143,21 +143,21 @@ export async function runCompilePipeline(
   const allOutputs: CompilerOutput[] = []
   const allPlugins = new Map<string, NamespacePlugin>()
   let totalErrors = 0
-  let atlasRealm: Realm
+  let schemaRealm: Realm
   const externalObjectNames = new Set<string>()
 
   try {
-    // ── Dual Atlas inspection when @external directives present (D-16, D-17) ──
+    // ── Dual schema inspection when @external directives present (D-16, D-17) ──
     let externalRealm: Realm | undefined
 
     if (hasExternals) {
       // Inspection 1: external files only -> externalRealm
       const externalContents = resolved.externalFiles.map((f) => stripMigrationDown(fs.readFileSync(f, 'utf-8')))
-      const externalResult = await atlasRunner.inspect(externalContents, {
+      const externalResult = await runner.inspect(externalContents, {
         schema: defaultSchemaForDialect(dialect),
       })
       if (!externalResult.schema) {
-        throw new Error(externalResult.error ?? 'Atlas failed to parse external schema')
+        throw new Error(externalResult.error ?? 'Schema inspection failed to parse external schema')
       }
       externalRealm = externalResult.schema as Realm
 
@@ -169,23 +169,23 @@ export async function runCompilePipeline(
     }
 
     // Inspection 2 (or sole inspection when no externals): all files -> fullRealm
-    // Use zero-padded index prefix so Atlas preserves dependency order when it sorts by filename
+    // Use zero-padded index prefix so inspection preserves dependency order when it sorts by filename
     const relFiles = allFiles.map((f, i) => `${String(i).padStart(4, '0')}_${path.relative(process.cwd(), f)}`)
-    const inspectResult = await atlasRunner.inspect(allSqlContents, {
+    const inspectResult = await runner.inspect(allSqlContents, {
       fileNames: relFiles,
     })
     if (!inspectResult.schema) {
-      throw new Error(inspectResult.error ?? 'Atlas failed to parse schema')
+      throw new Error(inspectResult.error ?? 'Schema inspection failed to parse schema')
     }
     if (inspectResult.error) {
       console.error(pc.yellow(inspectResult.error))
     }
-    atlasRealm = inspectResult.schema
-    debug('pipeline', 'atlas inspect complete')
+    schemaRealm = inspectResult.schema
+    debug('pipeline', 'schema inspect complete')
 
     // Validate external object immutability (D-18)
     if (hasExternals && externalRealm) {
-      validateExternalImmutability(externalRealm, atlasRealm as Realm, externalObjectNames)
+      validateExternalImmutability(externalRealm, schemaRealm as Realm, externalObjectNames)
     }
 
     for (const filePath of allFiles) {
@@ -227,7 +227,7 @@ export async function runCompilePipeline(
       // Cast TagNamespace to NamespacePlugin (plugins extend TagNamespace)
       const plugins = new Map<string, NamespacePlugin>([...namespaces].map(([k, v]) => [k, v as NamespacePlugin]))
 
-      // Parse SQL AST (supplementary — Atlas is the real schema source)
+      // Parse SQL AST (supplementary — schema inspection is the real schema source)
       let statements: SqlStatement[] = []
       try {
         statements = adapter.parseStatements(source)
@@ -247,8 +247,8 @@ export async function runCompilePipeline(
         continue
       }
 
-      // Compile with Atlas schema
-      const output = compile({ source, filePath, plugins, statements, adapter, config, atlasRealm })
+      // Compile with inspected schema
+      const output = compile({ source, filePath, plugins, statements, adapter, config, schemaRealm })
 
       // Set provenance on each CompilerOutput
       output.provenance = resolved.provenanceMap.get(filePath) ?? 'project'
@@ -277,7 +277,7 @@ export async function runCompilePipeline(
       }
     }
   } finally {
-    await atlasRunner.close()
+    await runner.close()
   }
 
   return {
@@ -285,7 +285,7 @@ export async function runCompilePipeline(
     outputs: allOutputs,
     plugins: allPlugins,
     totalErrors,
-    atlasRealm,
+    schemaRealm,
     externalObjectNames,
     provenanceMap: resolved.provenanceMap,
   }
@@ -306,7 +306,7 @@ function stripMigrationDown(sql: string): string {
 // -- External object helpers --
 
 /**
- * Normalize an Atlas object (table or view) to a canonical string for comparison.
+ * Normalize an inspected object (table or view) to a canonical string for comparison.
  * Uses JSON.stringify on sorted column arrays for deep equality.
  */
 function normalizeColumns(

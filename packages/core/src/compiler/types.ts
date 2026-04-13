@@ -6,7 +6,7 @@ import type { SqlTarget, TagNamespace } from '../types.ts'
 // ── Project config ──────────────────────────────────────────────────
 
 /** Migration file format — determines how up/down scripts are read and written */
-export type MigrationFormat = 'atlas' | 'golang-migrate' | 'goose' | 'flyway' | 'dbmate' | 'plain'
+export type MigrationFormat = 'golang-migrate' | 'goose' | 'flyway' | 'dbmate' | 'plain'
 
 /** File naming strategy for generated migration files */
 export type MigrationNaming = 'timestamp' | 'sequential' | { provider: 'claude-code' }
@@ -111,12 +111,12 @@ export interface TagContext {
   config: NamespaceConfig
   /** The source SQL file path */
   filePath: string
-  /** Atlas-parsed table schema for this object (Tier 2 only, undefined in Tier 1) */
-  atlasTable?: unknown
-  /** Atlas-parsed column info (Tier 2 only, when target is 'column') */
-  atlasColumn?: unknown
-  /** Full Atlas realm with all schemas, tables, views (Tier 2 only) */
-  atlasRealm?: unknown
+  /** Inspected table schema for this object (Tier 2 only, undefined in Tier 1) */
+  schemaTable?: unknown
+  /** Inspected column info (Tier 2 only, when target is 'column') */
+  schemaColumn?: unknown
+  /** Full inspected schema realm with all schemas, tables, views (Tier 2 only) */
+  schemaRealm?: unknown
 }
 
 /** @deprecated Use TagContext instead */
@@ -149,8 +149,8 @@ export interface ProjectContext {
   config: NamespaceConfig
   /** Project root directory */
   projectRoot: string
-  /** Atlas-parsed schema realm (Tier 2, when available) */
-  atlasRealm?: unknown
+  /** Inspected schema realm (Tier 2, when available) */
+  schemaRealm?: unknown
   /** Set of object names (table/view) from @external files. Used by codegen for annotation and skipExternal filtering. */
   externalObjectNames?: Set<string>
 }
@@ -279,8 +279,8 @@ export interface LintContext {
   plugins: Map<string, NamespacePlugin>
   /** Project config (resolved single project) */
   config: ResolvedConfig
-  /** Atlas realm from schema inspection (Tier 2 only, undefined in VSCode) */
-  atlasRealm?: unknown
+  /** Schema realm from schema inspection (Tier 2 only, undefined in VSCode) */
+  schemaRealm?: unknown
 }
 
 /** A single lint diagnostic produced by a rule */

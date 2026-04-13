@@ -38,9 +38,9 @@ const plugin: NamespacePlugin = {
       return { files: [] }
     }
 
-    const realm = ctx.atlasRealm as Realm | undefined
+    const realm = ctx.schemaRealm as Realm | undefined
     if (!realm) {
-      throw new Error('ns-codegen requires Atlas schema. Run with a database connection (devUrl in config).')
+      throw new Error('ns-codegen requires inspected schema. Run with a database connection (devUrl in config).')
     }
 
     const allFiles: Array<{ filePath: string; content: string; source: string }> = []

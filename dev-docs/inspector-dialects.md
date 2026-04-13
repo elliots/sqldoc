@@ -4,7 +4,7 @@
 - Last reviewed commit: `9571d50fee5356b058cec0247aa5189272b53de6`
 - Related docs: [schema-engine.md](./schema-engine.md), [core-compiler.md](./core-compiler.md), [testing-and-fixtures.md](./testing-and-fixtures.md)
 
-This doc is the deep dive for the Atlas-derived inspector layer: how `inspect()` and `diff()` work, how the generic diff/planning engine is split from dialect-specific code, and what to touch when adding a new dialect family or a dialect variant.
+This doc is the deep dive for the inspector layer: how `inspect()` and `diff()` work, how the generic diff/planning engine is split from dialect-specific code, and what to touch when adding a new dialect family or a dialect variant.
 
 ```mermaid
 flowchart TD

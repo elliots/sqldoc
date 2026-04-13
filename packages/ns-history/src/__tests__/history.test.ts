@@ -2,7 +2,7 @@ import { makeTagCtx } from '@sqldoc/core/test'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
-const mockAtlasTable = {
+const mockSchemaTable = {
   name: 'orders',
   columns: [
     { name: 'id', type: { T: 'integer', null: false } },
@@ -31,7 +31,7 @@ describe('ns-history plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -65,7 +65,7 @@ describe('ns-history plugin', () => {
           dialect: 'postgres',
           objectName: 'products',
           tag: { name: null, args: { on: ['delete'] } },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -79,7 +79,7 @@ describe('ns-history plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: { destination: 'audit_history' } },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -93,7 +93,7 @@ describe('ns-history plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const docs = (result as any).docs
@@ -104,7 +104,7 @@ describe('ns-history plugin', () => {
       expect(docs.annotations[0].text).toContain('History tracked')
     })
 
-    it('without atlasTable emits only annotation', () => {
+    it('without schemaTable emits only annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'postgres',
@@ -126,7 +126,7 @@ describe('ns-history plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -141,7 +141,7 @@ describe('ns-history plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -157,7 +157,7 @@ describe('ns-history plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -171,7 +171,7 @@ describe('ns-history plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -186,7 +186,7 @@ describe('ns-history plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: { on: ['update'] } },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -195,7 +195,7 @@ describe('ns-history plugin', () => {
       expect(sql[1].sql).toContain('BEFORE UPDATE ON')
     })
 
-    it('without atlasTable emits only annotation', () => {
+    it('without schemaTable emits only annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'mysql',
@@ -217,7 +217,7 @@ describe('ns-history plugin', () => {
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -232,7 +232,7 @@ describe('ns-history plugin', () => {
           dialect: 'sqlite',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -240,7 +240,7 @@ describe('ns-history plugin', () => {
       expect(sql[1].sql).toContain('OLD."id"')
     })
 
-    it('without atlasTable emits only annotation', () => {
+    it('without schemaTable emits only annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'sqlite',

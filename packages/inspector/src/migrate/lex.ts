@@ -61,7 +61,7 @@ export function stmtDirective(s: Stmt, name: string): string[] {
 
 // -- Directive --
 
-const reDirective = /^([ -~]*)atlas:(\w+)(?: +(.+))*/
+const reDirective = /^([ -~]*)sqldoc:(\w+)(?: +(.+))*/
 
 /** Search content for a directive line matching the given prefix and name. */
 export function directive(content: string, name: string, prefix?: string): string | undefined {

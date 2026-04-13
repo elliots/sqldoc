@@ -14,7 +14,7 @@ flowchart LR
   Runtime --> Pipeline["packages/cli/src/utils/pipeline.ts"]
   Pipeline --> DB["packages/db + db-* adapters"]
   DB --> Inspector["packages/inspector"]
-  Inspector --> Realm["Atlas-style Realm"]
+  Inspector --> Realm["Inspected Realm"]
   Core --> NS["packages/ns-* plugins"]
   Realm --> Output["ns-codegen / ns-docs"]
   Output --> Templates["packages/templates"]
@@ -41,7 +41,7 @@ flowchart LR
 | Core runtime | `packages/sqldoc`, `packages/cli`, `vscode-sqldoc` | User entry points. `sqldoc` delegates to project-local `@sqldoc/cli`. |
 | Compiler | `packages/core` | Pure TS layer for parsing, validation, compilation, config loading, lint engine. |
 | Schema adapters | `packages/db`, `packages/db-postgres`, `packages/db-mysql`, `packages/db-mssql`, `packages/db-pglite`, `packages/db-neon`, `packages/db-neon-temporary` | Runtime selection of connection strategy based on `devUrl`. |
-| Schema inspection | `packages/inspector`, `sqlparser-ts` | `inspector` is Atlas-derived TS. `sqlparser-ts` is Rust/WASM SQL AST parsing. |
+| Schema inspection | `packages/inspector`, `sqlparser-ts` | `inspector` is the TypeScript schema engine. `sqlparser-ts` is Rust/WASM SQL AST parsing. |
 | Namespace plugins | `packages/ns-anon`, `ns-audit`, `ns-codegen`, `ns-comment`, `ns-deprecated`, `ns-docs`, `ns-history`, `ns-lint`, `ns-postgraphile`, `ns-rls`, `ns-softdelete`, `ns-temporal`, `ns-validate` | Active plugin packages with tests and published package manifests. |
 | Output/templates | `packages/templates`, `site/data` | Templates and site extractors both treat source code as metadata. |
 | Test support | `packages/test-utils`, `tests` | Helpers plus committed integration fixtures/golden outputs. |

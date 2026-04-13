@@ -40,7 +40,7 @@ describe('readMigrationDir', () => {
     fs.mkdirSync(dir)
     fs.writeFileSync(path.join(dir, '20260321143000_first.sql'), 'CREATE TABLE a;')
     fs.writeFileSync(path.join(dir, 'README.md'), '# Migrations')
-    fs.writeFileSync(path.join(dir, 'atlas.sum'), 'checksum')
+    fs.writeFileSync(path.join(dir, 'checksums.sum'), 'checksum')
     fs.writeFileSync(path.join(dir, 'notes.txt'), 'some notes')
 
     const result = readMigrationDir(dir)

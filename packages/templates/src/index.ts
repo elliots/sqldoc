@@ -1,7 +1,5 @@
 // Type mappers
 
-// Atlas helpers
-export { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './helpers/atlas.ts'
 export type {
   EnrichedColumn,
   EnrichedEnum,
@@ -16,6 +14,8 @@ export type {
 export { activeTables, enrichRealm, findTagsByNamespace, getNamedArg, getTagArg } from './helpers/enrich.ts'
 // Naming helpers
 export { toCamelCase, toPascalCase, toScreamingSnake } from './helpers/naming.ts'
+// Realm helpers
+export { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './helpers/realm.ts'
 // Tag lookup helpers
 export { findRename, findTypeOverride, isSkipped } from './helpers/tags.ts'
 // Tag functions (re-exported for convenience)

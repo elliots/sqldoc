@@ -42,8 +42,8 @@ interface ResolvedSource {
   type: 'file' | 'directory' | 'database'
   /** For database: connection URL. For file/directory: merged compiled SQL */
   value: string
-  /** Atlas realm from the pipeline (reuse instead of re-inspecting) */
-  atlasRealm?: unknown
+  /** Schema realm from the pipeline (reuse instead of re-inspecting) */
+  schemaRealm?: unknown
   /** External SQL to prepend to the other side of a diff (per D-09) */
   externalSql?: string
 }
@@ -76,7 +76,7 @@ async function resolveSource(source: string, config: ResolvedConfig, configRoot:
   return {
     type: fs.statSync(resolved).isDirectory() ? 'directory' : 'file',
     value: result.mergedSql,
-    atlasRealm: result.atlasRealm,
+    schemaRealm: result.schemaRealm,
     externalSql,
   }
 }
@@ -119,9 +119,9 @@ export async function schemaInspectCommand(
         } finally {
           await runner.close()
         }
-      } else if (resolved.atlasRealm) {
+      } else if (resolved.schemaRealm) {
         // Pipeline already inspected — reuse the realm
-        outputInspect({ schema: resolved.atlasRealm } as InspectorResult, format)
+        outputInspect({ schema: resolved.schemaRealm } as InspectorResult, format)
       } else {
         throw new CliError('No schema available')
       }

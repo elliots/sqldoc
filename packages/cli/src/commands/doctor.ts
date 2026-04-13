@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { findSqldocDir, loadConfig } from '@sqldoc/core'
 import pc from 'picocolors'
 
@@ -82,42 +81,7 @@ export async function doctorCommand(): Promise<void> {
     detail: getCliInstalledDetail(sqldocDir ?? undefined, hasNodeModules, hasCliInstalled),
   })
 
-  // 4. atlas.wasm is findable
-  let wasmFound = false
-  let wasmPath: string | undefined
-  if (process.env.ATLAS_WASM_PATH && fs.existsSync(process.env.ATLAS_WASM_PATH)) {
-    wasmFound = true
-    wasmPath = process.env.ATLAS_WASM_PATH
-  } else {
-    // Walk up from current file's directory looking for atlas.wasm (same logic as @sqldoc/db)
-    let dir = path.dirname(fileURLToPath(import.meta.url))
-    const searched: string[] = []
-    outer: while (true) {
-      for (const candidate of [
-        path.join(dir, 'wasm', 'atlas.wasm'),
-        path.join(dir, '..', 'wasm', 'atlas.wasm'),
-        path.join(dir, 'node_modules', '@sqldoc', 'db', 'wasm', 'atlas.wasm'),
-        path.join(dir, 'packages', 'db', 'wasm', 'atlas.wasm'),
-      ]) {
-        searched.push(candidate)
-        if (fs.existsSync(candidate)) {
-          wasmFound = true
-          wasmPath = candidate
-          break outer
-        }
-      }
-      const parent = path.dirname(dir)
-      if (parent === dir) break
-      dir = parent
-    }
-  }
-  results.push({
-    label: 'atlas.wasm is findable',
-    ok: wasmFound,
-    detail: wasmFound ? wasmPath : 'atlas.wasm not found. Set ATLAS_WASM_PATH or check installation.',
-  })
-
-  // 6. Config file exists and is parseable
+  // 4. Config file exists and is parseable
   let configOk = false
   let configDetail: string | undefined
   try {

@@ -8,7 +8,6 @@
  *
  * Supported formats:
  * - plain:          NNN_name.sql (entire file = up, no down)
- * - atlas:          YYYYMMDDHHMMSS_name.sql (entire file = up, no down)
  * - goose:          NNN_name.sql (-- +goose Up / -- +goose Down markers)
  * - golang-migrate: NNN_name.up.sql / NNN_name.down.sql (separate files)
  * - flyway:         V1__name.sql (up), U1__name.sql (down/undo)
@@ -55,11 +54,6 @@ export interface WriteMigrationOptions {
 
 /** Parse a single migration file based on format */
 function parsePlain(filename: string, content: string): ParsedMigration {
-  const sortKey = filename.split('_')[0]
-  return { filename, up: content.trim(), sortKey }
-}
-
-function parseAtlas(filename: string, content: string): ParsedMigration {
   const sortKey = filename.split('_')[0]
   return { filename, up: content.trim(), sortKey }
 }
@@ -134,10 +128,9 @@ export function readMigrations(dir: string, format: MigrationFormat): ParsedMigr
 
   switch (format) {
     case 'plain':
-    case 'atlas':
       return allFiles.map((f) => {
         const content = fs.readFileSync(path.join(absDir, f), 'utf-8')
-        return format === 'atlas' ? parseAtlas(f, content) : parsePlain(f, content)
+        return parsePlain(f, content)
       })
 
     case 'goose':
@@ -207,8 +200,7 @@ export function writeMigration(opts: WriteMigrationOptions): string[] {
   const written: string[] = []
 
   switch (opts.format) {
-    case 'plain':
-    case 'atlas': {
+    case 'plain': {
       const filename = `${prefix}_${safeName}.sql`
       const content = `${opts.up.trim()}\n`
       const filePath = path.join(absDir, filename)

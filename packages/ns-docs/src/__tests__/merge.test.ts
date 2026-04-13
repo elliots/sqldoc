@@ -1,11 +1,11 @@
 import type { CompilerOutput } from '@sqldoc/core'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { mergeSchemaWithTags } from '../merge.ts'
-import type { AtlasSchema } from '../types.ts'
+import type { SchemaSnapshot } from '../types.ts'
 
 // -- Fixtures --
 
-function makeAtlasSchema(overrides: Partial<AtlasSchema> = {}): AtlasSchema {
+function makeSchemaSnapshot(overrides: Partial<SchemaSnapshot> = {}): SchemaSnapshot {
   return {
     schemas: [
       {
@@ -61,8 +61,8 @@ function makeOutput(overrides: Partial<CompilerOutput> = {}): CompilerOutput {
 // -- Tests --
 
 describe('mergeSchemaWithTags', () => {
-  it('merges Atlas table with matching sqldoc tags by normalized name', () => {
-    const schema = makeAtlasSchema()
+  it('merges an inspected table with matching sqldoc tags by normalized name', () => {
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -79,7 +79,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.emit(false) excludes table from output', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -94,7 +94,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.emit(true) or no emit tag includes table (default include)', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     // No tags at all -- default include
     const result1 = mergeSchemaWithTags(schema, 'erDiagram', [], [], 'Test')
     expect(result1.tables).toHaveLength(1)
@@ -112,7 +112,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.description on table sets MergedTable.description', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -127,7 +127,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.description on column sets MergedColumn.description', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'email',
@@ -143,7 +143,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('tags from ALL namespaces (not just docs) are included on MergedTable.tags', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -163,7 +163,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('PK columns flagged isPrimaryKey: true', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
@@ -175,7 +175,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('FK columns flagged isForeignKey: true', () => {
-    const schema: AtlasSchema = {
+    const schema: SchemaSnapshot = {
       schemas: [
         {
           name: 'public',
@@ -210,8 +210,8 @@ describe('mergeSchemaWithTags', () => {
     expect(titleCol?.isForeignKey).toBe(false)
   })
 
-  it('column nullable reflects Atlas null field', () => {
-    const schema = makeAtlasSchema()
+  it('column nullable reflects the inspected null field', () => {
+    const schema = makeSchemaSnapshot()
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
@@ -223,7 +223,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('generated tables (from sqlOutputs) marked isGenerated: true with generatedBy', () => {
-    const schema: AtlasSchema = {
+    const schema: SchemaSnapshot = {
       schemas: [
         {
           name: 'public',
@@ -266,8 +266,8 @@ describe('mergeSchemaWithTags', () => {
     expect(auditTable.generatedBy).toBe('audit')
   })
 
-  it('views from Atlas are included in merged output', () => {
-    const schema: AtlasSchema = {
+  it('views from the inspected schema are included in merged output', () => {
+    const schema: SchemaSnapshot = {
       schemas: [
         {
           name: 'public',
@@ -294,8 +294,8 @@ describe('mergeSchemaWithTags', () => {
     expect(result.views[0].columns[1].nullable).toBe(true) // null: true
   })
 
-  it('case-insensitive name matching between Atlas and sqldoc tags', () => {
-    const schema = makeAtlasSchema()
+  it('case-insensitive name matching between inspected schema and sqldoc tags', () => {
+    const schema = makeSchemaSnapshot()
     // Use quoted uppercase name in tags
     const fileTags = makeFileTags([
       {
@@ -311,7 +311,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('mermaidERD is passed through to MergedSchema', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const mermaid = 'erDiagram\n    users {\n      bigserial id PK\n    }'
 
     const result = mergeSchemaWithTags(schema, mermaid, [], [], 'Test')
@@ -320,7 +320,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('generatedAt is a valid ISO date string', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
@@ -331,7 +331,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.emit(false) on view excludes it from output', () => {
-    const schema: AtlasSchema = {
+    const schema: SchemaSnapshot = {
       schemas: [
         {
           name: 'public',
@@ -359,7 +359,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.previously on table sets MergedTable.previously', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -374,7 +374,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.previously on column sets MergedColumn.previously', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const fileTags = makeFileTags([
       {
         objectName: 'email',
@@ -390,7 +390,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('previously is undefined when no @docs.previously tag', () => {
-    const schema = makeAtlasSchema()
+    const schema = makeSchemaSnapshot()
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
     expect(result.tables[0].previously).toBe(undefined)

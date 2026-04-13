@@ -5,8 +5,8 @@
 import type { Column, Table, TypeCategory } from '@sqldoc/db'
 import { isCustomType, typeCategory } from '@sqldoc/db'
 import type { TemplateContext } from '@sqldoc/ns-codegen'
-import { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './atlas.ts'
 import { singularizeLast, toPascalCase } from './naming.ts'
+import { findTagsForObject, getColumnType, getTablesFromRealm, getViewsFromRealm, isNullable } from './realm.ts'
 import { findRename, findTypeOverride, isSkipped } from './tags.ts'
 
 // ── Public types ─────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
-// Source: cmd/atlas-wasi/main.go
+// Source: original Go runtime entrypoint
 
 import { defaultSchemaForDialect } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
@@ -419,14 +419,14 @@ function createComponents(
 // -- Main Factory --
 
 /**
- * Create an InspectorRunner -- the TypeScript replacement for the Atlas WASI binary.
+ * Create an InspectorRunner backed by direct TypeScript database calls.
  *
  * This replaces:
- * - packages/db/src/runner.ts (createAtlasRunner)
+ * - packages/db/src/runner.ts
  * - packages/db/src/worker.ts (WASI worker)
  * - packages/db/src/bridge.ts (SharedArrayBuffer bridge)
  * - packages/db/src/wasi-host.ts (WASI host functions)
- * - packages/db/wasm/atlas.wasm (15MB WASM binary)
+ * - the old WASM host path
  *
  * With direct async TypeScript calls to DatabaseAdapter.
  */
@@ -455,9 +455,9 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     }
   }
 
-  // Capture initial dev DB state for snapshot/restore pattern (matches Go Atlas Snapshot)
+  // Capture initial dev DB state for the snapshot/restore pattern used by the original runtime.
   const initialRealm = await inspector.inspectRealm()
-  // Postgres: withCascade adds IF EXISTS + CASCADE to drops (matches Go Atlas).
+  // Postgres: withCascade adds IF EXISTS + CASCADE to drops, matching the original runtime.
   const restoreTransform = dialect === 'postgres' ? withCascade : undefined
   const restore = createRestoreFunc(inspector, initialRealm, diffAndApply, restoreTransform)
 

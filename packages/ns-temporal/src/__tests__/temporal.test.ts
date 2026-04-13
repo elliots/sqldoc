@@ -2,7 +2,7 @@ import { makeTagCtx } from '@sqldoc/core/test'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
-const mockAtlasTable = {
+const mockSchemaTable = {
   name: 'orders',
   columns: [
     { name: 'id', type: { T: 'integer' } },
@@ -32,7 +32,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -61,7 +61,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -77,7 +77,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -95,7 +95,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -112,7 +112,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: { view: 'live_orders' } },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -125,7 +125,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'postgres',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const docs = (result as any).docs
@@ -137,7 +137,7 @@ describe('ns-temporal plugin', () => {
       expect(docs.columns[0].header).toBe('Temporal')
     })
 
-    it('without atlasTable emits columns + view + annotation', () => {
+    it('without schemaTable emits columns + view + annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'postgres',
@@ -162,7 +162,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const sql = (result as any).sql
@@ -180,7 +180,7 @@ describe('ns-temporal plugin', () => {
           dialect: 'mysql',
           objectName: 'orders',
           tag: { name: null, args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
         }),
       )
       const docs = (result as any).docs

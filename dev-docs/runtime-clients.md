@@ -50,7 +50,7 @@ The CLI is intentionally thin: each command resolves config/project selection, t
 | `lint` | [`packages/cli/src/commands/lint.ts`](../packages/cli/src/commands/lint.ts) | Compiles first, then runs `core.lint` over loaded plugins and file tags. |
 | `schema inspect` / `schema diff` | [`packages/cli/src/commands/schema.ts`](../packages/cli/src/commands/schema.ts) | Either inspect compiled SQL or live DB URLs, with external-object cancellation for diffs. |
 | `migrate` | [`packages/cli/src/commands/migrate.ts`](../packages/cli/src/commands/migrate.ts) | Diff migrations vs desired schema, detect rename candidates, block destructive changes unless `--force`, and write migration files. |
-| `doctor` | [`packages/cli/src/commands/doctor.ts`](../packages/cli/src/commands/doctor.ts) | Checks `.sqldoc`, dependencies, `atlas.wasm`, and config parseability. |
+| `doctor` | [`packages/cli/src/commands/doctor.ts`](../packages/cli/src/commands/doctor.ts) | Checks `.sqldoc`, dependencies, the schema runner binary, and config parseability. |
 
 Shared helpers worth reading before editing command behavior:
 

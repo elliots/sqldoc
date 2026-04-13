@@ -1,8 +1,8 @@
 /**
- * Capture ground-truth snapshots from the current Atlas WASI binary.
+ * Capture ground-truth snapshots from the current schema runner.
  *
- * Runs each test schema through the Atlas WASI runner and saves the full
- * AtlasRealm output as JSON snapshot files. These snapshots serve as the
+ * Runs each test schema through the schema runner and saves the full
+ * inspected realm output as JSON snapshot files. These snapshots serve as the
  * "before" state for verifying the TypeScript port of the inspector.
  *
  * Usage: bun run tests/_helpers/capture-snapshots.ts
@@ -142,7 +142,7 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
 
 async function main() {
   fs.mkdirSync(snapshotDir, { recursive: true })
-  console.log('Capturing Atlas WASI snapshots...')
+  console.log('Capturing schema snapshots...')
   console.log(`Output: ${snapshotDir}`)
 
   let allOk = true

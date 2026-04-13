@@ -1,4 +1,4 @@
-/** Category-based mapping — used when Atlas provides a type category */
+/** Category-based mapping — used when schema inspection provides a type category */
 const CATEGORY_TO_GO: Record<string, [string, string | null]> = {
   string: ['string', null],
   integer: ['int64', null],

@@ -1748,7 +1748,7 @@ function resolveColumnTypes(realm: Realm): void {
 
 /**
  * Build a composite type representation for column output, using "compositeFields"
- * key to match Go's atlas-wasi marshal format.
+ * key to match the original Go marshal format.
  */
 function buildCompositeColumnType(ct: CompositeType): SchemaType {
   const fields = ct.fields.map((f) => ({
@@ -1848,7 +1848,7 @@ function hasDep(deps: ObjectRef[] | undefined, type: ObjectRef['type'], name: st
   return deps.some((d) => d.type === type && d.name === name)
 }
 
-// -- Default value classification (matches Go atlas sql/postgres/inspect_oss.go) --
+// -- Default value classification (matches the original Go sql/postgres/inspect_oss.go) --
 
 /** Check if a string is a single-quoted value with proper escaping. */
 function isQuoted(s: string, quote: string): boolean {

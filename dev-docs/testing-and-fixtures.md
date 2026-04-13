@@ -13,7 +13,7 @@ The repo uses tests as executable documentation. If an agent needs to confirm in
 | Unit tests inside packages | `packages/*/src/__tests__` | Individual parser, compiler, plugin, template, CLI-helper, and inspector behaviors. |
 | Pipeline/workflow tests | [`tests/__tests__/pipeline.test.ts`](../tests/__tests__/pipeline.test.ts), [`tests/__tests__/workflows/cli-workflows.test.ts`](../tests/__tests__/workflows/cli-workflows.test.ts) | End-to-end compile/validate/codegen behavior using temporary projects. |
 | Fixture projects | `tests/pet-store-*`, `tests/postgraphile-kitchensink`, `tests/pagila`, `tests/sakila-mssql` | Realistic multi-file schemas, migrations, generated outputs, external/include behavior, and dialect differences. |
-| Snapshot tests | `tests/_helpers/snapshots`, `packages/inspector/src/__tests__/snapshot-comparison.test.ts` | Regression checks for inspected schema shape and Atlas parity. |
+| Snapshot tests | `tests/_helpers/snapshots`, `packages/inspector/src/__tests__/snapshot-comparison.test.ts` | Regression checks for inspected schema shape and inspector parity. |
 
 ## `packages/test-utils`
 

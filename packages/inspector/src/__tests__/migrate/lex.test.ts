@@ -167,7 +167,7 @@ SELECT 1;`
 
 describe('stmtDirective', () => {
   it('extracts directive from line comments', () => {
-    const s = scanStmts('--atlas:nolint\n-- atlas:nolint destructive\ncmd;')[0]
+    const s = scanStmts('--sqldoc:nolint\n-- sqldoc:nolint destructive\ncmd;')[0]
     const dirs = stmtDirective(s, 'nolint')
     assert.deepEqual(dirs, ['', 'destructive'])
   })
@@ -178,7 +178,7 @@ describe('stmtDirective', () => {
       matchDollarQuote: true,
       hashComments: true,
     })
-    const result = scanner.scan('/*atlas:nolint DS101*/cmd;')
+    const result = scanner.scan('/*sqldoc:nolint DS101*/cmd;')
     const dirs = stmtDirective(result[0], 'nolint')
     assert.deepEqual(dirs, ['DS101'])
   })
@@ -203,8 +203,8 @@ describe('Scanner errors', () => {
 })
 
 describe('Scanner with directive delimiter', () => {
-  it('handles atlas:delimiter directive at start of file', () => {
-    const input = '-- atlas:delimiter \\n\nSELECT 1\nSELECT 2'
+  it('handles sqldoc:delimiter directive at start of file', () => {
+    const input = '-- sqldoc:delimiter \\n\nSELECT 1\nSELECT 2'
     const result = stmts(input)
     assert.equal(result.length, 2)
   })

@@ -22,7 +22,7 @@ function getSql(dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql', objectName: 
       dialect,
       objectName,
       tag: { name: null, args: {} },
-      atlasTable: { name: objectName, columns: mockColumns },
+      schemaTable: { name: objectName, columns: mockColumns },
     }),
   ) as any
   return result?.sql?.map((s: any) => s.sql) ?? []
@@ -100,7 +100,7 @@ describe('ns-audit integration - SQLite', () => {
         dialect: 'sqlite',
         objectName: 'items',
         tag: { name: null, args: {} },
-        atlasTable: { name: 'items', columns: sqliteColumns },
+        schemaTable: { name: 'items', columns: sqliteColumns },
       }),
     ) as any
     for (const s of result.sql) await db.exec(s.sql)
@@ -142,7 +142,7 @@ describe('ns-audit integration - MySQL', () => {
         dialect: 'mysql',
         objectName: 'products',
         tag: { name: null, args: {} },
-        atlasTable: { name: 'products', columns: mysqlColumns },
+        schemaTable: { name: 'products', columns: mysqlColumns },
       }),
     ) as any
     for (const s of result.sql) await db.exec(s.sql)

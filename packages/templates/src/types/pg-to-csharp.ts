@@ -15,7 +15,7 @@ const _VALUE_TYPES = new Set([
   'Guid',
 ])
 
-/** Category-based mapping — used when Atlas provides a type category */
+/** Category-based mapping — used when schema inspection provides a type category */
 const CATEGORY_TO_CSHARP: Record<string, string> = {
   string: 'string',
   integer: 'long',

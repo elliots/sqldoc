@@ -4,7 +4,7 @@
 - Last reviewed commit: `9571d50fee5356b058cec0247aa5189272b53de6`
 - Related docs: [core-compiler.md](./core-compiler.md), [inspector-dialects.md](./inspector-dialects.md), [project-output.md](./project-output.md), [testing-and-fixtures.md](./testing-and-fixtures.md)
 
-This layer turns SQL or live database URLs into inspectable schema state. `packages/db` decides how to connect to a dev database. `packages/inspector` executes SQL, inspects catalog state, computes diffs, and emits migration plans. `sqlparser-ts` is separate: it supports AST parsing for the compiler and editor, not Atlas-style schema inspection. For the deeper inspector breakdown and the dialect-authoring path, use [inspector-dialects.md](./inspector-dialects.md).
+This layer turns SQL or live database URLs into inspectable schema state. `packages/db` decides how to connect to a dev database. `packages/inspector` executes SQL, inspects catalog state, computes diffs, and emits migration plans. `sqlparser-ts` is separate: it supports AST parsing for the compiler and editor, not runtime schema inspection. For the deeper inspector breakdown and the dialect-authoring path, use [inspector-dialects.md](./inspector-dialects.md).
 
 ```mermaid
 flowchart LR
@@ -50,7 +50,7 @@ Best tests:
 
 ## `packages/inspector`
 
-`packages/inspector` is the Atlas-derived engine that owns schema introspection, diffing, and SQL planning. Read it when the question is “what does the database schema look like?” or “why did a migration diff come out this way?” If the question is “how is the inspector put together?” or “how do I add a new dialect?”, jump to [inspector-dialects.md](./inspector-dialects.md).
+`packages/inspector` is the engine that owns schema introspection, diffing, and SQL planning. Read it when the question is “what does the database schema look like?” or “why did a migration diff come out this way?” If the question is “how is the inspector put together?” or “how do I add a new dialect?”, jump to [inspector-dialects.md](./inspector-dialects.md).
 
 | Area | Key files | Notes |
 | --- | --- | --- |

@@ -146,10 +146,10 @@ describe('liquibaseFormatter', () => {
     assert.match(f.name, /^\d{14}_tooling-plan\.sql$/)
     assert.ok(f.content.startsWith('--liquibase formatted sql\n'))
     // Changeset numbering
-    assert.ok(f.content.includes('--changeset atlas:'))
-    assert.match(f.content, /--changeset atlas:\d{14}-1/)
-    assert.match(f.content, /--changeset atlas:\d{14}-2/)
-    assert.match(f.content, /--changeset atlas:\d{14}-3/)
+    assert.ok(f.content.includes('--changeset sqldoc:'))
+    assert.match(f.content, /--changeset sqldoc:\d{14}-1/)
+    assert.match(f.content, /--changeset sqldoc:\d{14}-2/)
+    assert.match(f.content, /--changeset sqldoc:\d{14}-3/)
     // Comments
     assert.ok(f.content.includes('--comment: create table t1'))
     // Rollback
@@ -324,8 +324,8 @@ describe('scanFlywayDir', () => {
 describe('scanLiquibaseDir', () => {
   it('scans liquibase files', () => {
     const dir = new MemDir()
-    dir.addFile('1_initial.sql', '--liquibase formatted sql\n--changeset atlas:1-1\nCREATE TABLE t1;')
-    dir.addFile('2_second.sql', '--liquibase formatted sql\n--changeset atlas:2-1\nCREATE TABLE t2;')
+    dir.addFile('1_initial.sql', '--liquibase formatted sql\n--changeset sqldoc:1-1\nCREATE TABLE t1;')
+    dir.addFile('2_second.sql', '--liquibase formatted sql\n--changeset sqldoc:2-1\nCREATE TABLE t2;')
 
     const results = scanLiquibaseDir(dir.files())
     assert.equal(results.length, 2)

@@ -2,7 +2,7 @@ import { makeTagCtx } from '@sqldoc/core/test'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
-const mockAtlasTable = {
+const mockSchemaTable = {
   name: 'orders',
   columns: [
     { name: 'id', type: { T: 'integer' } },
@@ -88,7 +88,7 @@ describe('ns-softdelete plugin', () => {
           target: 'column',
           columnName: 'user_id',
           tag: { name: 'cascade', args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
           namespaceTags: [{ tag: null, args: {} }],
         }),
       )
@@ -100,7 +100,7 @@ describe('ns-softdelete plugin', () => {
       expect(sql[1].sql).toContain('AFTER UPDATE ON "users"')
     })
 
-    it('@softdelete.cascade without atlasTable emits annotation', () => {
+    it('@softdelete.cascade without schemaTable emits annotation', () => {
       const result = plugin.onTag!(
         makeTagCtx({
           dialect: 'postgres',
@@ -153,7 +153,7 @@ describe('ns-softdelete plugin', () => {
           target: 'column',
           columnName: 'user_id',
           tag: { name: 'cascade', args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
           namespaceTags: [{ tag: null, args: {} }],
         }),
       )
@@ -201,7 +201,7 @@ describe('ns-softdelete plugin', () => {
           target: 'column',
           columnName: 'user_id',
           tag: { name: 'cascade', args: {} },
-          atlasTable: mockAtlasTable,
+          schemaTable: mockSchemaTable,
           namespaceTags: [{ tag: null, args: {} }],
         }),
       )

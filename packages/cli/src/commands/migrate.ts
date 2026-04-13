@@ -23,7 +23,7 @@ import { prettyStatements } from '../utils/pretty-sql.ts'
  * 3. Compile schema files through pipeline -> get "desired" realm
  * 4. Diff current vs desired -> up SQL
  * 5. Diff desired vs current -> down SQL
- * 6. Detect renames via @docs.previously and Atlas-side candidate detection
+ * 6. Detect renames via @docs.previously and inspector-side candidate detection
  * 7. Check for destructive changes (unless --force)
  * 8. If --check: exit 0 if no diff, non-zero if drift
  * 9. Otherwise: write migration file in configured format
@@ -334,7 +334,7 @@ export function buildRenamesFromPreviously(outputs: CompilerOutput[]): Rename[] 
 }
 
 /**
- * Prompt the user interactively for rename candidates detected by Atlas.
+ * Prompt the user interactively for rename candidates detected by the inspector.
  * Returns the list of accepted renames as Rename objects.
  */
 async function promptRenameCandidates(candidates: RenameCandidate[]): Promise<Rename[]> {

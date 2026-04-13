@@ -25,7 +25,7 @@ function getSql(
       dialect,
       objectName,
       tag: { name: null, args: {} },
-      atlasTable: { name: objectName, columns, primary_key: { columns: pkColumns } },
+      schemaTable: { name: objectName, columns, primary_key: { columns: pkColumns } },
     }),
   ) as any
   return result?.sql?.map((s: any) => s.sql) ?? []

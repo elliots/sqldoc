@@ -24,7 +24,7 @@ export interface TemplateEntry {
 
 /** Context passed to each template's generate function */
 export interface TemplateContext<C = Record<string, unknown>> {
-  /** Full post-compile Atlas realm */
+  /** Full post-compile schema realm */
   realm: Realm
   /** All tags across all files, grouped by source file then by SQL object */
   allFileTags: Array<{

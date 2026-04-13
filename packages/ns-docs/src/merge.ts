@@ -1,7 +1,5 @@
 import type { CompilerOutput, DocsMeta, SqlTarget } from '@sqldoc/core'
 import type {
-  AtlasSchema,
-  AtlasTable,
   DocsAnnotation,
   DocsColumnEntry,
   DocsRelationship,
@@ -10,6 +8,8 @@ import type {
   MergedTable,
   MergedTag,
   MergedView,
+  SchemaSnapshot,
+  SchemaTable,
 } from './types.ts'
 
 interface FileTagData {
@@ -116,7 +116,7 @@ function getColumnTags(
   columnName: string,
   tableName?: string,
 ): MergedTag[] {
-  // Try table.column first (Atlas convention), then bare column name
+  // Try table.column first (inspector convention), then bare column name
   const keys = tableName
     ? [normalizeName(`${tableName}.${columnName}`), normalizeName(columnName)]
     : [normalizeName(columnName)]
@@ -130,7 +130,7 @@ function getColumnTags(
 }
 
 function mergeTable(
-  table: AtlasTable,
+  table: SchemaTable,
   tagMap: Map<string, { target: SqlTarget; tags: MergedTag[] }[]>,
   generatedSet: Map<string, string>,
 ): MergedTable | null {
@@ -172,7 +172,7 @@ function mergeTable(
 }
 
 export function mergeSchemaWithTags(
-  schema: AtlasSchema,
+  schema: SchemaSnapshot,
   mermaid: string,
   allFileTags: FileTagData[],
   outputs: CompilerOutput[],

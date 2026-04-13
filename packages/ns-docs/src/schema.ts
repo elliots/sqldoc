@@ -5,10 +5,10 @@
  * to the ns-docs internal types used by merge.ts and renderers.
  */
 import type { Realm } from '@sqldoc/db'
-import type { AtlasSchema } from './types.ts'
+import type { SchemaSnapshot } from './types.ts'
 
-/** Convert inspector Realm to ns-docs AtlasSchema format */
-export function realmToDocsSchema(realm: Realm): AtlasSchema {
+/** Convert inspector Realm to the docs schema snapshot format */
+export function realmToDocsSchema(realm: Realm): SchemaSnapshot {
   return {
     schemas: realm.schemas.map((s) => ({
       name: s.name,

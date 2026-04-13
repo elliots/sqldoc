@@ -36,12 +36,12 @@ describe('ns-codegen plugin', () => {
       expect(result.files).toEqual([])
     })
 
-    it('throws when atlasRealm is not provided', async () => {
+    it('throws when schemaRealm is not provided', async () => {
       const ctx = makeProjectCtx({
         config: { templates: [{ template: 'some-template', output: 'out' }] },
-        atlasRealm: undefined,
+        schemaRealm: undefined,
       })
-      await expect(Promise.resolve(plugin.afterCompile!(ctx))).rejects.toThrow(/ns-codegen requires Atlas schema/)
+      await expect(Promise.resolve(plugin.afterCompile!(ctx))).rejects.toThrow(/ns-codegen requires inspected schema/)
     })
 
     it('calls template.generate with correct TemplateContext fields', async () => {
@@ -84,7 +84,7 @@ describe('ns-codegen plugin', () => {
             },
           ],
         },
-        atlasRealm: realm,
+        schemaRealm: realm,
         allFileTags,
         docsMeta,
       } as any)

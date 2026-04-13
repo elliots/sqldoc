@@ -4,11 +4,11 @@
 - Last reviewed commit: `9571d50fee5356b058cec0247aa5189272b53de6`
 - Related docs: [core-compiler.md](./core-compiler.md), [schema-engine.md](./schema-engine.md), [site-and-release.md](./site-and-release.md)
 
-This layer consumes the fully compiled project view: merged SQL, `allFileTags`, `docsMeta`, and the inspected Atlas-style realm. It produces user-visible files rather than more SQL inside the same source file.
+This layer consumes the fully compiled project view: merged SQL, `allFileTags`, `docsMeta`, and the inspected schema realm. It produces user-visible files rather than more SQL inside the same source file.
 
 ```mermaid
 flowchart TD
-  A["pipeline.ts result<br/>mergedSql + outputs + atlasRealm"] --> B["ns-codegen afterCompile"]
+  A["pipeline.ts result<br/>mergedSql + outputs + schemaRealm"] --> B["ns-codegen afterCompile"]
   A --> C["ns-docs afterCompile"]
   B --> D["packages/templates"]
   D --> E["language-specific files"]
@@ -37,9 +37,9 @@ Important behavior:
 
 | File | Role |
 | --- | --- |
-| [`packages/ns-docs/src/index.ts`](../packages/ns-docs/src/index.ts) | Project-level plugin entry. Requires an Atlas realm and writes HTML or Markdown. |
-| [`packages/ns-docs/src/atlas.ts`](../packages/ns-docs/src/atlas.ts) | Converts inspector `Realm` data into the simplified docs schema model. |
-| [`packages/ns-docs/src/merge.ts`](../packages/ns-docs/src/merge.ts) | Joins Atlas schema, compiler file tags, generated-object detection, docs metadata, and extra columns/annotations. |
+| [`packages/ns-docs/src/index.ts`](../packages/ns-docs/src/index.ts) | Project-level plugin entry. Requires an inspected realm and writes HTML or Markdown. |
+| [`packages/ns-docs/src/schema.ts`](../packages/ns-docs/src/schema.ts) | Converts inspector `Realm` data into the simplified docs schema model. |
+| [`packages/ns-docs/src/merge.ts`](../packages/ns-docs/src/merge.ts) | Joins inspected schema data, compiler file tags, generated-object detection, docs metadata, and extra columns/annotations. |
 | [`packages/ns-docs/src/mermaid.ts`](../packages/ns-docs/src/mermaid.ts) | Builds ERD output for renderers. |
 | [`packages/ns-docs/src/renderers/html.ts`](../packages/ns-docs/src/renderers/html.ts), [`markdown.ts`](../packages/ns-docs/src/renderers/markdown.ts) | Render final docs. |
 
@@ -52,7 +52,7 @@ The templates package is a library of `defineTemplate(...)` exports used by `ns-
 Core helper files:
 
 - [`packages/templates/src/index.ts`](../packages/templates/src/index.ts): barrel exports
-- [`packages/templates/src/helpers/atlas.ts`](../packages/templates/src/helpers/atlas.ts): realm walking and tag lookup helpers
+- [`packages/templates/src/helpers/realm.ts`](../packages/templates/src/helpers/realm.ts): realm walking and tag lookup helpers
 - [`packages/templates/src/helpers/enrich.ts`](../packages/templates/src/helpers/enrich.ts): computes `EnrichedSchema`, relationships, naming, type overrides, skip flags
 - [`packages/templates/src/helpers/naming.ts`](../packages/templates/src/helpers/naming.ts): case conversion and schema-aware naming
 - [`packages/templates/src/helpers/tags.ts`](../packages/templates/src/helpers/tags.ts): reads `@codegen.*` tags

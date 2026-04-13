@@ -216,8 +216,8 @@ const plugin: NamespacePlugin = {
       check(ctx) {
         const diagnostics = [] as LintDiagnostic[]
 
-        // Use Atlas realm for PK detection (accurate, no regex)
-        const realm = ctx.atlasRealm as AtlasRealm | undefined
+        // Use the inspected schema realm for PK detection (accurate, no regex)
+        const realm = ctx.schemaRealm as SchemaRealm | undefined
         if (!realm) return diagnostics
 
         const tablesWithPk = new Set<string>()
@@ -250,8 +250,8 @@ const plugin: NamespacePlugin = {
   ],
 }
 
-/** Atlas realm type (mirrors @sqldoc/db without importing) */
-interface AtlasRealm {
+/** Schema realm type (mirrors @sqldoc/db without importing) */
+interface SchemaRealm {
   schemas: Array<{
     tables?: Array<{
       name: string

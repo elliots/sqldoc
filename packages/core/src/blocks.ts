@@ -28,7 +28,7 @@ export interface TagBlock {
 /**
  * Simple text-based target detection for use where AST is unavailable.
  * Used by the VSCode extension's completion provider to filter suggestions
- * by target type (table, column, etc.) without requiring Atlas.
+ * by target type (table, column, etc.) without requiring schema inspection.
  */
 export function detectTarget(sqlLines: string[]): SqlTarget {
   if (sqlLines.length === 0) return 'unknown'

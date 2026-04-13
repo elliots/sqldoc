@@ -32,7 +32,7 @@ export function makeProjectCtx(overrides: Partial<ProjectContext> = {}): Project
     docsMeta: [],
     config: { dialect: 'postgres' },
     projectRoot: '/tmp/test',
-    atlasRealm: { schemas: [{ name: 'public', tables: [] }] },
+    schemaRealm: { schemas: [{ name: 'public', tables: [] }] },
     ...overrides,
   } as unknown as ProjectContext
 }

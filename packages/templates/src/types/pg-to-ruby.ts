@@ -1,4 +1,4 @@
-/** Category-based mapping — used when Atlas provides a type category */
+/** Category-based mapping — used when schema inspection provides a type category */
 const CATEGORY_TO_RUBY: Record<string, string> = {
   string: 'String',
   integer: 'Integer',

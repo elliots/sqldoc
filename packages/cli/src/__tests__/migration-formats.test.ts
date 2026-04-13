@@ -47,22 +47,6 @@ describe('readMigrations', () => {
     })
   })
 
-  // -- atlas format --
-
-  describe('atlas format', () => {
-    it('reads entire file as up SQL with timestamp sort key', () => {
-      const dir = path.join(tmpDir, 'atlas')
-      fs.mkdirSync(dir)
-      fs.writeFileSync(path.join(dir, '20260322120000_init.sql'), 'CREATE TABLE users (id SERIAL);')
-
-      const result = readMigrations(dir, 'atlas')
-      expect(result).toHaveLength(1)
-      expect(result[0].up).toBe('CREATE TABLE users (id SERIAL);')
-      expect(result[0].sortKey).toBe('20260322120000')
-      expect(result[0].down).toBe(undefined)
-    })
-  })
-
   // -- goose format --
 
   describe('goose format', () => {

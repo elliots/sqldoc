@@ -97,7 +97,7 @@ export async function codegenCommand(
 
       // Check if plugins generated any additional SQL
       const hasGeneratedSql = outputs.some((o) => o.sqlOutputs.length > 0)
-      let postCompileRealm = result.atlasRealm
+      let postCompileRealm = result.schemaRealm
 
       if (hasGeneratedSql) {
         // Re-inspect with the merged SQL (includes generated tables like audit_log)
@@ -134,7 +134,7 @@ export async function codegenCommand(
           docsMeta: allDocsMeta,
           config: (config.namespaces?.[nsName] ?? {}) as Record<string, unknown>,
           projectRoot: configRoot,
-          atlasRealm: codegenRealm,
+          schemaRealm: codegenRealm,
           externalObjectNames: result.externalObjectNames,
         }
 

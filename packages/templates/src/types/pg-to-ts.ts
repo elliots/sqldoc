@@ -11,7 +11,7 @@ export interface TsTypeOptions {
   bigintType?: 'number' | 'bigint' | 'string'
 }
 
-/** Category-based mapping — used when Atlas provides a type category */
+/** Category-based mapping — used when schema inspection provides a type category */
 const CATEGORY_TO_TS: Record<string, string> = {
   string: 'string',
   integer: 'number',

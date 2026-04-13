@@ -177,7 +177,7 @@ export const liquibaseFormatter: Formatter = {
     let content = '--liquibase formatted sql\n'
     for (let i = 0; i < plan.changes.length; i++) {
       const c = plan.changes[i]
-      content += `\n--changeset atlas:${ts}-${i + 1}\n`
+      content += `\n--changeset sqldoc:${ts}-${i + 1}\n`
       if (c.comment) content += `--comment: ${c.comment}\n`
       content += `${c.cmd};\n`
       if (c.reverseStmts && c.reverseStmts.length > 0) {
