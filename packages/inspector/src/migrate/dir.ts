@@ -2,7 +2,7 @@
 // Source: sql/migrate/dir.go
 
 import type { Tag } from '../schema/schema.ts'
-import { directive, Scanner, type Stmt } from './lex.ts'
+import { Scanner, type Stmt } from './lex.ts'
 import { parseTags } from './tag.ts'
 
 // -- File Interface --
@@ -17,8 +17,6 @@ export interface File {
   stmts(): string[]
   /** The Stmt declarations in this file (parsed via Scanner). */
   stmtDecls(): Stmt[]
-  /** File-level directives matching the given name. */
-  fileDirective(name: string): string[]
   /** Tags extracted from all statement comments. */
   tags(): Tag[]
 }
@@ -75,32 +73,12 @@ export class LocalFile implements File {
     return this._stmtDecls
   }
 
-  fileDirective(name: string): string[] {
-    const ds: string[] = []
-    for (const c of this.topComments()) {
-      const d = directive(c, name)
-      if (d !== undefined) ds.push(d)
-    }
-    return ds
-  }
-
   tags(): Tag[] {
     const allComments: string[] = []
     for (const s of this.stmtDecls()) {
       allComments.push(...s.comments)
     }
     return parseTags(allComments)
-  }
-
-  /** Extract top-of-file comments (before the first blank line). */
-  private topComments(): string[] {
-    const lines: string[] = []
-    for (const line of this.content.split(/\r?\n/)) {
-      const trimmed = line.trim()
-      if (trimmed === '') break
-      lines.push(trimmed)
-    }
-    return lines
   }
 }
 

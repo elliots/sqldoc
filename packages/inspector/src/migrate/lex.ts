@@ -42,35 +42,9 @@ export interface Stmt {
   comments: string[]
 }
 
-/** Returns all directive comments with the given name from a Stmt. */
-export function stmtDirective(s: Stmt, name: string): string[] {
-  const ds: string[] = []
-  for (const c of s.comments) {
-    if (c.startsWith('/*') && !c.includes('\n')) {
-      const d = directive(c.replace(/\*\/$/, ''), name, '/*')
-      if (d !== undefined) ds.push(d)
-    } else {
-      for (const p of ['#', '--', '-- ']) {
-        const d = directive(c, name, p)
-        if (d !== undefined) ds.push(d)
-      }
-    }
-  }
-  return ds
-}
+// -- File-level delimiter directive --
 
-// -- Directive --
-
-const reDirective = /^([ -~]*)sqldoc:(\w+)(?: +(.+))*/
-
-/** Search content for a directive line matching the given prefix and name. */
-export function directive(content: string, name: string, prefix?: string): string | undefined {
-  const m = reDirective.exec(content)
-  if (m && m[2] === name && (prefix === undefined || prefix === m[1])) {
-    return m[3] ?? ''
-  }
-  return undefined
-}
+const reFileDelimiter = /^-- sqldoc:delimiter(?: +(.+))?/
 
 // -- Scanner Options --
 
@@ -135,8 +109,9 @@ export class Scanner {
     this.input = input
     this.delim = DEFAULT_DELIMITER
 
-    const d = directive(input, 'delimiter', '-- ')
-    if (d !== undefined) {
+    const m = reFileDelimiter.exec(input)
+    if (m) {
+      const d = m[1] ?? ''
       this.setDelim(d)
       const nl = input.indexOf('\n')
       if (nl === -1) {

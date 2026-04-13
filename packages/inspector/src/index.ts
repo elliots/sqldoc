@@ -13,7 +13,7 @@ export type { Dir, File } from './migrate/dir.ts'
 export { LocalFile, MemDir } from './migrate/dir.ts'
 export type { ScannerOptions, Stmt } from './migrate/lex.ts'
 // Migrate: Lexer
-export { directive, Scanner, scanStmts, stmtDirective, stmts } from './migrate/lex.ts'
+export { Scanner, scanStmts, stmts } from './migrate/lex.ts'
 // Migrate: Types
 export type {
   Differ as MigrateDiffer,

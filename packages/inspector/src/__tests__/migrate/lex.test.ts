@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { Scanner, scanStmts, stmtDirective, stmts } from '../../migrate/lex.ts'
+import { Scanner, scanStmts, stmts } from '../../migrate/lex.ts'
 
 describe('Scanner', () => {
   it('splits simple semicolon-delimited statements', () => {
@@ -162,25 +162,6 @@ SELECT 1;`
     assert.equal(result.length, 1)
     assert.equal(result[0].text, 'cmd4;')
     assert.deepEqual(result[0].comments, ['/* comment1 */', '/* comment2 */'])
-  })
-})
-
-describe('stmtDirective', () => {
-  it('extracts directive from line comments', () => {
-    const s = scanStmts('--sqldoc:nolint\n-- sqldoc:nolint destructive\ncmd;')[0]
-    const dirs = stmtDirective(s, 'nolint')
-    assert.deepEqual(dirs, ['', 'destructive'])
-  })
-
-  it('extracts directive from block comments', () => {
-    const scanner = new Scanner({
-      matchBeginAtomic: true,
-      matchDollarQuote: true,
-      hashComments: true,
-    })
-    const result = scanner.scan('/*sqldoc:nolint DS101*/cmd;')
-    const dirs = stmtDirective(result[0], 'nolint')
-    assert.deepEqual(dirs, ['DS101'])
   })
 })
 
