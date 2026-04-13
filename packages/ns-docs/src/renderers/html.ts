@@ -101,9 +101,9 @@ ${rows}
     parts.push('    <ul>')
     for (const fk of table.foreignKeys) {
       const cols = fk.columns.join(', ')
-      const refCols = fk.references.columns.join(', ')
+      const refCols = fk.refColumns.join(', ')
       parts.push(
-        `      <li>${escapeHtml(fk.name)}: ${escapeHtml(cols)} -&gt; ${escapeHtml(fk.references.table)}(${escapeHtml(refCols)})</li>`,
+        `      <li>${escapeHtml(fk.symbol ?? '(unnamed)')}: ${escapeHtml(cols)} -&gt; ${escapeHtml(fk.refTable)}(${escapeHtml(refCols)})</li>`,
       )
     }
     parts.push('    </ul>')
@@ -113,9 +113,9 @@ ${rows}
     parts.push('    <h4>Indexes</h4>')
     parts.push('    <ul>')
     for (const idx of table.indexes) {
-      const idxParts = idx.parts.map((p) => p.column).join(', ')
+      const idxParts = idx.parts.map((part) => part.column ?? part.expr ?? '?').join(', ')
       const unique = idx.unique ? ' UNIQUE' : ''
-      parts.push(`      <li>${escapeHtml(idx.name)} (${escapeHtml(idxParts)})${unique}</li>`)
+      parts.push(`      <li>${escapeHtml(idx.name ?? '(unnamed)')} (${escapeHtml(idxParts)})${unique}</li>`)
     }
     parts.push('    </ul>')
   }

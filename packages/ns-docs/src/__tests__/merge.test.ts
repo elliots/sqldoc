@@ -1,11 +1,10 @@
-import type { CompilerOutput } from '@sqldoc/core'
+import type { CompilerOutput, Realm } from '@sqldoc/core'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { mergeSchemaWithTags } from '../merge.ts'
-import type { SchemaSnapshot } from '../types.ts'
 
 // -- Fixtures --
 
-function makeSchemaSnapshot(overrides: Partial<SchemaSnapshot> = {}): SchemaSnapshot {
+function makeRealm(overrides: Partial<Realm> = {}): Realm {
   return {
     schemas: [
       {
@@ -14,13 +13,13 @@ function makeSchemaSnapshot(overrides: Partial<SchemaSnapshot> = {}): SchemaSnap
           {
             name: 'users',
             columns: [
-              { name: 'id', type: 'bigserial' },
-              { name: 'email', type: 'text', null: true },
-              { name: 'name', type: 'text' },
+              { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial' } },
+              { name: 'email', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: true } },
+              { name: 'name', type: { type: { kind: 'string', T: 'text' }, raw: 'text' } },
             ],
-            primary_key: { parts: [{ column: 'id' }] },
+            primaryKey: { parts: [{ column: 'id' }] },
             indexes: [{ name: 'users_email_idx', unique: true, parts: [{ column: 'email' }] }],
-            foreign_keys: [],
+            foreignKeys: [],
           },
         ],
         ...overrides.schemas?.[0],
@@ -62,7 +61,7 @@ function makeOutput(overrides: Partial<CompilerOutput> = {}): CompilerOutput {
 
 describe('mergeSchemaWithTags', () => {
   it('merges an inspected table with matching sqldoc tags by normalized name', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -79,7 +78,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.emit(false) excludes table from output', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -94,7 +93,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.emit(true) or no emit tag includes table (default include)', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     // No tags at all -- default include
     const result1 = mergeSchemaWithTags(schema, 'erDiagram', [], [], 'Test')
     expect(result1.tables).toHaveLength(1)
@@ -112,7 +111,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.description on table sets MergedTable.description', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -127,7 +126,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.description on column sets MergedColumn.description', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'email',
@@ -143,7 +142,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('tags from ALL namespaces (not just docs) are included on MergedTable.tags', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -163,7 +162,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('PK columns flagged isPrimaryKey: true', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
@@ -175,7 +174,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('FK columns flagged isForeignKey: true', () => {
-    const schema: SchemaSnapshot = {
+    const schema: Realm = {
       schemas: [
         {
           name: 'public',
@@ -183,16 +182,17 @@ describe('mergeSchemaWithTags', () => {
             {
               name: 'posts',
               columns: [
-                { name: 'id', type: 'bigserial' },
-                { name: 'user_id', type: 'bigint' },
-                { name: 'title', type: 'text' },
+                { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial' } },
+                { name: 'user_id', type: { type: { kind: 'integer', T: 'bigint' }, raw: 'bigint' } },
+                { name: 'title', type: { type: { kind: 'string', T: 'text' }, raw: 'text' } },
               ],
-              primary_key: { parts: [{ column: 'id' }] },
-              foreign_keys: [
+              primaryKey: { parts: [{ column: 'id' }] },
+              foreignKeys: [
                 {
-                  name: 'posts_user_id_fkey',
+                  symbol: 'posts_user_id_fkey',
                   columns: ['user_id'],
-                  references: { table: 'users', columns: ['id'] },
+                  refTable: 'users',
+                  refColumns: ['id'],
                 },
               ],
             },
@@ -211,7 +211,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('column nullable reflects the inspected null field', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
@@ -223,20 +223,20 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('generated tables (from sqlOutputs) marked isGenerated: true with generatedBy', () => {
-    const schema: SchemaSnapshot = {
+    const schema: Realm = {
       schemas: [
         {
           name: 'public',
           tables: [
             {
               name: 'users',
-              columns: [{ name: 'id', type: 'bigserial' }],
+              columns: [{ name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial' } }],
             },
             {
               name: 'users_audit',
               columns: [
-                { name: 'id', type: 'bigserial' },
-                { name: 'action', type: 'text' },
+                { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial' } },
+                { name: 'action', type: { type: { kind: 'string', T: 'text' }, raw: 'text' } },
               ],
             },
           ],
@@ -267,7 +267,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('views from the inspected schema are included in merged output', () => {
-    const schema: SchemaSnapshot = {
+    const schema: Realm = {
       schemas: [
         {
           name: 'public',
@@ -276,8 +276,8 @@ describe('mergeSchemaWithTags', () => {
             {
               name: 'active_users',
               columns: [
-                { name: 'id', type: 'bigserial' },
-                { name: 'email', type: 'text', null: true },
+                { name: 'id', type: { type: { kind: 'integer', T: 'bigserial' }, raw: 'bigserial' } },
+                { name: 'email', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: true } },
               ],
             },
           ],
@@ -295,7 +295,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('case-insensitive name matching between inspected schema and sqldoc tags', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     // Use quoted uppercase name in tags
     const fileTags = makeFileTags([
       {
@@ -311,7 +311,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('mermaidERD is passed through to MergedSchema', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const mermaid = 'erDiagram\n    users {\n      bigserial id PK\n    }'
 
     const result = mergeSchemaWithTags(schema, mermaid, [], [], 'Test')
@@ -320,7 +320,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('generatedAt is a valid ISO date string', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
 
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
@@ -331,7 +331,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.emit(false) on view excludes it from output', () => {
-    const schema: SchemaSnapshot = {
+    const schema: Realm = {
       schemas: [
         {
           name: 'public',
@@ -339,7 +339,7 @@ describe('mergeSchemaWithTags', () => {
           views: [
             {
               name: 'hidden_view',
-              columns: [{ name: 'id', type: 'int' }],
+              columns: [{ name: 'id', type: { type: { kind: 'integer', T: 'int' }, raw: 'int' } }],
             },
           ],
         },
@@ -359,7 +359,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.previously on table sets MergedTable.previously', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'users',
@@ -374,7 +374,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('docs.previously on column sets MergedColumn.previously', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const fileTags = makeFileTags([
       {
         objectName: 'email',
@@ -390,7 +390,7 @@ describe('mergeSchemaWithTags', () => {
   })
 
   it('previously is undefined when no @docs.previously tag', () => {
-    const schema = makeSchemaSnapshot()
+    const schema = makeRealm()
     const result = mergeSchemaWithTags(schema, '', [], [], 'Test')
 
     expect(result.tables[0].previously).toBe(undefined)

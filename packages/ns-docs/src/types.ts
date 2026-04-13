@@ -1,63 +1,6 @@
-// ── Schema snapshot types ───────────────────────────────────────────
+import type { ForeignKey, Index } from '@sqldoc/core'
 
-export interface SchemaSnapshot {
-  schemas: SchemaEntry[]
-}
-
-export interface SchemaEntry {
-  name: string
-  tables?: SchemaTable[]
-  views?: SchemaView[]
-  comment?: string
-}
-
-export interface SchemaTable {
-  name: string
-  columns: SchemaColumn[]
-  indexes?: SchemaIndex[]
-  primary_key?: SchemaPrimaryKey
-  foreign_keys?: SchemaForeignKey[]
-  checks?: SchemaCheck[]
-}
-
-export interface SchemaColumn {
-  name: string
-  type: string
-  null?: boolean
-  default?: string
-}
-
-export interface SchemaIndex {
-  name: string
-  unique?: boolean
-  parts: Array<{ column: string }>
-}
-
-export interface SchemaPrimaryKey {
-  parts: Array<{ column: string }>
-}
-
-export interface SchemaForeignKey {
-  name: string
-  columns: string[]
-  references: {
-    table: string
-    columns: string[]
-  }
-}
-
-export interface SchemaCheck {
-  name: string
-  expr: string
-}
-
-export interface SchemaView {
-  name: string
-  columns: SchemaColumn[]
-  definition?: string
-}
-
-// ── Merged schema types (schema snapshot + sqldoc tags combined) ────
+// ── Merged schema types (canonical realm + sqldoc tags combined) ────
 
 export interface DocsRelationship {
   from: string
@@ -102,9 +45,9 @@ export interface MergedTable {
   isGenerated: boolean
   generatedBy?: string
   columns: MergedColumn[]
-  indexes: SchemaIndex[]
-  primaryKey?: SchemaPrimaryKey
-  foreignKeys: SchemaForeignKey[]
+  indexes: Index[]
+  primaryKey?: Index
+  foreignKeys: ForeignKey[]
   tags: MergedTag[]
 }
 

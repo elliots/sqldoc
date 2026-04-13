@@ -1,4 +1,4 @@
-import type { CompilerOutput, DocsMeta, SqlTarget } from '@sqldoc/core'
+import type { Column, CompilerOutput, DocsMeta, IndexPart, Realm, SqlTarget, Table } from '@sqldoc/core'
 import type {
   DocsAnnotation,
   DocsColumnEntry,
@@ -8,8 +8,6 @@ import type {
   MergedTable,
   MergedTag,
   MergedView,
-  SchemaSnapshot,
-  SchemaTable,
 } from './types.ts'
 
 interface FileTagData {
@@ -129,23 +127,35 @@ function getColumnTags(
   return []
 }
 
+function columnDisplayType(column: Column): string {
+  return column.type.raw ?? column.type.type.T ?? 'unknown'
+}
+
+function indexPartLabel(part: IndexPart): string {
+  return part.column ?? part.expr ?? '?'
+}
+
 function mergeTable(
-  table: SchemaTable,
+  table: Table,
   tagMap: Map<string, { target: SqlTarget; tags: MergedTag[] }[]>,
   generatedSet: Map<string, string>,
 ): MergedTable | null {
   const tableTags = getObjectTags(tagMap, table.name)
   if (isExcluded(tableTags)) return null
 
-  const pkColumns = new Set((table.primary_key?.parts ?? []).map((p) => normalizeName(p.column)))
-  const fkColumns = new Set((table.foreign_keys ?? []).flatMap((fk) => fk.columns.map((c) => normalizeName(c))))
+  const pkColumns = new Set(
+    (table.primaryKey?.parts ?? []).map((part) => normalizeName(indexPartLabel(part))).filter((name) => name !== '?'),
+  )
+  const fkColumns = new Set(
+    (table.foreignKeys ?? []).flatMap((fk) => fk.columns.map((column) => normalizeName(column))),
+  )
 
   const columns: MergedColumn[] = table.columns.map((col) => {
     const colTags = getColumnTags(tagMap, col.name, table.name)
     return {
       name: col.name,
-      type: col.type,
-      nullable: col.null === true,
+      type: columnDisplayType(col),
+      nullable: col.type.null === true,
       description: getDescription(colTags),
       previously: getPreviously(colTags),
       isPrimaryKey: pkColumns.has(normalizeName(col.name)),
@@ -165,14 +175,14 @@ function mergeTable(
     generatedBy,
     columns,
     indexes: table.indexes ?? [],
-    primaryKey: table.primary_key,
-    foreignKeys: table.foreign_keys ?? [],
+    primaryKey: table.primaryKey,
+    foreignKeys: table.foreignKeys ?? [],
     tags: tableTags,
   }
 }
 
 export function mergeSchemaWithTags(
-  schema: SchemaSnapshot,
+  realm: Realm,
   mermaid: string,
   allFileTags: FileTagData[],
   outputs: CompilerOutput[],
@@ -185,7 +195,7 @@ export function mergeSchemaWithTags(
   const tables: MergedTable[] = []
   const views: MergedView[] = []
 
-  for (const s of schema.schemas) {
+  for (const s of realm.schemas) {
     for (const table of s.tables ?? []) {
       const merged = mergeTable(table, tagMap, generatedSet)
       if (merged) tables.push(merged)
@@ -196,10 +206,10 @@ export function mergeSchemaWithTags(
       views.push({
         name: view.name,
         description: getDescription(viewTags),
-        columns: view.columns.map((col) => ({
+        columns: (view.columns ?? []).map((col) => ({
           name: col.name,
-          type: col.type,
-          nullable: col.null === true,
+          type: columnDisplayType(col),
+          nullable: col.type.null === true,
           isPrimaryKey: false,
           isForeignKey: false,
           tags: [],

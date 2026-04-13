@@ -62,8 +62,8 @@ function renderTableSection(table: MergedTable, schema: MergedSchema): string {
     lines.push('')
     for (const fk of table.foreignKeys) {
       const cols = fk.columns.join(', ')
-      const refCols = fk.references.columns.join(', ')
-      lines.push(`- ${fk.name}: ${cols} -> ${fk.references.table}(${refCols})`)
+      const refCols = fk.refColumns.join(', ')
+      lines.push(`- ${fk.symbol ?? '(unnamed)'}: ${cols} -> ${fk.refTable}(${refCols})`)
     }
     lines.push('')
   }
@@ -72,9 +72,9 @@ function renderTableSection(table: MergedTable, schema: MergedSchema): string {
     lines.push('#### Indexes')
     lines.push('')
     for (const idx of table.indexes) {
-      const parts = idx.parts.map((p) => p.column).join(', ')
+      const parts = idx.parts.map((part) => part.column ?? part.expr ?? '?').join(', ')
       const unique = idx.unique ? ' UNIQUE' : ''
-      lines.push(`- ${idx.name} (${parts})${unique}`)
+      lines.push(`- ${idx.name ?? '(unnamed)'} (${parts})${unique}`)
     }
     lines.push('')
   }

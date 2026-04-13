@@ -1,10 +1,8 @@
-import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
-import type { Realm } from '@sqldoc/db'
+import type { NamespacePlugin, ProjectContext, ProjectOutput, Realm } from '@sqldoc/core'
 import { mergeSchemaWithTags } from './merge.ts'
 import { generateMermaidERD } from './mermaid.ts'
 import { renderHtml } from './renderers/html.ts'
 import { renderMarkdown } from './renderers/markdown.ts'
-import { realmToDocsSchema } from './schema.ts'
 import type { DocsConfig } from './types.ts'
 
 const plugin: NamespacePlugin = {
@@ -43,17 +41,15 @@ const plugin: NamespacePlugin = {
     const title = config.title ?? 'Schema Documentation'
 
     // The inspected schema realm is provided by CLI compile
-    const realm = ctx.schemaRealm as Realm | undefined
+    const realm: Realm | undefined = ctx.schemaRealm
     if (!realm) {
       throw new Error('ns-docs requires inspected schema. Run with a database connection (devUrl in config).')
     }
 
-    // Convert inspector types to the docs schema types
-    const schema = realmToDocsSchema(realm)
     const mermaid = generateMermaidERD(realm)
 
     // Merge schema with sqldoc tags
-    const merged = mergeSchemaWithTags(schema, mermaid, ctx.allFileTags, ctx.outputs, title, ctx.docsMeta)
+    const merged = mergeSchemaWithTags(realm, mermaid, ctx.allFileTags, ctx.outputs, title, ctx.docsMeta)
 
     // Render to chosen format
     const content = format === 'html' ? renderHtml(merged) : renderMarkdown(merged)

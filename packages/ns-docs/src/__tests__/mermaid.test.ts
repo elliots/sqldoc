@@ -1,4 +1,4 @@
-import type { Realm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/core'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import { generateMermaidERD } from '../mermaid.ts'
 

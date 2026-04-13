@@ -1,4 +1,4 @@
-import type { Realm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/core'
 
 /**
  * Generate a Mermaid erDiagram string from a schema realm.

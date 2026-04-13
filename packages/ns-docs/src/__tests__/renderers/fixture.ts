@@ -62,9 +62,10 @@ export function makeTestSchema(): MergedSchema {
         primaryKey: { parts: [{ column: 'id' }] },
         foreignKeys: [
           {
-            name: 'posts_user_id_fkey',
+            symbol: 'posts_user_id_fkey',
             columns: ['user_id'],
-            references: { table: 'users', columns: ['id'] },
+            refTable: 'users',
+            refColumns: ['id'],
           },
         ],
         tags: [],
