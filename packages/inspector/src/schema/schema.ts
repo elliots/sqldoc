@@ -343,6 +343,7 @@ export interface Policy {
 /** A trigger definition. */
 export interface Trigger {
   name: string
+  schema?: string
   table?: string
   events?: string[]
   timing?: string

@@ -631,7 +631,11 @@ export class MysqlInspector implements Inspector {
       // Handle PRIMARY KEY
       if (indexName === 'PRIMARY') {
         if (!t.primaryKey) {
-          t.primaryKey = { name: 'PRI', parts: [], attrs: [{ kind: 'index_type', T: indexType } as unknown as Attr] }
+          t.primaryKey = {
+            name: indexName,
+            parts: [],
+            attrs: [{ kind: 'index_type', T: indexType } as unknown as Attr],
+          }
         }
         const part: IndexPart = {}
         if (columnName && validString(columnName)) {

@@ -50,6 +50,8 @@ export interface PlanDriver {
   addFunc?(func: Func): string[]
   /** Generate SQL for dropping a function. Extra clauses may include IF EXISTS, CASCADE. */
   dropFunc?(func: Func, extra?: Clause[]): string[]
+  /** Generate SQL for modifying a function. */
+  modifyFunc?(from: Func, to: Func, changes: Change[]): string[]
   /** Generate SQL for adding a trigger. */
   addTrigger?(trigger: Trigger): string[]
   /** Generate SQL for dropping a trigger. Extra clauses may include IF EXISTS, CASCADE. */
@@ -68,6 +70,8 @@ export interface PlanDriver {
   addProc?(proc: Proc): string[]
   /** Generate SQL for dropping a procedure. Extra clauses may include IF EXISTS, CASCADE. */
   dropProc?(proc: Proc, extra?: Clause[]): string[]
+  /** Generate SQL for modifying a procedure. */
+  modifyProc?(from: Proc, to: Proc, changes: Change[]): string[]
 }
 
 /** Options for the plan engine. */
@@ -1111,6 +1115,15 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
     case 'drop_func':
       return driver.dropFunc?.(change.F, change.extra) ?? []
 
+    case 'modify_func':
+      if (driver.modifyFunc) {
+        return driver.modifyFunc(change.from, change.to, change.changes ?? [])
+      }
+      if (driver.dropFunc && driver.addFunc) {
+        return [...driver.dropFunc(change.from), ...driver.addFunc(change.to)]
+      }
+      throw new Error('modify_func is not supported by this plan driver')
+
     case 'add_trigger':
       return driver.addTrigger?.(change.T) ?? []
 
@@ -1137,6 +1150,15 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
 
     case 'drop_proc':
       return driver.dropProc?.(change.P, change.extra) ?? []
+
+    case 'modify_proc':
+      if (driver.modifyProc) {
+        return driver.modifyProc(change.from, change.to, change.changes ?? [])
+      }
+      if (driver.dropProc && driver.addProc) {
+        return [...driver.dropProc(change.from), ...driver.addProc(change.to)]
+      }
+      throw new Error('modify_proc is not supported by this plan driver')
 
     default:
       return []

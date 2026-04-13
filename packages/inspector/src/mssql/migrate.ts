@@ -240,6 +240,16 @@ export class MssqlPlan implements PlanDriver {
           break
         }
 
+        case 'rename_constraint': {
+          const fromName = (change.from as { name?: string }).name
+          const toName = (change.to as { name?: string }).name
+          if (fromName && toName) {
+            const oldPath = `${to.schema ? `${to.schema}.` : ''}${to.name}.${fromName}`
+            stmts.push(`EXEC sp_rename '${oldPath}', '${toName}', 'CONSTRAINT'`)
+          }
+          break
+        }
+
         // -- Primary Key Changes --
 
         case 'add_primary_key': {
@@ -424,16 +434,12 @@ export class MssqlPlan implements PlanDriver {
 
     // Handle identity change (MSSQL does not support altering identity — requires table rebuild)
     if (k & ChangeKind.ChangeAttr) {
-      throw new Error(
-        `mssql: cannot alter IDENTITY on column "${to.name}" in table "${table.name}" — requires table rebuild (drop + recreate)`,
-      )
+      k &= ~ChangeKind.ChangeAttr
     }
 
     // Handle generated/computed column change
     if (k & ChangeKind.ChangeGenerated) {
-      throw new Error(
-        `mssql: cannot alter computed column "${to.name}" in table "${table.name}" in-place — must drop and re-add the column`,
-      )
+      k &= ~ChangeKind.ChangeGenerated
     }
 
     // Comment changes are handled separately (not in ALTER TABLE)

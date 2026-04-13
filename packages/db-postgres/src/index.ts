@@ -20,9 +20,18 @@ const plugin: DatabaseAdapterPlugin = {
       throw err
     }
 
-    // Detect current schema at connection time
-    const schemaResult = await sql`SELECT current_schema()`.values()
-    const currentSchema = (schemaResult[0] as unknown[])[0] as string
+    let currentSchema: string
+    try {
+      const schemaResult = await sql`SELECT current_schema()`.values()
+      const schemaName = schemaResult[0]?.[0]
+      if (typeof schemaName !== 'string' || schemaName.length === 0) {
+        throw new Error('postgres: current_schema() returned no current schema')
+      }
+      currentSchema = schemaName
+    } catch (err) {
+      await sql.end()
+      throw err
+    }
 
     return {
       currentSchema,

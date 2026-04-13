@@ -1,6 +1,14 @@
 import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, ExecResult, QueryResult } from '@sqldoc/db'
 import { normalizeValue } from '@sqldoc/db'
 
+async function closeConnection(connection: { end(): Promise<void>; destroy(): void }): Promise<void> {
+  try {
+    await connection.end()
+  } catch {
+    connection.destroy()
+  }
+}
+
 const plugin: DatabaseAdapterPlugin = {
   apiVersion: 1,
   name: 'mysql',
@@ -12,9 +20,18 @@ const plugin: DatabaseAdapterPlugin = {
     const mysql = await import('mysql2/promise')
     const connection = await mysql.default.createConnection(connectionString)
 
-    // Detect current schema at connection time
-    const [schemaRows] = await connection.query({ sql: 'SELECT DATABASE() AS s', rowsAsArray: true })
-    const currentSchema = ((schemaRows as unknown[][])[0] as unknown[])[0] as string
+    let currentSchema: string
+    try {
+      const [schemaRows] = await connection.query({ sql: 'SELECT DATABASE() AS s', rowsAsArray: true })
+      const schemaValue = (schemaRows as unknown[][])[0]?.[0]
+      if (typeof schemaValue !== 'string' || schemaValue.length === 0) {
+        throw new Error('mysql: SELECT DATABASE() returned no current schema')
+      }
+      currentSchema = schemaValue
+    } catch (err) {
+      await closeConnection(connection)
+      throw err
+    }
 
     return {
       currentSchema,
