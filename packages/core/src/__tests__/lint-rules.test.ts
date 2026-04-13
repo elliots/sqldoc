@@ -159,7 +159,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      // Schema realm with no primary_key on users
+      // Schema realm with no primary key on users
       const schemaRealm = {
         schemas: [{ name: 'public', tables: [{ name: 'users', columns: [] }] }],
       }
@@ -184,12 +184,12 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      // Schema realm with primary_key on users
+      // Schema realm with primary key on users
       const schemaRealm = {
         schemas: [
           {
             name: 'public',
-            tables: [{ name: 'users', columns: [], primary_key: { parts: [{ column: 'id' }] } }],
+            tables: [{ name: 'users', columns: [], primaryKey: { parts: [{ column: 'id' }] } }],
           },
         ],
       }

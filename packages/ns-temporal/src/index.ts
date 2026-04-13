@@ -12,20 +12,16 @@
  */
 
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
-import { currentTimestamp, type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
-
-// -- Minimal inspected schema type shapes --
-
-interface TemporalColumn {
-  name: string
-  type?: { T?: string; raw?: string }
-}
-
-interface TemporalTable {
-  name: string
-  columns?: TemporalColumn[]
-  primary_key?: { columns?: string[] }
-}
+import {
+  currentTimestamp,
+  type Dialect,
+  getPrimaryKeyColumns,
+  getSchemaColumns,
+  getSchemaTable,
+  quoteIdentifier,
+  type SchemaColumnLike,
+  timestampType,
+} from '@sqldoc/core'
 
 // -- Helper functions --
 
@@ -70,7 +66,7 @@ function generateCurrentViewSql(objectName: string, viewName: string, dialect: D
 }
 
 /** Generate Postgres PL/pgSQL temporal triggers */
-function generatePostgresTriggers(objectName: string, _pkColumns: string[], columns: TemporalColumn[]): SqlOutput[] {
+function generatePostgresTriggers(objectName: string, _pkColumns: string[], columns: SchemaColumnLike[]): SqlOutput[] {
   const colNames = columns.map((c) => `"${c.name}"`).join(', ')
   const oldRefs = columns.map((c) => `OLD."${c.name}"`).join(', ')
 
@@ -175,8 +171,8 @@ const plugin: NamespacePlugin = {
     const viewName = (args.view as string) || (ctx.config.view as string) || `${objectName}_current`
 
     // Triggers need schemaTable for PK columns (Postgres, SQLite) or column list
-    const table = ctx.schemaTable as TemporalTable | undefined
-    const pkColumns = table?.primary_key?.columns
+    const table = getSchemaTable(ctx)
+    const pkColumns = getPrimaryKeyColumns(table)
 
     // Temporal column DDL + composite PK alteration
     const columnSqls = generateTemporalColumnsSql(objectName, dialect, pkColumns)
@@ -185,7 +181,7 @@ const plugin: NamespacePlugin = {
     const extraAnnotations: Array<{ object: string; text: string }> = []
     let triggerSqls: SqlOutput[]
 
-    const columns = table?.columns
+    const columns = getSchemaColumns(table)
 
     if (dialect === 'mysql') {
       // MySQL: limited trigger support (self-referential triggers not supported)
@@ -194,7 +190,7 @@ const plugin: NamespacePlugin = {
         object: objectName,
         text: 'MySQL does not support self-referential triggers for UPDATE/DELETE temporal behavior. Use application-level logic.',
       })
-    } else if (!pkColumns || pkColumns.length === 0 || !columns || columns.length === 0) {
+    } else if (pkColumns.length === 0 || columns.length === 0) {
       // Need schemaTable for Postgres triggers
       triggerSqls = []
       extraAnnotations.push({

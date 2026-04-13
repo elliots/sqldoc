@@ -7,27 +7,7 @@
  */
 
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
-import { type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
-
-// -- Minimal type shapes for inspected schema objects --
-
-interface SoftDeleteColumn {
-  name: string
-  type?: { T?: string; raw?: string }
-}
-
-interface SoftDeleteForeignKey {
-  columns?: string[]
-  ref_columns?: string[]
-  ref_table?: string
-}
-
-interface SoftDeleteTable {
-  name: string
-  columns?: SoftDeleteColumn[]
-  foreign_keys?: SoftDeleteForeignKey[]
-  primary_key?: { columns?: string[] }
-}
+import { type Dialect, getForeignKeys, getSchemaTable, quoteIdentifier, timestampType } from '@sqldoc/core'
 
 // -- Helper functions --
 
@@ -225,8 +205,8 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
 
   if (!columnName) return undefined
 
-  const table = ctx.schemaTable as SoftDeleteTable | undefined
-  if (!table) {
+  const foreignKeys = getForeignKeys(getSchemaTable(ctx))
+  if (foreignKeys.length === 0) {
     return {
       sql: [],
       docs: {
@@ -241,8 +221,8 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
   }
 
   // Find the FK for this column
-  const fk = table.foreign_keys?.find((fk) => fk.columns?.includes(columnName))
-  if (!fk?.ref_table || !fk?.ref_columns?.length) {
+  const fk = foreignKeys.find((foreignKey) => foreignKey.columns.includes(columnName))
+  if (!fk?.refTable || fk.refColumns.length === 0) {
     return {
       sql: [],
       docs: {
@@ -256,7 +236,7 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
     }
   }
 
-  if ((fk.columns?.length ?? 0) > 1 || fk.ref_columns.length > 1) {
+  if (fk.columns.length > 1 || fk.refColumns.length > 1) {
     return {
       sql: [],
       docs: {
@@ -270,8 +250,8 @@ function handleCascade(ctx: TagContext): TagOutput | undefined {
     }
   }
 
-  const parentTable = fk.ref_table
-  const parentPkColumn = fk.ref_columns[0]
+  const parentTable = fk.refTable
+  const parentPkColumn = fk.refColumns[0]
 
   // Get the soft-delete column name (from sibling tags or default)
   const selfTag = ctx.namespaceTags.find((t) => t.tag === null || t.tag === '$self')

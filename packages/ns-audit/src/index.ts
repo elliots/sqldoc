@@ -11,22 +11,14 @@ import {
   autoIncrementType,
   currentTimestamp,
   type Dialect,
+  getSchemaColumns,
+  getSchemaTable,
   jsonObjectFunction,
   jsonType,
   quoteIdentifier,
+  type SchemaColumnLike,
   timestampType,
 } from '@sqldoc/core'
-
-// -- Minimal inspected schema shapes (ctx.schemaTable is typed as unknown) --
-
-interface AuditColumn {
-  name: string
-}
-
-interface AuditTable {
-  name: string
-  columns?: AuditColumn[]
-}
 
 // -- Helper functions --
 
@@ -50,7 +42,7 @@ function generateAuditTableSql(destination: string, dialect: Dialect): string {
 }
 
 /** Build a JSON serialization expression for a row reference (OLD or NEW). */
-function generateColumnJsonExpr(ref: 'OLD' | 'NEW', columns: AuditColumn[], dialect: Dialect): string {
+function generateColumnJsonExpr(ref: 'OLD' | 'NEW', columns: SchemaColumnLike[], dialect: Dialect): string {
   const jsonFn = jsonObjectFunction(dialect)
   const pairs = columns.map((c) => `'${c.name}', ${ref}.${quoteIdentifier(c.name, dialect)}`).join(', ')
   return `${jsonFn}(${pairs})`
@@ -61,7 +53,7 @@ function generatePerEventTriggers(
   objectName: string,
   destination: string,
   operations: string[],
-  columns: AuditColumn[],
+  columns: SchemaColumnLike[],
   dialect: Dialect,
 ): SqlOutput[] {
   const q = (name: string) => quoteIdentifier(name, dialect)
@@ -195,10 +187,9 @@ const plugin: NamespacePlugin = {
       })
     } else if (dialect === 'mysql' || dialect === 'sqlite') {
       // MySQL/SQLite: need column info from schemaTable for JSON serialization
-      const table = ctx.schemaTable as AuditTable | undefined
-      const columns = table?.columns
+      const columns = getSchemaColumns(getSchemaTable(ctx))
 
-      if (!columns || columns.length === 0) {
+      if (columns.length === 0) {
         triggerSqls = []
         extraAnnotations.push({
           object: objectName,

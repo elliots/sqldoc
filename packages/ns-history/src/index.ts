@@ -11,29 +11,26 @@
  */
 
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
-import { autoIncrementType, currentTimestamp, type Dialect, quoteIdentifier, timestampType } from '@sqldoc/core'
-
-// -- Minimal inspected schema type shapes --
-
-interface HistoryColumn {
-  name: string
-  type?: { T?: string; raw?: string; null?: boolean }
-}
-
-interface HistoryTable {
-  name: string
-  columns?: HistoryColumn[]
-}
+import {
+  autoIncrementType,
+  currentTimestamp,
+  type Dialect,
+  getSchemaColumns,
+  getSchemaTable,
+  quoteIdentifier,
+  type SchemaColumnLike,
+  timestampType,
+} from '@sqldoc/core'
 
 // -- Helper functions --
 
 /** Get the raw SQL type string from an inspected column type */
-function columnTypeSql(col: HistoryColumn): string {
-  return col.type?.raw ?? col.type?.T ?? 'TEXT'
+function columnTypeSql(col: SchemaColumnLike): string {
+  return col.type?.raw ?? col.type?.T ?? col.type?.type?.T ?? 'TEXT'
 }
 
 /** Generate the history table DDL mirroring source columns + metadata */
-function generateHistoryTableSql(destination: string, columns: HistoryColumn[], dialect: Dialect): string {
+function generateHistoryTableSql(destination: string, columns: SchemaColumnLike[], dialect: Dialect): string {
   const q = (name: string) => quoteIdentifier(name, dialect)
   const colDefs = columns.map((col) => {
     const nullable = col.type?.null !== false ? '' : ' NOT NULL'
@@ -57,7 +54,7 @@ function generatePostgresHistoryTriggers(
   objectName: string,
   destination: string,
   operations: string[],
-  columns: HistoryColumn[],
+  columns: SchemaColumnLike[],
 ): SqlOutput[] {
   const ops = operations.map((op) => op.toUpperCase())
   const triggerEvents = ops.join(' OR ')
@@ -87,7 +84,7 @@ function generatePerEventHistoryTriggers(
   objectName: string,
   destination: string,
   operations: string[],
-  columns: HistoryColumn[],
+  columns: SchemaColumnLike[],
   dialect: Dialect,
 ): SqlOutput[] {
   const q = (name: string) => quoteIdentifier(name, dialect)
@@ -145,10 +142,9 @@ const plugin: NamespacePlugin = {
     const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_history`
 
     // History table requires column info from schema inspection for ALL dialects
-    const table = ctx.schemaTable as HistoryTable | undefined
-    const columns = table?.columns
+    const columns = getSchemaColumns(getSchemaTable(ctx))
 
-    if (!columns || columns.length === 0) {
+    if (columns.length === 0) {
       return {
         sql: [],
         docs: {

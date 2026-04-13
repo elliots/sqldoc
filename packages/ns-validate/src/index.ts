@@ -1,5 +1,5 @@
 import type { LintDiagnostic, NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
-import { quoteIdentifier } from '@sqldoc/core'
+import { getPrimaryKeyColumns, getSchemaRealm, getSchemaTables, quoteIdentifier } from '@sqldoc/core'
 
 function isTextType(type: string | undefined): boolean {
   if (!type) return false
@@ -217,15 +217,13 @@ const plugin: NamespacePlugin = {
         const diagnostics = [] as LintDiagnostic[]
 
         // Use the inspected schema realm for PK detection (accurate, no regex)
-        const realm = ctx.schemaRealm as SchemaRealm | undefined
+        const realm = getSchemaRealm(ctx)
         if (!realm) return diagnostics
 
         const tablesWithPk = new Set<string>()
-        for (const schema of realm.schemas) {
-          for (const table of schema.tables ?? []) {
-            if (table.primary_key) {
-              tablesWithPk.add(table.name.toLowerCase())
-            }
+        for (const table of getSchemaTables(realm)) {
+          if (getPrimaryKeyColumns(table).length > 0) {
+            tablesWithPk.add(table.name.toLowerCase())
           }
         }
 
@@ -248,16 +246,6 @@ const plugin: NamespacePlugin = {
       },
     },
   ],
-}
-
-/** Schema realm type (mirrors @sqldoc/db without importing) */
-interface SchemaRealm {
-  schemas: Array<{
-    tables?: Array<{
-      name: string
-      primary_key?: { parts: Array<{ column: string }> }
-    }>
-  }>
 }
 
 export default plugin

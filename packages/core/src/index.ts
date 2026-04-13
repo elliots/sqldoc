@@ -63,6 +63,24 @@ export { parse, parseArgs } from './parser.ts'
 // Resolver
 export type { ResolvedFiles } from './resolver.ts'
 export { resolveDirectives } from './resolver.ts'
+export type {
+  NormalizedForeignKey,
+  SchemaColumnLike,
+  SchemaForeignKeyLike,
+  SchemaLike,
+  SchemaPrimaryKeyLike,
+  SchemaRealmLike,
+  SchemaTableLike,
+  SchemaTypeLike,
+} from './schema-context.ts'
+export {
+  getForeignKeys,
+  getPrimaryKeyColumns,
+  getSchemaColumns,
+  getSchemaRealm,
+  getSchemaTable,
+  getSchemaTables,
+} from './schema-context.ts'
 // SQL Emitter
 export type { Dialect } from './sql-emitter.ts'
 export {

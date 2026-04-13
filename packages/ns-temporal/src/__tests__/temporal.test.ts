@@ -9,7 +9,7 @@ const mockSchemaTable = {
     { name: 'total', type: { T: 'numeric' } },
     { name: 'status', type: { T: 'text' } },
   ],
-  primary_key: { columns: ['id'] },
+  primaryKey: { parts: [{ column: 'id' }] },
 }
 
 describe('ns-temporal plugin', () => {

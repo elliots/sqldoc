@@ -9,14 +9,14 @@ const mockSchemaTable = {
     { name: 'user_id', type: { T: 'bigint' } },
     { name: 'total', type: { T: 'numeric' } },
   ],
-  foreign_keys: [
+  foreignKeys: [
     {
       columns: ['user_id'],
-      ref_table: 'users',
-      ref_columns: ['id'],
+      refTable: 'users',
+      refColumns: ['id'],
     },
   ],
-  primary_key: { columns: ['id'] },
+  primaryKey: { parts: [{ column: 'id' }] },
 }
 
 describe('ns-softdelete plugin', () => {
