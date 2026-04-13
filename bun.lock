@@ -348,6 +348,7 @@
         "@sqldoc/cli": "workspace:*",
         "@sqldoc/core": "workspace:*",
         "@sqldoc/db": "workspace:*",
+        "@sqldoc/db-mssql": "workspace:*",
         "@sqldoc/db-neon-temporary": "workspace:*",
         "@sqldoc/db-pglite": "workspace:*",
         "@sqldoc/ns-anon": "workspace:*",

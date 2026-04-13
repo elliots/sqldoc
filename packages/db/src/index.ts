@@ -90,6 +90,9 @@ export type {
   UUIDType,
   View,
 } from '@sqldoc/inspector'
+
+import type { InspectorRunner } from '@sqldoc/inspector'
+
 export {
   ChangeKind,
   Changes,
@@ -143,6 +146,9 @@ export type {
   Dialect,
 } from './db/types.ts'
 export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
+
+import type { DatabaseAdapter, DatabaseAdapterPlugin } from './db/types.ts'
+
 export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
 
 export interface CreateRunnerConfig {
@@ -156,6 +162,8 @@ export interface CreateRunnerConfig {
   sqldocDir?: string
   /** Called when a plugin package is missing. CLI provides auto-install. */
   onMissingPlugin?: OnMissingPlugin
+  /** Provide the adapter plugin directly, bypassing plugin resolution. */
+  adapterPlugin?: DatabaseAdapterPlugin
 }
 
 function defaultDevUrl(dialect: Dialect): string {
@@ -181,7 +189,7 @@ function defaultDevUrl(dialect: Dialect): string {
  * Docker is the only special case — it orchestrates a container, then
  * delegates to the plugin system for the actual DB connection.
  */
-export async function createAdapter(config: CreateRunnerConfig): Promise<import('./db/types.ts').DatabaseAdapter> {
+export async function createAdapter(config: CreateRunnerConfig): Promise<DatabaseAdapter> {
   const dialect = config.dialect
   const devUrl = config.devUrl ?? defaultDevUrl(dialect)
   const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
@@ -191,15 +199,19 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
     onMissingPlugin: config.onMissingPlugin,
   }
 
-  let db: import('./db/types.ts').DatabaseAdapter
+  let db: DatabaseAdapter
 
   if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
+    const dockerOpts = { ...pluginOpts, adapterPlugin: config.adapterPlugin }
     if (dialect === 'mysql') {
-      db = await createMysqlDockerAdapter(devUrl, pluginOpts)
+      db = await createMysqlDockerAdapter(devUrl, dockerOpts)
     } else if (dialect === 'postgres') {
-      db = await createPostgresDockerAdapter(devUrl, pluginOpts)
+      db = await createPostgresDockerAdapter(devUrl, dockerOpts)
     } else if (dialect === 'mssql') {
-      db = await createMssqlDockerAdapter(devUrl, pluginOpts)
+      db = await createMssqlDockerAdapter(devUrl, {
+        reuseContainer: true,
+        ...dockerOpts,
+      })
     } else {
       throw new Error(`Docker dev URLs are not supported for dialect '${dialect}'`)
     }
@@ -226,7 +238,7 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<import(
  * Create an inspector with sensible defaults.
  * Uses createAdapter() internally, then wraps the adapter in the inspector.
  */
-export async function createRunner(config: CreateRunnerConfig): Promise<import('@sqldoc/inspector').InspectorRunner> {
+export async function createRunner(config: CreateRunnerConfig): Promise<InspectorRunner> {
   const { createInspector } = await import('@sqldoc/inspector')
   const db = await createAdapter(config)
   try {

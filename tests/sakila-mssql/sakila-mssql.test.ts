@@ -2,39 +2,26 @@
  * Sakila MSSQL round-trip schema test.
  *
  * Exercises the MSSQL dialect with a full DVD rental database schema.
- * Requires Docker for MSSQL Server. Opt-in via MSSQL_TEST=true env var.
  */
 
-import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { createRunner } from '@sqldoc/db'
+import mssqlPlugin from '@sqldoc/db-mssql'
 import { after, before, describe, expect, it } from '@sqldoc/test-utils'
 
 const sakilaSQL = fs.readFileSync(path.join(import.meta.dirname, 'schema.sql'), 'utf-8')
 
-function isDockerAvailable(): boolean {
-  try {
-    execSync('docker info', { stdio: 'pipe', timeout: 5000 })
-    return true
-  } catch {
-    return false
-  }
-}
-
-const shouldRun = process.env.MSSQL_TEST === 'true' && isDockerAvailable()
-
 const devUrl = 'docker://mcr.microsoft.com/mssql/server:2022-latest'
 
-const describeOrSkip = shouldRun ? describe : describe.skip
-
-describeOrSkip('sakila schema - mssql', { timeout: 180_000 }, () => {
+describe('sakila schema - mssql', { timeout: 180_000 }, () => {
   let runner: ReturnType<typeof createRunner> extends Promise<infer T> ? T : never
 
   before(async () => {
     runner = await createRunner({
       dialect: 'mssql',
       devUrl,
+      adapterPlugin: mssqlPlugin,
     })
   })
 
