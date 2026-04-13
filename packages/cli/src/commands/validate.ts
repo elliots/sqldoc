@@ -1,12 +1,12 @@
 import * as fs from 'node:fs'
 import type { Diagnostic, ResolvedConfig, SqlStatement } from '@sqldoc/core'
 import {
+  createAstAdapter,
   loadConfig,
   loadImports,
   parse,
   resolveAllProjects,
   resolveProject,
-  SqlparserTsAdapter,
   validate,
 } from '@sqldoc/core'
 import pc from 'picocolors'
@@ -89,7 +89,7 @@ async function validateProject(
     // Parse SQL AST for enriched validation
     let statements: SqlStatement[] = []
     try {
-      const adapter = new SqlparserTsAdapter(config.dialect)
+      const adapter = createAstAdapter(config.dialect)
       await adapter.init()
       statements = adapter.parseStatements(source)
     } catch {

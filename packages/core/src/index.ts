@@ -2,7 +2,7 @@
 
 export type { SqlAstAdapter, SqlColumn, SqlCommentOn, SqlStatement } from './ast/index.ts'
 // AST Adapters
-export { SqlparserTsAdapter } from './ast/index.ts'
+export { createAstAdapter, SqlparserTsAdapter } from './ast/index.ts'
 // Blocks
 export { buildBlocks } from './blocks.ts'
 export type {

@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
 import {
   compile,
+  createAstAdapter,
   debug,
   defaultSchemaForDialect,
   findSqldocDir,
@@ -10,7 +11,6 @@ import {
   parse,
   parseDirectives,
   resolveDirectives,
-  SqlparserTsAdapter,
   validate,
 } from '@sqldoc/core'
 import type { Realm, Schema } from '@sqldoc/db'
@@ -69,7 +69,7 @@ export async function runCompilePipeline(
   }
 
   // Initialize AST adapter once
-  const adapter = new SqlparserTsAdapter(config.dialect)
+  const adapter = createAstAdapter(config.dialect)
   await adapter.init()
 
   // ── Resolve @external and @include directives ──────────────────────
