@@ -17,6 +17,7 @@ function parseConnectionUrl(url: string): Record<string, unknown> {
     database: parsed.pathname.replace(/^\//, '') || 'master',
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
+    requestTimeout: 120_000,
     options: {
       encrypt: !acceptUntrustedServerCertificate,
       trustServerCertificate: acceptUntrustedServerCertificate,
@@ -79,6 +80,7 @@ const plugin: DatabaseAdapterPlugin = {
   runtime: 'any',
 
   async createAdapter(connectionString: string, _context: AdapterPluginContext): Promise<DatabaseAdapter> {
+    // @ts-expect-error `mssql` is an optional runtime dependency loaded dynamically by the adapter package.
     const mssql = await import('mssql')
     const config = parseConnectionUrl(connectionString)
     const pool = await mssql.default.connect(config as any)

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { realmDiff, schemaDiff } from '../../internal/diff.ts'
 import { PostgresDiff } from '../../postgres/diff.ts'
-import type { Realm, Schema } from '../../schema/schema.ts'
+import type { Realm, Schema, Table } from '../../schema/schema.ts'
 
 const driver = new PostgresDiff()
 
@@ -14,7 +14,7 @@ function makeRealm(schemas: Schema[], defaultSchema?: string): Realm {
   return { schemas, defaultSchema }
 }
 
-function makeTable(name: string): Schema['tables'][0] {
+function makeTable(name: string): Table {
   return { name, columns: [] }
 }
 

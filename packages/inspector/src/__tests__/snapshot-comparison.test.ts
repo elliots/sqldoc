@@ -1,8 +1,8 @@
-// Snapshot comparison tests: verify TypeScript inspector output matches WASI binary snapshots
+// Snapshot comparison tests: verify the TypeScript inspector matches the saved WASI snapshots.
 //
 // The snapshots (tests/_helpers/snapshots/inspector/) were captured using inspectRich from
 // the Go WASI binary. They use the rich internal format (type.type.kind, Go-specific attrs).
-// The TS inspector produces AtlasRealm via marshalRealm (flat format: type.T, type.category).
+// The TS inspector produces Realm via marshalRealm (flat format: type.T, type.category).
 //
 // We compare STRUCTURAL equivalence: same schemas, tables, columns, types, indexes, FKs --
 // not exact JSON equality, since the two formats differ in shape.
@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import type { AtlasRealm } from '@sqldoc/db'
+import type { Realm } from '@sqldoc/db'
 import { createSqliteAdapter } from '@sqldoc/db'
 import pglitePlugin from '@sqldoc/db-pglite'
 import { createInspector } from '../inspector.ts'
@@ -82,10 +82,10 @@ interface ComparisonResult {
 }
 
 /**
- * Compare an AtlasRealm (from TS inspector) against a rich snapshot (from WASI binary).
+ * Compare a Realm (from the TS inspector) against a rich snapshot (from the WASI binary).
  * Checks structural equivalence: same schemas, tables, columns, types, indexes, FKs.
  */
-function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResult {
+function compareRealms(actual: Realm, snapshot: RichRealm): ComparisonResult {
   const differences: string[] = []
   let tablesCompared = 0
   let columnsCompared = 0
@@ -146,7 +146,7 @@ function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResul
 
         // Compare type T (the primary type identifier)
         const snapT = snapCol.type?.type?.T
-        const actualT = actualCol.type?.T
+        const actualT = actualCol.type?.type?.T
         if (snapT && actualT && !typesEquivalent(snapT, actualT)) {
           differences.push(`Type mismatch at ${colPath}: snapshot="${snapT}" actual="${actualT}"`)
         }
@@ -160,24 +160,26 @@ function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResul
       }
 
       // Compare primary key existence
-      if (snapTable.primary_key && !actualTable.primary_key) {
+      if (snapTable.primary_key && !actualTable.primaryKey) {
         differences.push(`Missing primary key on ${tablePath}`)
       }
 
-      // Compare foreign key count
-      const snapFkCount = (snapTable.foreign_keys ?? []).length
-      const actualFkCount = (actualTable.foreign_keys ?? []).length
-      if (snapFkCount !== actualFkCount) {
-        differences.push(`Foreign key count mismatch on ${tablePath}: snapshot=${snapFkCount} actual=${actualFkCount}`)
-      }
+      const snapFks = snapTable.foreign_keys ?? []
+      if (snapFks.length > 0) {
+        const actualFkCount = (actualTable.foreignKeys ?? []).length
+        if (snapFks.length !== actualFkCount) {
+          differences.push(
+            `Foreign key count mismatch on ${tablePath}: snapshot=${snapFks.length} actual=${actualFkCount}`,
+          )
+        }
 
-      // Compare FK details
-      for (const snapFk of snapTable.foreign_keys ?? []) {
-        const actualFk = (actualTable.foreign_keys ?? []).find(
-          (fk) => fk.ref_table === snapFk.ref_table && arraysEqual(fk.columns ?? [], snapFk.columns ?? []),
-        )
-        if (!actualFk) {
-          differences.push(`Missing FK on ${tablePath}: columns=[${snapFk.columns}] -> ${snapFk.ref_table}`)
+        for (const snapFk of snapFks) {
+          const actualFk = (actualTable.foreignKeys ?? []).find(
+            (fk) => fk.refTable === snapFk.ref_table && arraysEqual(fk.columns ?? [], snapFk.columns ?? []),
+          )
+          if (!actualFk) {
+            differences.push(`Missing FK on ${tablePath}: columns=[${snapFk.columns}] -> ${snapFk.ref_table}`)
+          }
         }
       }
 
@@ -211,7 +213,7 @@ function compareRealms(actual: AtlasRealm, snapshot: RichRealm): ComparisonResul
 
     // Compare composite types (only if snapshot has them -- WASI snapshots may omit composites)
     const snapCompNames = (snapSchema.composite_types ?? []).map((c) => c.name).sort()
-    const actualCompNames = (actualSchema.composite_types ?? []).map((c) => c.name).sort()
+    const actualCompNames = (actualSchema.compositeTypes ?? []).map((c) => c.T).sort()
     if (snapCompNames.length > 0 && snapCompNames.join(',') !== actualCompNames.join(',')) {
       const missing = snapCompNames.filter((n) => !actualCompNames.includes(n))
       if (missing.length) {
