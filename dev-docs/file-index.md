@@ -9,6 +9,7 @@ CHANGELOG.md [repo-overview.md](./repo-overview.md)
 CLAUDE.md [repo-overview.md](./repo-overview.md)
 dev-docs [repo-overview.md](./repo-overview.md)
 dev-docs/file-index.md [repo-overview.md](./repo-overview.md)
+dev-docs/development.md [development.md](./development.md)
 dev-docs/inspector-dialects.md [inspector-dialects.md](./inspector-dialects.md)
 dev-docs/update-docs-skill [update-docs-skill/SKILL.md](./update-docs-skill/SKILL.md)
 

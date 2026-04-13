@@ -1,8 +1,8 @@
 # Repo Overview
 
 - Paths covered: `.`, `README.md`, `package.json`, `CHANGELOG.md`, `CLAUDE.md`, `dev-docs`
-- Last reviewed commit: `9571d50fee5356b058cec0247aa5189272b53de6`
-- Use this doc first, then drill into [runtime-clients.md](./runtime-clients.md), [core-compiler.md](./core-compiler.md), [schema-engine.md](./schema-engine.md), [inspector-dialects.md](./inspector-dialects.md), [namespaces.md](./namespaces.md), [project-output.md](./project-output.md), [testing-and-fixtures.md](./testing-and-fixtures.md), and [site-and-release.md](./site-and-release.md).
+- Last reviewed commit: `fe6b77e71474cabfa8f22d30520ff33ac951b90c`
+- Use this doc first, then drill into [development.md](./development.md), [runtime-clients.md](./runtime-clients.md), [core-compiler.md](./core-compiler.md), [schema-engine.md](./schema-engine.md), [inspector-dialects.md](./inspector-dialects.md), [namespaces.md](./namespaces.md), [project-output.md](./project-output.md), [testing-and-fixtures.md](./testing-and-fixtures.md), and [site-and-release.md](./site-and-release.md).
 
 sqldoc is a TypeScript monorepo built around one idea: SQL files stay the source of truth, and tagged comments compile into extra SQL, docs, typed code, lint diagnostics, and migrations. The repo is split into a thin user-facing runtime layer, a compiler core, a schema-inspection engine, namespace plugins, output/rendering packages, and a large fixture-heavy test suite.
 
@@ -48,6 +48,7 @@ flowchart LR
 
 ## Best Next Reads
 
+- For local workflow, checks, and how to run tests: [development.md](./development.md)
 - For command behavior and delegation: [runtime-clients.md](./runtime-clients.md)
 - For compile-time data flow inside one SQL file: [core-compiler.md](./core-compiler.md)
 - For dev DB / inspect / diff / migration internals: [schema-engine.md](./schema-engine.md)
