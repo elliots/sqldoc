@@ -16,6 +16,7 @@ describe('MSSQL Inspector', () => {
   before(async () => {
     db = await createMssqlDockerAdapter('docker://mcr.microsoft.com/mssql/server:2022-latest', {
       adapterPlugin: mssqlPlugin,
+      reuseContainer: true,
     })
     inspector = await createInspector({ db, dialect: 'mssql' })
   })

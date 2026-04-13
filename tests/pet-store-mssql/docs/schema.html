@@ -131,13 +131,13 @@
         nvarchar(max) new_data
         datetime2(7) changed_at
     }
-    adoptions }o--|| owners : &quot;FK__adoptions__owner__03F0984C&quot;
-    adoptions }o--|| pets : &quot;FK__adoptions__pet_i__02FC7413&quot;
-    medical_records }o--|| pets : &quot;FK__medical_r__pet_i__07C12930&quot;
-    pets }o--|| categories : &quot;FK__pets__category_i__7A672E12&quot;
-    reviews }o--|| locations : &quot;FK__reviews__locatio__151B244E&quot;
-    reviews }o--|| owners : &quot;FK__reviews__owner_i__14270015&quot;
-    reviews }o--|| pets : &quot;FK__reviews__pet_id__1332DBDC&quot;
+    adoptions }o--|| owners : &quot;FK__adoptions__owner__2B155265&quot;
+    adoptions }o--|| pets : &quot;FK__adoptions__pet_i__2A212E2C&quot;
+    medical_records }o--|| pets : &quot;FK__medical_r__pet_i__2EE5E349&quot;
+    pets }o--|| categories : &quot;FK__pets__category_i__218BE82B&quot;
+    reviews }o--|| locations : &quot;FK__reviews__locatio__3C3FDE67&quot;
+    reviews }o--|| owners : &quot;FK__reviews__owner_i__3B4BBA2E&quot;
+    reviews }o--|| pets : &quot;FK__reviews__pet_id__3A5795F5&quot;
     adoptions ||..o{ adoptions_audit_log : "audit events"
     staff ||..o{ staff_audit_log : "audit events"</pre>
     </section>
@@ -219,8 +219,8 @@
     </table>
     <h4>Foreign Keys</h4>
     <ul>
-      <li>FK__adoptions__owner__03F0984C: owner_id -&gt; owners(id)</li>
-      <li>FK__adoptions__pet_i__02FC7413: pet_id -&gt; pets(id)</li>
+      <li>FK__adoptions__owner__2B155265: owner_id -&gt; owners(id)</li>
+      <li>FK__adoptions__pet_i__2A212E2C: pet_id -&gt; pets(id)</li>
     </ul>
   </section>
   <section id="adoptions_audit_log">
@@ -477,7 +477,7 @@
     </table>
     <h4>Foreign Keys</h4>
     <ul>
-      <li>FK__medical_r__pet_i__07C12930: pet_id -&gt; pets(id)</li>
+      <li>FK__medical_r__pet_i__2EE5E349: pet_id -&gt; pets(id)</li>
     </ul>
   </section>
   <section id="owners">
@@ -544,7 +544,7 @@
     </table>
     <h4>Indexes</h4>
     <ul>
-      <li>UQ__owners__AB6E61641042E03B (email) UNIQUE</li>
+      <li>UQ__owners__AB6E6164D9AB1B55 (email) UNIQUE</li>
     </ul>
   </section>
   <section id="pets">
@@ -639,11 +639,11 @@
     </table>
     <h4>Foreign Keys</h4>
     <ul>
-      <li>FK__pets__category_i__7A672E12: category_id -&gt; categories(id)</li>
+      <li>FK__pets__category_i__218BE82B: category_id -&gt; categories(id)</li>
     </ul>
     <h4>Indexes</h4>
     <ul>
-      <li>UQ__pets__DDDF4BE7703AE114 (sku) UNIQUE</li>
+      <li>UQ__pets__DDDF4BE760FBF928 (sku) UNIQUE</li>
     </ul>
   </section>
   <section id="reviews">
@@ -728,9 +728,9 @@
     </table>
     <h4>Foreign Keys</h4>
     <ul>
-      <li>FK__reviews__locatio__151B244E: location_id -&gt; locations(id)</li>
-      <li>FK__reviews__owner_i__14270015: owner_id -&gt; owners(id)</li>
-      <li>FK__reviews__pet_id__1332DBDC: pet_id -&gt; pets(id)</li>
+      <li>FK__reviews__locatio__3C3FDE67: location_id -&gt; locations(id)</li>
+      <li>FK__reviews__owner_i__3B4BBA2E: owner_id -&gt; owners(id)</li>
+      <li>FK__reviews__pet_id__3A5795F5: pet_id -&gt; pets(id)</li>
     </ul>
   </section>
   <section id="staff">

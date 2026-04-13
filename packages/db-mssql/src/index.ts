@@ -18,7 +18,7 @@ function parseConnectionUrl(url: string): Record<string, unknown> {
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
     options: {
-      encrypt: true,
+      encrypt: !acceptUntrustedServerCertificate,
       trustServerCertificate: acceptUntrustedServerCertificate,
     },
   }
