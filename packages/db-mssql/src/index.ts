@@ -9,6 +9,8 @@ import { normalizeValue } from '@sqldoc/db'
 /** Parse an mssql:// URL into a config object for the mssql package. */
 function parseConnectionUrl(url: string): Record<string, unknown> {
   const parsed = new URL(url)
+  const acceptUntrustedServerCertificate =
+    parsed.searchParams.get('acceptUntrustedServerCertificate')?.toLowerCase() === 'true'
   return {
     server: parsed.hostname,
     port: parseInt(parsed.port || '1433', 10),
@@ -17,9 +19,13 @@ function parseConnectionUrl(url: string): Record<string, unknown> {
     password: decodeURIComponent(parsed.password),
     options: {
       encrypt: true,
-      trustServerCertificate: true,
+      trustServerCertificate: acceptUntrustedServerCertificate,
     },
   }
+}
+
+function countPlaceholders(sql: string): number {
+  return (sql.match(/\?/g) ?? []).length
 }
 
 /**
@@ -27,7 +33,12 @@ function parseConnectionUrl(url: string): Record<string, unknown> {
  * and bind the corresponding args to the request.
  */
 function bindArgs(request: any, sql: string, args?: unknown[]): { sql: string; consumed: number } {
-  if (!args || args.length === 0) return { sql, consumed: 0 }
+  const expected = countPlaceholders(sql)
+  const actual = args?.length ?? 0
+  if (actual !== expected) {
+    throw new Error(`parameter count mismatch: expected ${expected}, got ${actual}`)
+  }
+  if (expected === 0) return { sql, consumed: 0 }
 
   let paramIndex = 0
   const replaced = sql.replace(/\?/g, () => {
@@ -35,12 +46,11 @@ function bindArgs(request: any, sql: string, args?: unknown[]): { sql: string; c
     return `@p${paramIndex}`
   })
 
-  const consumed = paramIndex
-  for (let i = 0; i < consumed; i++) {
-    request.input(`p${i + 1}`, args[i])
+  for (let i = 0; i < expected; i++) {
+    request.input(`p${i + 1}`, args![i])
   }
 
-  return { sql: replaced, consumed }
+  return { sql: replaced, consumed: expected }
 }
 
 /** Split SQL text on GO batch separators (case-insensitive, standalone on a line). */
@@ -74,9 +84,18 @@ const plugin: DatabaseAdapterPlugin = {
     const pool = await mssql.default.connect(config as any)
     const log = process.env.DEBUG ? (msg: string) => console.error(`[mssql] ${msg}`) : () => {}
 
-    // Detect current schema at connection time
-    const schemaResult = await pool.request().query('SELECT SCHEMA_NAME() AS s')
-    const currentSchema = schemaResult.recordset[0]?.s as string
+    let currentSchema: string
+    try {
+      const schemaResult = await pool.request().query('SELECT SCHEMA_NAME() AS s')
+      const schemaName = schemaResult.recordset[0]?.s
+      if (typeof schemaName !== 'string' || schemaName.length === 0) {
+        throw new Error('mssql: SCHEMA_NAME() returned no current schema')
+      }
+      currentSchema = schemaName
+    } catch (err) {
+      await pool.close()
+      throw err
+    }
 
     return {
       currentSchema,
@@ -96,11 +115,17 @@ const plugin: DatabaseAdapterPlugin = {
 
       async exec(sql: string, args?: unknown[]): Promise<ExecResult> {
         const batches = splitGoBatches(sql)
+        const expectedArgs = batches.reduce((count, batch) => count + countPlaceholders(batch), 0)
+        const actualArgs = args?.length ?? 0
+        if (actualArgs !== expectedArgs) {
+          throw new Error(`parameter count mismatch: expected ${expectedArgs}, got ${actualArgs}`)
+        }
         let totalAffected = 0
         let argOffset = 0
         for (const batch of batches) {
           const request = pool.request()
-          const batchArgs = args ? args.slice(argOffset) : undefined
+          const placeholderCount = countPlaceholders(batch)
+          const batchArgs = args?.slice(argOffset, argOffset + placeholderCount) ?? []
           const { sql: boundSql, consumed } = bindArgs(request, batch, batchArgs)
           argOffset += consumed
           log(`exec: ${boundSql.replace(/\n/g, ' ').slice(0, 120)}`)

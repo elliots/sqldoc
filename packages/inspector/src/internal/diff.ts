@@ -206,7 +206,7 @@ export function realmDiff(driver: DiffDriver, from: Realm, to: Realm, opts?: Dif
       }
       // Extensions are handled at realm level by realmObjectDiff — skip here
       for (const seq of s1.sequences ?? []) {
-        changes.push({ type: 'add_object', O: seq } as any)
+        changes.push({ type: 'add_sequence', S: seq })
       }
       // Add functions, procedures, tables, views
       for (const f of s1.funcs ?? []) {

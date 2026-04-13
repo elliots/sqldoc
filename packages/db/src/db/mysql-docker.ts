@@ -59,8 +59,11 @@ export async function createMysqlDockerAdapter(
     query: mysqlAdapter.query,
     exec: mysqlAdapter.exec,
     async close() {
-      await mysqlAdapter.close()
-      container.stop()
+      try {
+        await mysqlAdapter.close()
+      } finally {
+        container.stop()
+      }
     },
   }
 }

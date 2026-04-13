@@ -59,8 +59,11 @@ export async function createPostgresDockerAdapter(
     query: pgAdapter.query,
     exec: pgAdapter.exec,
     async close() {
-      await pgAdapter.close()
-      container.stop()
+      try {
+        await pgAdapter.close()
+      } finally {
+        container.stop()
+      }
     },
   }
 }

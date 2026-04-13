@@ -46,7 +46,7 @@ The CLI is intentionally thin: each command resolves config/project selection, t
 | --- | --- | --- |
 | `compile` | [`packages/cli/src/commands/compile.ts`](../packages/cli/src/commands/compile.ts) | Runs the shared compile pipeline and writes merged SQL. |
 | `codegen` | [`packages/cli/src/commands/codegen.ts`](../packages/cli/src/commands/codegen.ts) | Re-runs inspection when generated SQL changes the schema, then executes project-level plugin hooks such as `ns-codegen` and `ns-docs`. |
-| `validate` | [`packages/cli/src/commands/validate.ts`](../packages/cli/src/commands/validate.ts) | Uses `core.parse`, `core.loadImports`, `core.validate`, and optional auto-install. |
+| `validate` | [`packages/cli/src/commands/validate.ts`](../packages/cli/src/commands/validate.ts) | Uses `core.parse`, `core.loadImports`, `core.validate`, and optional automatic installation. |
 | `lint` | [`packages/cli/src/commands/lint.ts`](../packages/cli/src/commands/lint.ts) | Compiles first, then runs `core.lint` over loaded plugins and file tags. |
 | `schema inspect` / `schema diff` | [`packages/cli/src/commands/schema.ts`](../packages/cli/src/commands/schema.ts) | Either inspect compiled SQL or live DB URLs, with external-object cancellation for diffs. |
 | `migrate` | [`packages/cli/src/commands/migrate.ts`](../packages/cli/src/commands/migrate.ts) | Diff migrations vs desired schema, detect rename candidates, block destructive changes unless `--force`, and write migration files. |

@@ -174,7 +174,7 @@ export async function createMssqlDockerAdapter(
   const port = await ensureContainer(image)
 
   // Connect to master and ensure dev database exists
-  const masterUri = `mssql://sa:${SA_PASSWORD}@127.0.0.1:${port}/master`
+  const masterUri = `mssql://sa:${SA_PASSWORD}@127.0.0.1:${port}/master?acceptUntrustedServerCertificate=true`
   let masterDb: DatabaseAdapter | undefined
   for (let i = 0; i < 10; i++) {
     try {
@@ -197,7 +197,7 @@ export async function createMssqlDockerAdapter(
   }
 
   // Connect to dev database
-  const devUri = `mssql://sa:${SA_PASSWORD}@127.0.0.1:${port}/sqldoc_dev`
+  const devUri = `mssql://sa:${SA_PASSWORD}@127.0.0.1:${port}/sqldoc_dev?acceptUntrustedServerCertificate=true`
   const db = await connect(devUri, pluginOpts)
 
   // Acquire application lock — blocks if another process is using the dev database

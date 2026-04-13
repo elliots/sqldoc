@@ -731,6 +731,7 @@ ORDER BY c.column_id`
 
       const trigger: Trigger = {
         name: info.name,
+        schema: info.schema.name || undefined,
         table: info.tableName,
         timing: info.timing,
         events: info.events,

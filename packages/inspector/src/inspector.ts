@@ -486,16 +486,19 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     async diff(from, to, opts) {
       let fromRealm: Realm
       let toRealm: Realm
+      const resolvedFromSchema = opts?.fromSchema ?? opts?.schema
+      const resolvedToSchema = opts?.toSchema ?? opts?.schema
+      const resolvedDefaultSchema = opts?.defaultSchema ?? opts?.schema
 
       // Inspect "from" side
       if (Array.isArray(from)) {
         if (from.length === 0) {
           // Empty from: inspect the dev DB's existing state (e.g. public schema exists)
-          fromRealm = await inspector.inspectRealm()
+          fromRealm = await inspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
           fromRealm = filterSystemSchemas(fromRealm, dialect)
         } else {
           fromRealm = await snapshot(eq, inspector, from, {
-            schema: opts?.fromSchema,
+            schema: resolvedFromSchema,
             dialect,
             restore,
           })
@@ -504,18 +507,18 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       } else {
         // Live database connection
         const fromInspector = createComponents(dialect, from, options).inspector
-        fromRealm = await fromInspector.inspectRealm(opts?.fromSchema ? { schemas: [opts.fromSchema] } : undefined)
+        fromRealm = await fromInspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
         fromRealm = filterSystemSchemas(fromRealm, dialect)
       }
 
       // Inspect "to" side
       if (Array.isArray(to)) {
         if (to.length === 0) {
-          toRealm = await inspector.inspectRealm()
+          toRealm = await inspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
           toRealm = filterSystemSchemas(toRealm, dialect)
         } else {
           toRealm = await snapshot(eq, inspector, to, {
-            schema: opts?.toSchema,
+            schema: resolvedToSchema,
             dialect,
             restore,
           })
@@ -523,8 +526,13 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         }
       } else {
         const toInspector = createComponents(dialect, to, options).inspector
-        toRealm = await toInspector.inspectRealm(opts?.toSchema ? { schemas: [opts.toSchema] } : undefined)
+        toRealm = await toInspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
         toRealm = filterSystemSchemas(toRealm, dialect)
+      }
+
+      if (resolvedDefaultSchema) {
+        fromRealm = { ...fromRealm, defaultSchema: resolvedDefaultSchema }
+        toRealm = { ...toRealm, defaultSchema: resolvedDefaultSchema }
       }
 
       // Apply known renames
@@ -557,7 +565,9 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
 
       // Strip default schema qualifier from output SQL
       let statements = [...renameStmts, ...diffStmts]
-      const defSchema = opts?.stripDefaultSchema ? (opts.defaultSchema ?? fromRealm.defaultSchema) : opts?.defaultSchema
+      const defSchema = opts?.stripDefaultSchema
+        ? (resolvedDefaultSchema ?? fromRealm.defaultSchema)
+        : resolvedDefaultSchema
       if (defSchema) {
         const prefix =
           dialect === 'mysql' ? `\`${defSchema}\`.` : dialect === 'mssql' ? `[${defSchema}].` : `"${defSchema}".`

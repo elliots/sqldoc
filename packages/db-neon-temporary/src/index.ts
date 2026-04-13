@@ -159,6 +159,14 @@ async function getOrCreateDatabase(forceReuse: boolean): Promise<CachedDb> {
   return createNeonDatabase()
 }
 
+async function closeClient(client: Client): Promise<void> {
+  try {
+    await client.end()
+  } catch {
+    // Ignore close errors while handling an earlier failure.
+  }
+}
+
 // ── Plugin ─────────────────────────────────────────────────────────
 
 const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: number } = {
@@ -183,9 +191,18 @@ const plugin: DatabaseAdapterPlugin & { forceReuse: boolean; lockTimeoutMs: numb
     const client = new Client(directUrl)
     await client.connect()
 
-    // Detect current schema at connection time
-    const schemaResult = await client.query({ text: 'SELECT current_schema()', rowMode: 'array' })
-    const currentSchema = (schemaResult.rows as unknown[][])[0]?.[0] as string
+    let currentSchema: string
+    try {
+      const schemaResult = await client.query({ text: 'SELECT current_schema()', rowMode: 'array' })
+      const schemaName = (schemaResult.rows as unknown[][])[0]?.[0] as string | undefined
+      if (typeof schemaName !== 'string' || schemaName.length === 0) {
+        throw new Error('neon-temporary: current_schema() returned no current schema')
+      }
+      currentSchema = schemaName
+    } catch (err) {
+      await closeClient(client)
+      throw err
+    }
 
     const adapter: DatabaseAdapter = {
       currentSchema,

@@ -23,7 +23,7 @@ flowchart LR
 | File | Role |
 | --- | --- |
 | [`packages/db/src/index.ts`](../packages/db/src/index.ts) | Public facade. Re-exports inspector types, chooses default dev URLs, creates adapters/runners. |
-| [`packages/db/src/db/plugin-resolver.ts`](../packages/db/src/db/plugin-resolver.ts) | Resolves built-in or external adapter plugins by URL scheme, with optional auto-install. |
+| [`packages/db/src/db/plugin-resolver.ts`](../packages/db/src/db/plugin-resolver.ts) | Resolves built-in or external adapter plugins by URL scheme, with optional automatic installation. |
 | [`packages/db/src/db/postgres-docker.ts`](../packages/db/src/db/postgres-docker.ts), [`mysql-docker.ts`](../packages/db/src/db/mysql-docker.ts), [`mssql-docker.ts`](../packages/db/src/db/mssql-docker.ts) | Starts disposable Docker-backed dev DBs, then delegates to a normal adapter plugin. |
 | [`packages/db/src/db/sqlite.ts`](../packages/db/src/db/sqlite.ts) | Built-in SQLite adapter path. |
 | [`packages/db/src/extensions.ts`](../packages/db/src/extensions.ts) | Extracts and validates PostgreSQL extension requirements against the dev DB. |
