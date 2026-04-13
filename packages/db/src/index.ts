@@ -1,9 +1,10 @@
 // @sqldoc/db -- Database adapters and schema types for sqldoc
 // Schema types are re-exported from @sqldoc/inspector.
 
+import { defaultDevUrlForDialect, defaultSchemaForDialect, getDialectSpec } from '@sqldoc/core'
 import { createMssqlDockerAdapter } from './db/mssql-docker.ts'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
-import type { OnMissingPlugin } from './db/plugin-resolver.ts'
+import type { OnMissingPlugin, ResolvePluginOptions } from './db/plugin-resolver.ts'
 import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
 import type { Dialect } from './db/types.ts'
@@ -93,6 +94,8 @@ export type {
 
 import type { InspectorRunner } from '@sqldoc/inspector'
 
+export type { DialectSpec } from '@sqldoc/core'
+export { defaultDevUrlForDialect, defaultSchemaForDialect, getDialectSpec } from '@sqldoc/core'
 export {
   ChangeKind,
   Changes,
@@ -166,17 +169,24 @@ export interface CreateRunnerConfig {
   adapterPlugin?: DatabaseAdapterPlugin
 }
 
-function defaultDevUrl(dialect: Dialect): string {
-  switch (dialect) {
-    case 'postgres':
-      return 'pglite'
-    case 'sqlite':
-      return ':memory:'
-    case 'mysql':
-      return 'docker://mysql:8'
-    case 'mssql':
-      return 'docker://mcr.microsoft.com/mssql/server:2022-latest'
-  }
+type DockerAdapterOptions = Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingPlugin'> & {
+  adapterPlugin?: DatabaseAdapterPlugin
+}
+
+type DockerAdapterFactory = (devUrl: string, options: DockerAdapterOptions) => Promise<DatabaseAdapter>
+
+const DOCKER_ADAPTER_FACTORIES: Partial<Record<Dialect, DockerAdapterFactory>> = {
+  mysql: createMysqlDockerAdapter,
+  postgres: createPostgresDockerAdapter,
+  mssql: (devUrl, options) =>
+    createMssqlDockerAdapter(devUrl, {
+      reuseContainer: true,
+      ...options,
+    }),
+}
+
+function isDockerDevUrl(devUrl: string): boolean {
+  return devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')
 }
 
 /**
@@ -191,7 +201,7 @@ function defaultDevUrl(dialect: Dialect): string {
  */
 export async function createAdapter(config: CreateRunnerConfig): Promise<DatabaseAdapter> {
   const dialect = config.dialect
-  const devUrl = config.devUrl ?? defaultDevUrl(dialect)
+  const devUrl = config.devUrl ?? defaultDevUrlForDialect(dialect)
   const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
   const pluginOpts = {
     context: { dialect, extensions },
@@ -201,20 +211,13 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<Databas
 
   let db: DatabaseAdapter
 
-  if (devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')) {
+  if (isDockerDevUrl(devUrl)) {
     const dockerOpts = { ...pluginOpts, adapterPlugin: config.adapterPlugin }
-    if (dialect === 'mysql') {
-      db = await createMysqlDockerAdapter(devUrl, dockerOpts)
-    } else if (dialect === 'postgres') {
-      db = await createPostgresDockerAdapter(devUrl, dockerOpts)
-    } else if (dialect === 'mssql') {
-      db = await createMssqlDockerAdapter(devUrl, {
-        reuseContainer: true,
-        ...dockerOpts,
-      })
-    } else {
+    const createDockerAdapter = DOCKER_ADAPTER_FACTORIES[dialect]
+    if (!createDockerAdapter) {
       throw new Error(`Docker dev URLs are not supported for dialect '${dialect}'`)
     }
+    db = await createDockerAdapter(devUrl, dockerOpts)
   } else {
     db = await resolveAdapterPlugin({ devUrl, ...pluginOpts })
   }

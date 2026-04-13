@@ -21,6 +21,7 @@
     "typecheck": "tsgo -noEmit"
   },
   "dependencies": {
+    "@sqldoc/core": "workspace:*",
     "@sqldoc/inspector": "workspace:*",
     "picocolors": "catalog:"
   },

@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import type { Dialect, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { InspectorResult } from '@sqldoc/db'
-import { createRunner, extractExtensions, extractScheme } from '@sqldoc/db'
+import { createRunner, defaultSchemaForDialect, extractExtensions, extractScheme } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
@@ -12,17 +12,6 @@ import { runCompilePipeline } from '../utils/pipeline.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
 
 type Format = 'sql' | 'json' | 'pretty'
-
-function defaultSchemaForDialect(dialect: Dialect): string | undefined {
-  switch (dialect) {
-    case 'postgres':
-      return 'public'
-    case 'mssql':
-      return 'dbo'
-    default:
-      return undefined
-  }
-}
 
 function pluginInstallConfig(configRoot: string) {
   const sqldocDir = findSqldocDir(configRoot) ?? undefined

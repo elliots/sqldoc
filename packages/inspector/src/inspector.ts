@@ -1,6 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: cmd/atlas-wasi/main.go
 
+import { defaultSchemaForDialect } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
 import { createRestoreFunc, snapshot } from './internal/dev.ts'
 import { realmDiff } from './internal/diff.ts'
@@ -279,7 +280,7 @@ function columnsTypeMatch(a: Column, b: Column): boolean {
  */
 function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string): string[] {
   const stmts: string[] = []
-  const defaultSchema = dialect === 'sqlite' ? 'main' : dialect === 'mssql' ? 'dbo' : 'public'
+  const defaultSchema = defaultSchemaForDialect(dialect as Dialect) ?? 'public'
   const q =
     dialect === 'mysql'
       ? (s: string) => `\`${s.replaceAll('`', '``')}\``

@@ -1,16 +1,10 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type {
-  CompilerOutput,
-  Dialect,
-  FileProvenance,
-  NamespacePlugin,
-  ResolvedConfig,
-  SqlStatement,
-} from '@sqldoc/core'
+import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
 import {
   compile,
   debug,
+  defaultSchemaForDialect,
   findSqldocDir,
   loadImports,
   parse,
@@ -25,17 +19,6 @@ import pc from 'picocolors'
 import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
 import { discoverSqlFiles } from './discover.ts'
 import { formatDiagnostic } from './format.ts'
-
-function defaultSchemaForDialect(dialect: Dialect): string | undefined {
-  switch (dialect) {
-    case 'postgres':
-      return 'public'
-    case 'mssql':
-      return 'dbo'
-    default:
-      return undefined
-  }
-}
 
 /** Result from running the compile pipeline */
 export interface PipelineResult {

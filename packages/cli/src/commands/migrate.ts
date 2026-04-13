@@ -4,7 +4,7 @@ import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { Change, Rename, RenameCandidate } from '@sqldoc/db'
-import { createRunner, extractExtensions } from '@sqldoc/db'
+import { createRunner, defaultSchemaForDialect, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { debug, resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
@@ -121,10 +121,7 @@ async function migrateProject(
 
   // ── Step 4: Diff current -> desired (up migration) ─────────────────
   // Inspect all schemas (no scope restriction) but strip the default schema from output.
-  let defaultSchemaOpt: string | undefined
-  if (dialect === 'postgres') defaultSchemaOpt = 'public'
-  else if (dialect === 'mssql') defaultSchemaOpt = 'dbo'
-  else if (dialect === 'sqlite') defaultSchemaOpt = 'main'
+  const defaultSchemaOpt = defaultSchemaForDialect(dialect)
 
   const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)
