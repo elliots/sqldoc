@@ -1,11 +1,12 @@
 import { describe, expect, it } from '@sqldoc/test-utils'
+import { PostgresAstAdapter } from '../../ast/pgsql-parser.ts'
 import { SqlparserTsAdapter } from '../../ast/sqlparser-ts.ts'
 import { createAstAdapter } from '../../index.ts'
 
 describe('createAstAdapter', () => {
-  it('falls back to SqlparserTsAdapter for postgres', () => {
+  it('uses PostgresAstAdapter for postgres', () => {
     const adapter = createAstAdapter('postgres')
-    expect(adapter).toBeInstanceOf(SqlparserTsAdapter)
+    expect(adapter).toBeInstanceOf(PostgresAstAdapter)
   })
 
   it('falls back to SqlparserTsAdapter for mssql', () => {

@@ -189,7 +189,7 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
       }
 
       const line = getSpanLine(node.object_name?.[0])
-      results.push({ targetKey, content: comment, line })
+      results.push({ targetKey, text: comment, line })
     }
 
     return results
@@ -326,21 +326,21 @@ function mapStatement(stmt: any): SqlStatement | null {
     case 'CreateTable':
       return {
         kind: 'table',
-        objectName: extractName(node.name),
+        name: extractName(node.name),
         line: getSpanLine(node.name?.[0]),
         columns: mapColumns(node.columns ?? []),
-        raw: node,
+        node,
       }
     case 'CreateView':
-      return { kind: 'view', objectName: extractName(node.name), line: getSpanLine(node.name?.[0]), raw: node }
+      return { kind: 'view', name: extractName(node.name), line: getSpanLine(node.name?.[0]), columns: [], node }
     case 'CreateIndex':
-      return { kind: 'index', objectName: extractName(node.name), line: getSpanLine(node.name?.[0]), raw: node }
+      return { kind: 'index', name: extractName(node.name), line: getSpanLine(node.name?.[0]), columns: [], node }
     case 'CreateType':
-      return { kind: 'type', objectName: extractName(node.name), line: getSpanLine(node.name?.[0]), raw: node }
+      return { kind: 'type', name: extractName(node.name), line: getSpanLine(node.name?.[0]), columns: [], node }
     case 'CreateFunction':
-      return { kind: 'function', objectName: extractName(node.name), line: getSpanLine(node.name?.[0]), raw: node }
+      return { kind: 'function', name: extractName(node.name), line: getSpanLine(node.name?.[0]), columns: [], node }
     case 'CreateTrigger':
-      return { kind: 'trigger', objectName: extractName(node.name), line: getSpanLine(node.name?.[0]), raw: node }
+      return { kind: 'trigger', name: extractName(node.name), line: getSpanLine(node.name?.[0]), columns: [], node }
     default:
       return null
   }
@@ -350,9 +350,8 @@ function mapStatement(stmt: any): SqlStatement | null {
 function mapColumns(columns: any[]): SqlColumn[] {
   return columns.map((col: any) => ({
     name: col.name?.value ?? '',
-    dataType: normalizeDataType(col.data_type),
+    type: normalizeDataType(col.data_type),
     line: col.name?.span?.start?.line ?? 1,
-    raw: col,
   }))
 }
 

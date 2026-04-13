@@ -13,24 +13,24 @@
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
   autoIncrementType,
+  type Column,
   currentTimestamp,
   type Dialect,
   getSchemaColumns,
   getSchemaTable,
   quoteIdentifier,
-  type SchemaColumnLike,
   timestampType,
 } from '@sqldoc/core'
 
 // -- Helper functions --
 
 /** Get the raw SQL type string from an inspected column type */
-function columnTypeSql(col: SchemaColumnLike): string {
-  return col.type?.raw ?? col.type?.T ?? col.type?.type?.T ?? 'TEXT'
+function columnTypeSql(col: Column): string {
+  return col.type.raw ?? col.type.type.T ?? 'TEXT'
 }
 
 /** Generate the history table DDL mirroring source columns + metadata */
-function generateHistoryTableSql(destination: string, columns: SchemaColumnLike[], dialect: Dialect): string {
+function generateHistoryTableSql(destination: string, columns: Column[], dialect: Dialect): string {
   const q = (name: string) => quoteIdentifier(name, dialect)
   const colDefs = columns.map((col) => {
     const nullable = col.type?.null !== false ? '' : ' NOT NULL'
@@ -54,7 +54,7 @@ function generatePostgresHistoryTriggers(
   objectName: string,
   destination: string,
   operations: string[],
-  columns: SchemaColumnLike[],
+  columns: Column[],
 ): SqlOutput[] {
   const ops = operations.map((op) => op.toUpperCase())
   const triggerEvents = ops.join(' OR ')
@@ -84,7 +84,7 @@ function generatePerEventHistoryTriggers(
   objectName: string,
   destination: string,
   operations: string[],
-  columns: SchemaColumnLike[],
+  columns: Column[],
   dialect: Dialect,
 ): SqlOutput[] {
   const q = (name: string) => quoteIdentifier(name, dialect)

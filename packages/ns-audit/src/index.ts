@@ -9,6 +9,7 @@
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
   autoIncrementType,
+  type Column,
   currentTimestamp,
   type Dialect,
   getSchemaColumns,
@@ -16,7 +17,6 @@ import {
   jsonObjectFunction,
   jsonType,
   quoteIdentifier,
-  type SchemaColumnLike,
   timestampType,
 } from '@sqldoc/core'
 
@@ -42,7 +42,7 @@ function generateAuditTableSql(destination: string, dialect: Dialect): string {
 }
 
 /** Build a JSON serialization expression for a row reference (OLD or NEW). */
-function generateColumnJsonExpr(ref: 'OLD' | 'NEW', columns: SchemaColumnLike[], dialect: Dialect): string {
+function generateColumnJsonExpr(ref: 'OLD' | 'NEW', columns: Column[], dialect: Dialect): string {
   const jsonFn = jsonObjectFunction(dialect)
   const pairs = columns.map((c) => `'${c.name}', ${ref}.${quoteIdentifier(c.name, dialect)}`).join(', ')
   return `${jsonFn}(${pairs})`
@@ -53,7 +53,7 @@ function generatePerEventTriggers(
   objectName: string,
   destination: string,
   operations: string[],
-  columns: SchemaColumnLike[],
+  columns: Column[],
   dialect: Dialect,
 ): SqlOutput[] {
   const q = (name: string) => quoteIdentifier(name, dialect)

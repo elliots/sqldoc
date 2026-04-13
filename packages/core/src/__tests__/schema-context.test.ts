@@ -2,47 +2,33 @@ import { describe, expect, it } from '@sqldoc/test-utils'
 import { getForeignKeys, getPrimaryKeyColumns, getSchemaColumns, getSchemaTables } from '../schema-context.ts'
 
 describe('schema-context helpers', () => {
-  it('reads primary key columns from camelCase inspector tables', () => {
+  it('reads primary key columns from canonical tables', () => {
     const columns = getPrimaryKeyColumns({
       name: 'users',
+      columns: [],
       primaryKey: { parts: [{ column: 'id' }] },
     })
 
     expect(columns).toEqual(['id'])
   })
 
-  it('reads primary key columns from snake_case test fixtures', () => {
-    const columns = getPrimaryKeyColumns({
-      name: 'users',
-      primary_key: { columns: ['id'] },
-    })
-
-    expect(columns).toEqual(['id'])
-  })
-
-  it('normalizes foreign keys from both camelCase and snake_case tables', () => {
-    const camelCaseKeys = getForeignKeys({
+  it('returns canonical foreign keys unchanged', () => {
+    const foreignKeys = getForeignKeys({
       name: 'orders',
+      columns: [],
       foreignKeys: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'], symbol: 'orders_user_id_fkey' }],
     })
-    const snakeCaseKeys = getForeignKeys({
-      name: 'orders',
-      foreign_keys: [{ columns: ['user_id'], ref_table: 'users', ref_columns: ['id'], name: 'orders_user_id_fkey' }],
-    })
 
-    expect(camelCaseKeys).toEqual([
-      { name: 'orders_user_id_fkey', columns: ['user_id'], refColumns: ['id'], refTable: 'users' },
-    ])
-    expect(snakeCaseKeys).toEqual([
-      { name: 'orders_user_id_fkey', columns: ['user_id'], refColumns: ['id'], refTable: 'users' },
+    expect(foreignKeys).toEqual([
+      { columns: ['user_id'], refTable: 'users', refColumns: ['id'], symbol: 'orders_user_id_fkey' },
     ])
   })
 
   it('flattens tables from all schemas', () => {
     const tables = getSchemaTables({
       schemas: [
-        { name: 'public', tables: [{ name: 'users' }] },
-        { name: 'tenant', tables: [{ name: 'orders' }] },
+        { name: 'public', tables: [{ name: 'users', columns: [] }] },
+        { name: 'tenant', tables: [{ name: 'orders', columns: [] }] },
       ],
     })
 

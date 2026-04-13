@@ -1,6 +1,14 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { CompilerOutput, FileProvenance, NamespacePlugin, ResolvedConfig, SqlStatement } from '@sqldoc/core'
+import type {
+  CompilerOutput,
+  FileProvenance,
+  NamespacePlugin,
+  Realm,
+  ResolvedConfig,
+  Schema,
+  SqlStatement,
+} from '@sqldoc/core'
 import {
   compile,
   createAstAdapter,
@@ -13,7 +21,6 @@ import {
   resolveDirectives,
   validate,
 } from '@sqldoc/core'
-import type { Realm, Schema } from '@sqldoc/db'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
@@ -159,7 +166,7 @@ export async function runCompilePipeline(
       if (!externalResult.schema) {
         throw new Error(externalResult.error ?? 'Schema inspection failed to parse external schema')
       }
-      externalRealm = externalResult.schema as Realm
+      externalRealm = externalResult.schema
 
       // Extract external object names (schema-qualified to avoid cross-schema collisions)
       for (const schema of externalRealm.schemas) {
@@ -185,7 +192,7 @@ export async function runCompilePipeline(
 
     // Validate external object immutability (D-18)
     if (hasExternals && externalRealm) {
-      validateExternalImmutability(externalRealm, schemaRealm as Realm, externalObjectNames)
+      validateExternalImmutability(externalRealm, schemaRealm, externalObjectNames)
     }
 
     for (const filePath of allFiles) {

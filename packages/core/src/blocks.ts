@@ -178,10 +178,8 @@ function resolveAstByLine(
   const nodes: { line: number; node: AstNode }[] = []
   for (const stmt of stmts) {
     nodes.push({ line: stmt.line, node: { type: 'stmt', stmt } })
-    if (stmt.columns) {
-      for (const col of stmt.columns) {
-        nodes.push({ line: col.line, node: { type: 'col', col, parentStmt: stmt } })
-      }
+    for (const col of stmt.columns) {
+      nodes.push({ line: col.line, node: { type: 'col', col, parentStmt: stmt } })
     }
   }
   nodes.sort((a, b) => a.line - b.line)
@@ -208,16 +206,16 @@ function resolveAstByLine(
     if (n.type === 'stmt' && n.stmt.kind === 'table') {
       return {
         target: 'table',
-        objectName: n.stmt.objectName,
-        astNode: n.stmt.raw,
+        objectName: n.stmt.name,
+        astNode: n.stmt.node,
       }
     }
     if (n.type === 'col') {
       // We're after the last column of this table — table-level
       return {
         target: 'table',
-        objectName: n.parentStmt.objectName,
-        astNode: n.parentStmt.raw,
+        objectName: n.parentStmt.name,
+        astNode: n.parentStmt.node,
       }
     }
   }
@@ -232,14 +230,14 @@ function astInfoFromNode(
     return {
       target: 'column',
       columnName: node.col.name,
-      columnType: node.col.dataType,
-      objectName: node.parentStmt.objectName,
-      astNode: node.parentStmt.raw,
+      columnType: node.col.type,
+      objectName: node.parentStmt.name,
+      astNode: node.parentStmt.node,
     }
   }
   return {
     target: node.stmt.kind,
-    objectName: node.stmt.objectName,
-    astNode: node.stmt.raw,
+    objectName: node.stmt.name,
+    astNode: node.stmt.node,
   }
 }

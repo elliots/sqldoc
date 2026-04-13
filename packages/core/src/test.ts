@@ -7,7 +7,7 @@
 import type { CompilerOutput, LintRule, NamespacePlugin, ProjectContext, TagContext } from './index.ts'
 
 /** Create a minimal TagContext with sensible defaults */
-export function makeTagCtx(overrides: Partial<TagContext> = {}): TagContext {
+export function makeTagCtx(overrides: Partial<TagContext> | Record<string, unknown> = {}): TagContext {
   return {
     target: 'table',
     objectName: 'users',
@@ -24,7 +24,7 @@ export function makeTagCtx(overrides: Partial<TagContext> = {}): TagContext {
 }
 
 /** Create a minimal ProjectContext with sensible defaults */
-export function makeProjectCtx(overrides: Partial<ProjectContext> = {}): ProjectContext {
+export function makeProjectCtx(overrides: Partial<ProjectContext> | Record<string, unknown> = {}): ProjectContext {
   return {
     outputs: [],
     mergedSql: '',
@@ -34,7 +34,7 @@ export function makeProjectCtx(overrides: Partial<ProjectContext> = {}): Project
     projectRoot: '/tmp/test',
     schemaRealm: { schemas: [{ name: 'public', tables: [] }] },
     ...overrides,
-  } as unknown as ProjectContext
+  } as ProjectContext
 }
 
 /** Create a minimal CompilerOutput */

@@ -1,5 +1,6 @@
 import type { Dialect } from '../sql-emitter.ts'
 import type { SqlAstAdapter } from './adapter.ts'
+import { PostgresAstAdapter } from './pgsql-parser.ts'
 import { SqlparserTsAdapter } from './sqlparser-ts.ts'
 
 export type AstAdapterFactory = (dialect: Dialect) => SqlAstAdapter
@@ -7,7 +8,7 @@ export type AstAdapterFactory = (dialect: Dialect) => SqlAstAdapter
 const fallbackAstAdapterFactory: AstAdapterFactory = (dialect) => new SqlparserTsAdapter(dialect)
 
 const DIALECT_AST_ADAPTER_FACTORIES: Partial<Record<Dialect, AstAdapterFactory>> = {
-  // Dialect-specific parsers can be registered here as they are added.
+  postgres: () => new PostgresAstAdapter(),
 }
 
 /**

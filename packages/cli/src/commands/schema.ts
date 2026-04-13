@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { Dialect, ResolvedConfig } from '@sqldoc/core'
+import type { Dialect, Realm, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { InspectorResult } from '@sqldoc/db'
 import { createRunner, defaultSchemaForDialect, extractExtensions, extractScheme } from '@sqldoc/db'
@@ -43,7 +43,7 @@ interface ResolvedSource {
   /** For database: connection URL. For file/directory: merged compiled SQL */
   value: string
   /** Schema realm from the pipeline (reuse instead of re-inspecting) */
-  schemaRealm?: unknown
+  schemaRealm?: Realm
   /** External SQL to prepend to the other side of a diff (per D-09) */
   externalSql?: string
 }

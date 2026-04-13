@@ -5,9 +5,9 @@ import plugin from '../index.ts'
 const mockSchemaTable = {
   name: 'orders',
   columns: [
-    { name: 'id', type: { T: 'integer', null: false } },
-    { name: 'total', type: { T: 'numeric(10,2)', null: false } },
-    { name: 'status', type: { T: 'text', null: true } },
+    { name: 'id', type: { type: { kind: 'integer', T: 'integer' }, raw: 'integer', null: false } },
+    { name: 'total', type: { type: { kind: 'decimal', T: 'numeric(10,2)' }, raw: 'numeric(10,2)', null: false } },
+    { name: 'status', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: true } },
   ],
 }
 

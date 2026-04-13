@@ -15,6 +15,7 @@ import type { TagBlock } from '../blocks.ts'
 import { buildBlocks } from '../blocks.ts'
 import { debug } from '../debug.ts'
 import { parse, parseArgs } from '../parser.ts'
+import type { Attr, Realm, Table, Tag, View } from '../schema.ts'
 import type { Dialect } from '../sql-emitter.ts'
 import { escapeString, escapeStringWithNewlines } from '../sql-emitter.ts'
 import type { SqlTarget } from '../types.ts'
@@ -29,43 +30,6 @@ import type {
   TagContext,
   TagOutput,
 } from './types.ts'
-
-// ── Internal schema types (mirrors @sqldoc/inspector without importing) ──
-// Core must NOT depend on @sqldoc/inspector. These mirror the shapes for internal use.
-// Uses inspector's camelCase fields and kind-discriminated attrs.
-
-interface InternalRealm {
-  schemas: InternalSchema[]
-  defaultSchema?: string
-  attrs?: InternalAttr[]
-}
-
-interface InternalSchema {
-  name: string
-  tables?: InternalTable[]
-  views?: InternalView[]
-  attrs?: InternalAttr[]
-}
-
-interface InternalTable {
-  name: string
-  columns: InternalColumn[]
-  attrs?: InternalAttr[]
-}
-
-interface InternalView {
-  name: string
-  columns?: InternalColumn[]
-  attrs?: InternalAttr[]
-}
-
-interface InternalColumn {
-  name: string
-  type: { type: { T: string }; raw?: string; null?: boolean }
-  attrs?: InternalAttr[]
-}
-
-type InternalAttr = { kind: 'tag'; name: string; args: string } | Record<string, unknown>
 
 // ── Plugin compatibility ─────────────────────────────────────────────
 
@@ -94,7 +58,7 @@ export interface CompileOptions {
   /** Project config */
   config: ResolvedConfig
   /** Inspected schema realm (Tier 2). When provided, uses schema tag-to-object matching instead of block resolution. */
-  schemaRealm?: unknown
+  schemaRealm?: Realm
 }
 
 export function compile(options: CompileOptions): CompilerOutput {
@@ -106,15 +70,7 @@ export function compile(options: CompileOptions): CompilerOutput {
 
   // Tier 2: inspected schema realm provided — use schema tag-to-object matching
   if (schemaRealm) {
-    const result = compileWithRealm(
-      schemaRealm as InternalRealm,
-      filePath,
-      plugins,
-      statements,
-      config,
-      source,
-      adapter,
-    )
+    const result = compileWithRealm(schemaRealm, filePath, plugins, statements, config, source, adapter)
     // Merge parser-derived tags that schema inspection doesn't see (e.g. @lint.ignore)
     // These tags have no SQL output so the inspector never encounters them
     const tags = parse(source).tags
@@ -248,7 +204,7 @@ function compileTier1(
 // ── Tier 2: schema realm compilation ──────────────────────────────────
 
 function compileWithRealm(
-  realm: InternalRealm,
+  realm: Realm,
   filePath: string,
   plugins: Map<string, NamespacePlugin>,
   statements: SqlStatement[],
@@ -326,7 +282,7 @@ function compileWithRealm(
 
 /** Shared context for processRealmObject — same for every object in a file */
 interface RealmObjectContext {
-  realm: InternalRealm
+  realm: Realm
   filePath: string
   plugins: Map<string, NamespacePlugin>
   statements: SqlStatement[]
@@ -348,12 +304,7 @@ interface RealmObjectContext {
 }
 
 /** Process a single inspected object (table or view) and its columns for tag invocation */
-function processRealmObject(
-  obj: InternalTable | InternalView,
-  target: SqlTarget,
-  objectName: string,
-  actx: RealmObjectContext,
-): void {
+function processRealmObject(obj: Table | View, target: SqlTarget, objectName: string, actx: RealmObjectContext): void {
   const {
     realm,
     filePath,
@@ -450,7 +401,7 @@ function processRealmObject(
       fileStatements: statements,
       config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
       filePath,
-      schemaTable: obj,
+      schemaTable: target === 'table' ? (obj as Table) : undefined,
       schemaRealm: realm,
     }
 
@@ -545,7 +496,7 @@ function processRealmObject(
           fileStatements: statements,
           config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
           filePath,
-          schemaTable: obj,
+          schemaTable: target === 'table' ? (obj as Table) : undefined,
           schemaColumn: col,
           schemaRealm: realm,
         }
@@ -666,11 +617,11 @@ function buildMergedSql(
   // 1. Build comment merge map: target -> content[]
   const commentMap = new Map<string, string[]>()
   for (const c of sourceComments) {
-    commentMap.set(c.targetKey, [c.content])
+    commentMap.set(c.targetKey, [c.text])
   }
   for (const c of generatedComments) {
     const existing = commentMap.get(c.targetKey) ?? []
-    existing.push(c.content)
+    existing.push(c.text)
     commentMap.set(c.targetKey, existing)
   }
 
@@ -745,13 +696,13 @@ function splitTagName(name: string): { namespace: string; tag: string | null } {
  * Type guard: check if an attr is a tag (has kind: 'tag').
  * Mirrors the Tag interface from @sqldoc/inspector without importing.
  */
-function isTag(attr: InternalAttr): attr is { kind: 'tag'; name: string; args: string } {
+function isTag(attr: Attr): attr is Tag {
   if (typeof attr !== 'object' || attr === null) return false
   return 'kind' in attr && (attr as any).kind === 'tag'
 }
 
 /** Extract all tag attrs from a mixed Attrs array */
-function findTags(attrs?: InternalAttr[]): Array<{ kind: 'tag'; name: string; args: string }> {
+function findTags(attrs?: Attr[]): Tag[] {
   if (!attrs) return []
   return attrs.filter(isTag)
 }

@@ -13,13 +13,13 @@
 
 import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
+  type Column,
   currentTimestamp,
   type Dialect,
   getPrimaryKeyColumns,
   getSchemaColumns,
   getSchemaTable,
   quoteIdentifier,
-  type SchemaColumnLike,
   timestampType,
 } from '@sqldoc/core'
 
@@ -66,7 +66,7 @@ function generateCurrentViewSql(objectName: string, viewName: string, dialect: D
 }
 
 /** Generate Postgres PL/pgSQL temporal triggers */
-function generatePostgresTriggers(objectName: string, _pkColumns: string[], columns: SchemaColumnLike[]): SqlOutput[] {
+function generatePostgresTriggers(objectName: string, _pkColumns: string[], columns: Column[]): SqlOutput[] {
   const colNames = columns.map((c) => `"${c.name}"`).join(', ')
   const oldRefs = columns.map((c) => `OLD."${c.name}"`).join(', ')
 

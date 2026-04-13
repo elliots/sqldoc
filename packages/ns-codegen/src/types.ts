@@ -1,5 +1,4 @@
-import type { ArgType, DocsMeta, InferSchema } from '@sqldoc/core'
-import type { Realm } from '@sqldoc/db'
+import type { ArgType, DocsMeta, InferSchema, Realm } from '@sqldoc/core'
 
 /** Config for the codegen namespace in sqldoc.config.ts namespaces.codegen */
 export interface CodegenConfig {

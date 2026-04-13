@@ -1,7 +1,6 @@
 import * as path from 'node:path'
-import type { NamespacePlugin, ProjectContext, ProjectOutput } from '@sqldoc/core'
+import type { NamespacePlugin, ProjectContext, ProjectOutput, Realm } from '@sqldoc/core'
 import { findSqldocDir, tsImport, unwrapDefault } from '@sqldoc/core'
-import type { Realm } from '@sqldoc/db'
 import type { CodegenConfig, TemplateContext } from './types.ts'
 
 /** Extract template name from import path: '@sqldoc/templates/typescript' -> 'typescript', './my.ts' -> 'my' */
@@ -38,7 +37,7 @@ const plugin: NamespacePlugin = {
       return { files: [] }
     }
 
-    const realm = ctx.schemaRealm as Realm | undefined
+    const realm: Realm | undefined = ctx.schemaRealm
     if (!realm) {
       throw new Error('ns-codegen requires inspected schema. Run with a database connection (devUrl in config).')
     }

@@ -5,6 +5,7 @@
  */
 
 import type { CompilerOutput, LintContext, LintResult, NamespacePlugin, ResolvedConfig } from './compiler/types.ts'
+import type { Realm } from './schema.ts'
 
 /** Parsed @lint.ignore tag */
 interface LintIgnore {
@@ -29,7 +30,7 @@ export function lint(
   outputs: CompilerOutput[],
   plugins: Map<string, NamespacePlugin>,
   config: ResolvedConfig,
-  schemaRealm?: unknown,
+  schemaRealm?: Realm,
 ): LintResult[] {
   const results: LintResult[] = []
   const lintConfig = config.lint ?? {}

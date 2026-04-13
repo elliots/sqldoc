@@ -32,13 +32,31 @@ function lineOf(source: string, search: string): number {
   return source.substring(0, idx).split('\n').length
 }
 
-function makeStatements(stmts: Partial<SqlStatement>[]): SqlStatement[] {
-  return stmts.map((s, _i) => ({
-    kind: s.kind ?? 'table',
-    objectName: s.objectName ?? 'unknown',
-    line: s.line ?? 1,
-    columns: s.columns,
-    raw: s.raw ?? null,
+type TestSqlColumn = {
+  name: string
+  type: string
+  line: number
+}
+
+type TestSqlStatement = {
+  kind: SqlStatement['kind']
+  name: string
+  line: number
+  columns?: TestSqlColumn[]
+  node?: unknown
+}
+
+function makeStatements(stmts: TestSqlStatement[]): SqlStatement[] {
+  return stmts.map((s) => ({
+    kind: s.kind,
+    name: s.name,
+    line: s.line,
+    columns: (s.columns ?? []).map((column) => ({
+      name: column.name,
+      type: column.type,
+      line: column.line,
+    })),
+    node: s.node ?? null,
   }))
 }
 
@@ -58,7 +76,7 @@ describe('compile()', () => {
       source,
       filePath: 'test.sql',
       plugins: new Map([['test', plugin]]),
-      statements: makeStatements([{ kind: 'table', objectName: 'users', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'users', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
     })
@@ -85,7 +103,7 @@ describe('compile()', () => {
       source,
       filePath: 'orders.sql',
       plugins: new Map([['codegen', plugin]]),
-      statements: makeStatements([{ kind: 'table', objectName: 'orders', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'orders', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
     })
@@ -123,7 +141,7 @@ describe('compile()', () => {
         ['alpha', pluginA],
         ['beta', pluginB],
       ]),
-      statements: makeStatements([{ kind: 'table', objectName: 'products', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'products', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
     })
@@ -163,8 +181,8 @@ describe('compile()', () => {
       filePath: 'multi.sql',
       plugins: new Map([['ns', plugin]]),
       statements: makeStatements([
-        { kind: 'table', objectName: 't1', line: lineOf(source, 'CREATE TABLE t1') },
-        { kind: 'table', objectName: 't2', line: lineOf(source, 'CREATE TABLE t2') },
+        { kind: 'table', name: 't1', line: lineOf(source, 'CREATE TABLE t1') },
+        { kind: 'table', name: 't2', line: lineOf(source, 'CREATE TABLE t2') },
       ]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
@@ -201,7 +219,7 @@ describe('compile()', () => {
       source,
       filePath: 'cfg.sql',
       plugins: new Map([['myns', plugin]]),
-      statements: makeStatements([{ kind: 'table', objectName: 'cfg_test', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'cfg_test', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config,
     })
@@ -228,7 +246,7 @@ describe('compile()', () => {
       source,
       filePath: 'nstags.sql',
       plugins: new Map([['multi', plugin]]),
-      statements: makeStatements([{ kind: 'table', objectName: 'nstags', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'nstags', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
     })
@@ -271,12 +289,12 @@ describe('compile()', () => {
       statements: makeStatements([
         {
           kind: 'table',
-          objectName: 'items',
+          name: 'items',
           line: lineOf(source, 'CREATE TABLE items'),
           columns: [
-            { name: 'id', dataType: 'serial', line: lineOf(source, 'id SERIAL'), raw: null },
-            { name: 'name', dataType: 'text', line: lineOf(source, 'name TEXT'), raw: null },
-            { name: 'price', dataType: 'integer', line: lineOf(source, 'price INTEGER'), raw: null },
+            { name: 'id', type: 'serial', line: lineOf(source, 'id SERIAL') },
+            { name: 'name', type: 'text', line: lineOf(source, 'name TEXT') },
+            { name: 'price', type: 'integer', line: lineOf(source, 'price INTEGER') },
           ],
         },
       ]),
@@ -313,7 +331,7 @@ describe('compile()', () => {
       source,
       filePath: 'err.sql',
       plugins: new Map([['err', plugin]]),
-      statements: makeStatements([{ kind: 'table', objectName: 'broken', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'broken', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
     })
@@ -340,7 +358,7 @@ describe('compile()', () => {
       source,
       filePath: 'inert.sql',
       plugins: new Map([['passive', plugin]]),
-      statements: makeStatements([{ kind: 'table', objectName: 'inert', line: lineOf(source, 'CREATE') }]),
+      statements: makeStatements([{ kind: 'table', name: 'inert', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
       config: { dialect: 'postgres' },
     })

@@ -28,50 +28,49 @@ describe('SqlparserTsAdapter', () => {
     stmts = adapter.parseStatements(TEST_SQL)
   })
 
-  it('parses CREATE TABLE with kind, objectName, and columns', () => {
+  it('parses CREATE TABLE with kind, name, and columns', () => {
     const table = stmts.find((s) => s.kind === 'table')
     expect(table).not.toBe(undefined)
-    expect(table!.objectName).toBe('users')
-    expect(table!.columns).not.toBe(undefined)
-    expect(table!.columns!).toHaveLength(3)
+    expect(table!.name).toBe('users')
+    expect(table!.columns).toHaveLength(3)
 
-    const [id, email, name] = table!.columns!
+    const [id, email, name] = table!.columns
     expect(id.name).toBe('id')
-    expect(id.dataType).toBe('bigserial')
+    expect(id.type).toBe('bigserial')
     expect(email.name).toBe('email')
-    expect(email.dataType).toBe('text')
+    expect(email.type).toBe('text')
     expect(name.name).toBe('name')
-    expect(name.dataType).toBe('text')
+    expect(name.type).toBe('text')
   })
 
-  it('parses CREATE VIEW with kind and objectName', () => {
+  it('parses CREATE VIEW with kind and name', () => {
     const view = stmts.find((s) => s.kind === 'view')
     expect(view).not.toBe(undefined)
-    expect(view!.objectName).toBe('active_users')
+    expect(view!.name).toBe('active_users')
   })
 
-  it('parses CREATE INDEX with kind and objectName', () => {
+  it('parses CREATE INDEX with kind and name', () => {
     const index = stmts.find((s) => s.kind === 'index')
     expect(index).not.toBe(undefined)
-    expect(index!.objectName).toBe('idx_users_email')
+    expect(index!.name).toBe('idx_users_email')
   })
 
-  it('parses CREATE TYPE (ENUM) with kind and objectName', () => {
+  it('parses CREATE TYPE (ENUM) with kind and name', () => {
     const type = stmts.find((s) => s.kind === 'type')
     expect(type).not.toBe(undefined)
-    expect(type!.objectName).toBe('user_role')
+    expect(type!.name).toBe('user_role')
   })
 
-  it('parses CREATE FUNCTION with kind and objectName', () => {
+  it('parses CREATE FUNCTION with kind and name', () => {
     const fn = stmts.find((s) => s.kind === 'function')
     expect(fn).not.toBe(undefined)
-    expect(fn!.objectName).toBe('get_user')
+    expect(fn!.name).toBe('get_user')
   })
 
-  it('parses CREATE TRIGGER with kind and objectName', () => {
+  it('parses CREATE TRIGGER with kind and name', () => {
     const trigger = stmts.find((s) => s.kind === 'trigger')
     expect(trigger).not.toBe(undefined)
-    expect(trigger!.objectName).toBe('user_audit')
+    expect(trigger!.name).toBe('user_audit')
   })
 
   it('returns multiple statements with correct line numbers', () => {
@@ -109,8 +108,8 @@ CREATE TABLE t2 (id INT);`
     const result = adapter.parseStatements(dollarSql)
     const tableStmts = result.filter((s) => s.kind === 'table')
     expect(tableStmts).toHaveLength(2)
-    expect(tableStmts[0].objectName).toBe('t1')
-    expect(tableStmts[1].objectName).toBe('t2')
+    expect(tableStmts[0].name).toBe('t1')
+    expect(tableStmts[1].name).toBe('t2')
     // t2 should be on a later line than t1
     expect(tableStmts[1].line > tableStmts[0].line).toBeTruthy()
   })

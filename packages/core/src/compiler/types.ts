@@ -1,5 +1,6 @@
 import type { SqlStatement } from '../ast/types.ts'
 import type { FileProvenance } from '../directives.ts'
+import type { Column, Realm, Table } from '../schema.ts'
 import type { Dialect } from '../sql-emitter.ts'
 import type { SqlTarget, TagNamespace } from '../types.ts'
 
@@ -111,12 +112,12 @@ export interface TagContext {
   config: NamespaceConfig
   /** The source SQL file path */
   filePath: string
-  /** Inspected table schema for this object (Tier 2 only, undefined in Tier 1) */
-  schemaTable?: unknown
+  /** Inspected table schema for this object (Tier 2 only, tables only) */
+  schemaTable?: Table
   /** Inspected column info (Tier 2 only, when target is 'column') */
-  schemaColumn?: unknown
+  schemaColumn?: Column
   /** Full inspected schema realm with all schemas, tables, views (Tier 2 only) */
-  schemaRealm?: unknown
+  schemaRealm?: Realm
 }
 
 /** @deprecated Use TagContext instead */
@@ -150,7 +151,7 @@ export interface ProjectContext {
   /** Project root directory */
   projectRoot: string
   /** Inspected schema realm (Tier 2, when available) */
-  schemaRealm?: unknown
+  schemaRealm?: Realm
   /** Set of object names (table/view) from @external files. Used by codegen for annotation and skipExternal filtering. */
   externalObjectNames?: Set<string>
 }
@@ -280,7 +281,7 @@ export interface LintContext {
   /** Project config (resolved single project) */
   config: ResolvedConfig
   /** Schema realm from schema inspection (Tier 2 only, undefined in VSCode) */
-  schemaRealm?: unknown
+  schemaRealm?: Realm
 }
 
 /** A single lint diagnostic produced by a rule */

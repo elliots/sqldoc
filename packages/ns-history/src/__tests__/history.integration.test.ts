@@ -10,10 +10,19 @@ import { createAdapter, type DatabaseAdapter } from '@sqldoc/db'
 import { after, describe, expect, it } from '@sqldoc/test-utils'
 import plugin from '../index.ts'
 
+type TestColumn = {
+  name: string
+  type: {
+    type: { kind: string; T: string }
+    raw: string
+    null?: boolean
+  }
+}
+
 function getSql(
   dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql',
   objectName: string,
-  columns: Array<{ name: string; type: { T: string; null?: boolean } }>,
+  columns: TestColumn[],
 ): string[] {
   const result = plugin.onTag!(
     makeTagCtx({
@@ -27,9 +36,9 @@ function getSql(
 }
 
 const pgColumns = [
-  { name: 'id', type: { T: 'integer', null: false } },
-  { name: 'name', type: { T: 'text', null: false } },
-  { name: 'price', type: { T: 'numeric', null: true } },
+  { name: 'id', type: { type: { kind: 'integer', T: 'integer' }, raw: 'integer', null: false } },
+  { name: 'name', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: false } },
+  { name: 'price', type: { type: { kind: 'decimal', T: 'numeric' }, raw: 'numeric', null: true } },
 ]
 
 // -- Postgres --
@@ -91,9 +100,9 @@ describe('ns-history integration - SQLite', () => {
     await db.exec('CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL)')
 
     const sqliteColumns = [
-      { name: 'id', type: { T: 'integer', null: false } },
-      { name: 'name', type: { T: 'text', null: false } },
-      { name: 'price', type: { T: 'real', null: true } },
+      { name: 'id', type: { type: { kind: 'integer', T: 'integer' }, raw: 'integer', null: false } },
+      { name: 'name', type: { type: { kind: 'string', T: 'text' }, raw: 'text', null: false } },
+      { name: 'price', type: { type: { kind: 'float', T: 'real' }, raw: 'real', null: true } },
     ]
     for (const sql of getSql('sqlite', 'items', sqliteColumns)) await db.exec(sql)
 
@@ -127,9 +136,9 @@ describe('ns-history integration - MySQL', () => {
     )
 
     const mysqlColumns = [
-      { name: 'id', type: { T: 'int', null: false } },
-      { name: 'name', type: { T: 'varchar(255)', null: false } },
-      { name: 'price', type: { T: 'decimal(10,2)', null: true } },
+      { name: 'id', type: { type: { kind: 'integer', T: 'int' }, raw: 'int', null: false } },
+      { name: 'name', type: { type: { kind: 'string', T: 'varchar(255)' }, raw: 'varchar(255)', null: false } },
+      { name: 'price', type: { type: { kind: 'decimal', T: 'decimal(10,2)' }, raw: 'decimal(10,2)', null: true } },
     ]
     for (const sql of getSql('mysql', 'orders', mysqlColumns)) await db.exec(sql)
 
