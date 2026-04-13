@@ -86,6 +86,8 @@ export type OnMissingPlugin = (packageName: string, version: string) => Promise<
 export interface ResolvePluginOptions {
   devUrl: string
   context: AdapterPluginContext
+  /** Use this adapter plugin directly instead of built-in/external resolution. */
+  adapterPlugin?: DatabaseAdapterPlugin
   /** Path to .sqldoc/ directory for package resolution */
   sqldocDir?: string
   /** Called when plugin package is missing. Triggers auto-install. */
@@ -122,8 +124,14 @@ function validatePlugin(
 }
 
 export async function resolveAdapterPlugin(options: ResolvePluginOptions): Promise<DatabaseAdapter> {
-  const { devUrl, context, sqldocDir, onMissingPlugin } = options
+  const { devUrl, context, adapterPlugin, sqldocDir, onMissingPlugin } = options
   const scheme = extractScheme(devUrl)
+
+  if (adapterPlugin) {
+    log(`using provided adapter plugin '${adapterPlugin.name}' for scheme '${scheme}'`)
+    validatePlugin(adapterPlugin, `provided adapter plugin '${adapterPlugin.name}'`, scheme, context)
+    return adapterPlugin.createAdapter(devUrl, context)
+  }
 
   // Check built-in plugins first
   const builtin = builtinPlugins.get(scheme)

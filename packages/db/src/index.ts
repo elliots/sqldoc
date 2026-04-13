@@ -1,13 +1,13 @@
 // @sqldoc/db -- Database adapters and schema types for sqldoc
 // Schema types are re-exported from @sqldoc/inspector.
 
-import { defaultDevUrlForDialect, defaultSchemaForDialect, getDialectSpec } from '@sqldoc/core'
+import { defaultDevUrlForDialect } from '@sqldoc/core'
 import { createMssqlDockerAdapter } from './db/mssql-docker.ts'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 import type { OnMissingPlugin, ResolvePluginOptions } from './db/plugin-resolver.ts'
 import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
-import type { Dialect } from './db/types.ts'
+import type { AdapterPluginContext, Dialect } from './db/types.ts'
 import { validatePostgresExtensions } from './extensions.ts'
 
 // Re-export schema types from @sqldoc/inspector
@@ -175,14 +175,42 @@ type DockerAdapterOptions = Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingP
 
 type DockerAdapterFactory = (devUrl: string, options: DockerAdapterOptions) => Promise<DatabaseAdapter>
 
-const DOCKER_ADAPTER_FACTORIES: Partial<Record<Dialect, DockerAdapterFactory>> = {
-  mysql: createMysqlDockerAdapter,
-  postgres: createPostgresDockerAdapter,
-  mssql: (devUrl, options) =>
-    createMssqlDockerAdapter(devUrl, {
-      reuseContainer: true,
-      ...options,
-    }),
+interface DialectAdapterRuntime {
+  createContext(config: CreateRunnerConfig): AdapterPluginContext
+  createDockerAdapter?: DockerAdapterFactory
+  validateAdapter?: (db: DatabaseAdapter, context: AdapterPluginContext) => Promise<void>
+}
+
+const DIALECT_ADAPTER_RUNTIMES: Record<Dialect, DialectAdapterRuntime> = {
+  postgres: {
+    createContext: (config) => ({ dialect: 'postgres', extensions: config.extensions ?? [] }),
+    createDockerAdapter: createPostgresDockerAdapter,
+    validateAdapter: async (db, context) => {
+      if (context.extensions.length === 0) return
+      if (process.env.DEBUG) console.error(`[runner] validating extensions: ${context.extensions.join(', ')}`)
+      await validatePostgresExtensions(context.extensions, (sql) => db.query(sql))
+      if (process.env.DEBUG) console.error('[runner] extensions validated')
+    },
+  },
+  mysql: {
+    createContext: () => ({ dialect: 'mysql', extensions: [] }),
+    createDockerAdapter: createMysqlDockerAdapter,
+  },
+  sqlite: {
+    createContext: () => ({ dialect: 'sqlite', extensions: [] }),
+  },
+  mssql: {
+    createContext: () => ({ dialect: 'mssql', extensions: [] }),
+    createDockerAdapter: (devUrl, options) =>
+      createMssqlDockerAdapter(devUrl, {
+        reuseContainer: true,
+        ...options,
+      }),
+  },
+}
+
+function getDialectAdapterRuntime(dialect: Dialect): DialectAdapterRuntime {
+  return DIALECT_ADAPTER_RUNTIMES[dialect]
 }
 
 function isDockerDevUrl(devUrl: string): boolean {
@@ -202,36 +230,34 @@ function isDockerDevUrl(devUrl: string): boolean {
 export async function createAdapter(config: CreateRunnerConfig): Promise<DatabaseAdapter> {
   const dialect = config.dialect
   const devUrl = config.devUrl ?? defaultDevUrlForDialect(dialect)
-  const extensions = dialect === 'postgres' ? (config.extensions ?? []) : []
+  const runtime = getDialectAdapterRuntime(dialect)
+  const context = runtime.createContext(config)
   const pluginOpts = {
-    context: { dialect, extensions },
+    context,
     sqldocDir: config.sqldocDir,
     onMissingPlugin: config.onMissingPlugin,
+    adapterPlugin: config.adapterPlugin,
   }
 
   let db: DatabaseAdapter
 
   if (isDockerDevUrl(devUrl)) {
-    const dockerOpts = { ...pluginOpts, adapterPlugin: config.adapterPlugin }
-    const createDockerAdapter = DOCKER_ADAPTER_FACTORIES[dialect]
+    const createDockerAdapter = runtime.createDockerAdapter
     if (!createDockerAdapter) {
       throw new Error(`Docker dev URLs are not supported for dialect '${dialect}'`)
     }
-    db = await createDockerAdapter(devUrl, dockerOpts)
+    db = await createDockerAdapter(devUrl, pluginOpts)
   } else {
     db = await resolveAdapterPlugin({ devUrl, ...pluginOpts })
   }
 
-  // Validate postgres extensions against the live database
-  if (dialect === 'postgres' && extensions.length > 0) {
-    if (process.env.DEBUG) console.error(`[runner] validating extensions: ${extensions.join(', ')}`)
+  if (runtime.validateAdapter) {
     try {
-      await validatePostgresExtensions(extensions, (sql) => db.query(sql))
+      await runtime.validateAdapter(db, context)
     } catch (err) {
       await db.close()
       throw err
     }
-    if (process.env.DEBUG) console.error('[runner] extensions validated')
   }
 
   return db

@@ -13,7 +13,7 @@ import type { DatabaseAdapter } from './types.ts'
  */
 export async function createMysqlDockerAdapter(
   devUrl: string,
-  pluginOpts?: Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingPlugin'>,
+  pluginOpts?: Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingPlugin' | 'adapterPlugin'>,
 ): Promise<DatabaseAdapter> {
   const isDockerfile = devUrl.startsWith('dockerfile://')
   const readyLog = /ready for connections.*port: 3306/
@@ -41,6 +41,7 @@ export async function createMysqlDockerAdapter(
       mysqlAdapter = await resolveAdapterPlugin({
         devUrl: connectionUri,
         context: { dialect: 'mysql', extensions: [] },
+        adapterPlugin: pluginOpts?.adapterPlugin,
         ...pluginOpts,
       })
       break

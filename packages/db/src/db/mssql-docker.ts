@@ -13,7 +13,7 @@ import { randomBytes } from 'node:crypto'
 import * as net from 'node:net'
 import type { ResolvePluginOptions } from './plugin-resolver.ts'
 import { resolveAdapterPlugin } from './plugin-resolver.ts'
-import type { DatabaseAdapter, DatabaseAdapterPlugin } from './types.ts'
+import type { DatabaseAdapter } from './types.ts'
 
 /** Sanitize an image name into a valid container name. */
 function sanitize(image: string): string {
@@ -29,19 +29,17 @@ const log = process.env.DEBUG ? (msg: string) => console.error(`[mssql-docker] $
 
 export interface MssqlDockerOptions extends Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingPlugin'> {
   /** Provide the MSSQL adapter plugin directly, bypassing plugin resolution. */
-  adapterPlugin?: DatabaseAdapterPlugin
+  adapterPlugin?: ResolvePluginOptions['adapterPlugin']
   /** When true, reuse a shared named container with locking. When false (default), start a unique container per caller. */
   reuseContainer?: boolean
 }
 
-/** Connect using either the provided plugin or the plugin resolver. */
+/** Connect using the plugin resolver, optionally forcing a provided plugin. */
 async function connect(devUrl: string, opts?: MssqlDockerOptions): Promise<DatabaseAdapter> {
-  if (opts?.adapterPlugin) {
-    return opts.adapterPlugin.createAdapter(devUrl, { dialect: 'mssql', extensions: [] })
-  }
   return resolveAdapterPlugin({
     devUrl,
     context: { dialect: 'mssql', extensions: [] },
+    adapterPlugin: opts?.adapterPlugin,
     sqldocDir: opts?.sqldocDir,
     onMissingPlugin: opts?.onMissingPlugin,
   })
