@@ -1,7 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/sqlx.go, sql/internal/sqlx/sqlx_oss.go
 
-import type { Dialect } from '../inspector.ts'
+import type { Dialect } from '../dialects.ts'
 import type { DiffOptions, InspectOptions, InspectRealmOption } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
 import type {

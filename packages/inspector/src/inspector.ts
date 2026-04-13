@@ -1,37 +1,18 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: original Go runtime entrypoint
 
-import { defaultSchemaForDialect } from '@sqldoc/core'
+import { type Dialect, defaultSchemaForDialect, quoteIdentifier } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
+import { filterSystemSchemas, getInspectorDialectVariantSpec, stripDefaultSchemaQualifier } from './dialects.ts'
 import { createRestoreFunc, snapshot } from './internal/dev.ts'
 import { realmDiff } from './internal/diff.ts'
-import type { PlanDriver } from './internal/plan.ts'
 import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
-import type { DiffDriver } from './internal/sqlx.ts'
 import { scanStmts } from './migrate/lex.ts'
 import { extractTagsFromStmts } from './migrate/tag.ts'
-import { AzureSqlInspector } from './mssql/azuresql.ts'
-import { MssqlDiff } from './mssql/diff.ts'
-import { MssqlInspector } from './mssql/inspect.ts'
-import { MssqlPlan } from './mssql/migrate.ts'
-import { MysqlDiff } from './mysql/diff.ts'
-import { MysqlInspector } from './mysql/inspect.ts'
-import { MysqlPlan } from './mysql/migrate.ts'
-import { TidbDiff, TidbInspect, TidbPlan } from './mysql/tidb.ts'
-import { CrdbDiff, CrdbInspector } from './postgres/crdb.ts'
-import { PostgresDiff } from './postgres/diff.ts'
-import { PostgresInspector } from './postgres/inspect.ts'
-import { PostgresPlan, withCascade } from './postgres/migrate.ts'
 import type { ExecQuerier, ExecResult, Inspector, QueryResult } from './schema/inspect.ts'
 import type { Change } from './schema/migrate.ts'
 import type { Column, Realm, Rename, RenameCandidate, Schema, Table } from './schema/schema.ts'
-import { SqliteDiff } from './sqlite/diff.ts'
-import { SqliteInspector } from './sqlite/inspect.ts'
-import { SqlitePlan } from './sqlite/migrate.ts'
 // -- Types --
-
-/** Supported SQL dialects. */
-export type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
 
 export interface InspectorOptions {
   db: DatabaseAdapter
@@ -111,29 +92,6 @@ class ExecQuerierAdapter implements ExecQuerier {
     const result = await this.db.exec(sql, args)
     return { rowsAffected: result.rowsAffected }
   }
-}
-
-// -- System Schema Filtering --
-
-/** System schemas to exclude per dialect. */
-const SYSTEM_SCHEMAS: Record<string, Set<string>> = {
-  postgres: new Set(['information_schema', 'pg_catalog', 'pg_toast']),
-  mysql: new Set(['information_schema', 'mysql', 'performance_schema', 'sys']),
-  sqlite: new Set(),
-  mssql: new Set(['INFORMATION_SCHEMA', 'sys', 'guest']),
-}
-
-function filterSystemSchemas(realm: Realm, dialect: string): Realm {
-  const systemSchemas = SYSTEM_SCHEMAS[dialect] ?? new Set()
-  if (systemSchemas.size === 0) return realm
-
-  const filtered = realm.schemas.filter((s) => {
-    // Postgres: also filter pg_temp_* schemas
-    if (dialect === 'postgres' && s.name.startsWith('pg_temp_')) return false
-    return !systemSchemas.has(s.name)
-  })
-
-  return { ...realm, schemas: filtered }
 }
 
 // -- Tag Extraction and Application --
@@ -281,12 +239,7 @@ function columnsTypeMatch(a: Column, b: Column): boolean {
 function applyKnownRenames(fromRealm: Realm, renames: Rename[], dialect: string): string[] {
   const stmts: string[] = []
   const defaultSchema = defaultSchemaForDialect(dialect as Dialect) ?? 'public'
-  const q =
-    dialect === 'mysql'
-      ? (s: string) => `\`${s.replaceAll('`', '``')}\``
-      : dialect === 'mssql'
-        ? (s: string) => `[${s.replaceAll(']', ']]')}]`
-        : (s: string) => `"${s.replaceAll('"', '""')}"`
+  const q = (name: string) => quoteIdentifier(name, dialect as Dialect)
 
   // Build table rename map for cross-reference
   const tableRenameMap = new Map<string, string>()
@@ -360,62 +313,6 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
   return result.table.columns.find((c) => c.name === colName)
 }
 
-// -- Create Dialect Components --
-
-function createComponents(
-  dialect: string,
-  db: DatabaseAdapter,
-  opts: InspectorOptions,
-): { inspector: Inspector; differ: DiffDriver; planner: PlanDriver } {
-  const eq = new ExecQuerierAdapter(db)
-
-  switch (dialect) {
-    case 'postgres':
-      if (opts.crdb) {
-        return {
-          inspector: new CrdbInspector(db),
-          differ: new CrdbDiff(),
-          planner: new PostgresPlan(),
-        }
-      }
-      return {
-        inspector: new PostgresInspector(db),
-        differ: new PostgresDiff(),
-        planner: new PostgresPlan(),
-      }
-    case 'mysql': {
-      if (opts.tidb) {
-        return {
-          inspector: new TidbInspect(eq),
-          differ: new TidbDiff(),
-          planner: new TidbPlan(),
-        }
-      }
-      return {
-        inspector: new MysqlInspector(eq),
-        differ: new MysqlDiff(),
-        planner: new MysqlPlan(),
-      }
-    }
-    case 'sqlite':
-      return {
-        inspector: new SqliteInspector(eq),
-        differ: new SqliteDiff(),
-        planner: new SqlitePlan(),
-      }
-    case 'mssql': {
-      const inspector = opts.azuresql ? new AzureSqlInspector(eq) : new MssqlInspector(eq)
-      return {
-        inspector,
-        differ: new MssqlDiff(),
-        planner: new MssqlPlan(),
-      }
-    }
-    default:
-      throw new Error(`Unsupported dialect: "${dialect}"`)
-  }
-}
-
 // -- Main Factory --
 
 /**
@@ -432,8 +329,14 @@ function createComponents(
  */
 export async function createInspector(options: InspectorOptions): Promise<InspectorRunner> {
   const { db, dialect } = options
-  const { inspector, differ, planner } = createComponents(dialect, db, options)
+  const dialectSpec = getInspectorDialectVariantSpec(dialect, options)
   const eq = new ExecQuerierAdapter(db)
+  const { inspector, differ, planner } = dialectSpec.createComponents(db, eq)
+
+  function createInspectorForDb(sourceDb: DatabaseAdapter): Inspector {
+    const sourceEq = new ExecQuerierAdapter(sourceDb)
+    return dialectSpec.createComponents(sourceDb, sourceEq).inspector
+  }
 
   // Diff two realms and apply changes. Used by restore and other internal paths.
   // transformChanges allows dialect-specific change annotation (e.g. Postgres withCascade).
@@ -457,8 +360,8 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
 
   // Capture initial dev DB state for the snapshot/restore pattern used by the original runtime.
   const initialRealm = await inspector.inspectRealm()
-  // Postgres: withCascade adds IF EXISTS + CASCADE to drops, matching the original runtime.
-  const restoreTransform = dialect === 'postgres' ? withCascade : undefined
+  // Postgres-family runtimes add IF EXISTS + CASCADE to drops, matching the original runtime.
+  const restoreTransform = dialectSpec.restoreTransform
   const restore = createRestoreFunc(inspector, initialRealm, diffAndApply, restoreTransform)
 
   return {
@@ -507,7 +410,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         }
       } else {
         // Live database connection
-        const fromInspector = createComponents(dialect, from, options).inspector
+        const fromInspector = createInspectorForDb(from)
         fromRealm = await fromInspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
         fromRealm = filterSystemSchemas(fromRealm, dialect)
       }
@@ -526,7 +429,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
           toRealm = filterSystemSchemas(toRealm, dialect)
         }
       } else {
-        const toInspector = createComponents(dialect, to, options).inspector
+        const toInspector = createInspectorForDb(to)
         toRealm = await toInspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
         toRealm = filterSystemSchemas(toRealm, dialect)
       }
@@ -570,9 +473,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         ? (resolvedDefaultSchema ?? fromRealm.defaultSchema)
         : resolvedDefaultSchema
       if (defSchema) {
-        const prefix =
-          dialect === 'mysql' ? `\`${defSchema}\`.` : dialect === 'mssql' ? `[${defSchema}].` : `"${defSchema}".`
-        statements = statements.map((s) => s.split(prefix).join(''))
+        statements = stripDefaultSchemaQualifier(statements, dialect, defSchema)
       }
 
       return { statements, changes, renameCandidates }
