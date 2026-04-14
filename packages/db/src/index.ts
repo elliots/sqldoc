@@ -271,8 +271,16 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<Databas
     try {
       await runtime.validateAdapter(db, context)
     } catch (err) {
-      await db.close()
-      throw err
+      const validationErr = err
+      try {
+        await db.close()
+      } catch (closeErr) {
+        // Suppress close error to preserve the original validation error
+        if (process.env.DEBUG) {
+          console.error('[runner] failed to close adapter after validation error:', closeErr)
+        }
+      }
+      throw validationErr
     }
   }
 
