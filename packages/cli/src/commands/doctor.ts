@@ -119,7 +119,7 @@ export async function doctorCommand(): Promise<void> {
   console.error('')
 
   if (allOk) {
-    console.error(pc.green('All checks passed!'))
+    console.error(pc.green('Project setup checks passed.'))
   } else {
     console.error(pc.yellow('Some checks failed. See details above.'))
     process.exitCode = 1

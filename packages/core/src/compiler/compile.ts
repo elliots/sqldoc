@@ -733,7 +733,7 @@ function buildFileTags2(
   >()
 
   for (const occ of occurrences) {
-    const key = `${occ.objectName}:${occ.target}`
+    const key = fileTagKey(occ)
     if (!map.has(key)) {
       map.set(key, {
         objectName: occ.objectName,
@@ -787,16 +787,16 @@ function parsedArgsToValue(rawArgs: string | null): Record<string, unknown> | un
  * parser-derived tags are merged in to ensure complete fileTags for lint rules and docs.
  */
 function mergeParserTags(schemaFileTags: TagContext['fileTags'], parserFileTags: TagContext['fileTags']): void {
-  // Index existing objects by name
-  const byName = new Map<string, (typeof schemaFileTags)[0]>()
+  // Index existing objects by both target and name to avoid table/column collisions.
+  const byKey = new Map<string, (typeof schemaFileTags)[0]>()
   for (const obj of schemaFileTags) {
-    byName.set(obj.objectName, obj)
+    byKey.set(fileTagKey(obj), obj)
   }
 
   for (const pObj of parserFileTags) {
     for (const pTag of pObj.tags) {
       // Only add tags that inspection doesn't already have (non-SQL-generating tags)
-      const existing = byName.get(pObj.objectName)
+      const existing = byKey.get(fileTagKey(pObj))
       if (existing) {
         // Check if this tag already exists
         const alreadyHas = existing.tags.some((t) => t.namespace === pTag.namespace && t.tag === pTag.tag)
@@ -807,10 +807,14 @@ function mergeParserTags(schemaFileTags: TagContext['fileTags'], parserFileTags:
         // Object not in inspected schema (e.g. it's on a function or something inspection didn't process)
         const newObj = { objectName: pObj.objectName, target: pObj.target, tags: [pTag] }
         schemaFileTags.push(newObj)
-        byName.set(pObj.objectName, newObj)
+        byKey.set(fileTagKey(newObj), newObj)
       }
     }
   }
+}
+
+function fileTagKey(obj: { objectName: string; target: SqlTarget }): string {
+  return `${obj.target}:${obj.objectName}`
 }
 
 /**

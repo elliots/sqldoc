@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import type { Realm } from '@sqldoc/db'
+import type { ForeignKey, Index, Realm } from '@sqldoc/db'
 import { createSqliteAdapter } from '@sqldoc/db'
 import pglitePlugin from '@sqldoc/db-pglite'
 import { createInspector } from '../inspector.ts'
@@ -30,14 +30,17 @@ interface RichSchema {
   tables?: RichTable[]
   views?: Array<{ name: string; def?: string; columns?: RichColumn[] }>
   funcs?: Array<{ name: string; lang?: string; args?: Array<{ name?: string; type?: any; mode?: string }> }>
-  composite_types?: Array<{ name: string; fields: Array<{ name: string; type: string }> }>
+  compositeTypes?: Array<{ name?: string; T?: string; fields: Array<{ name: string; type: string }> }>
+  composite_types?: Array<{ name?: string; T?: string; fields: Array<{ name: string; type: string }> }>
 }
 
 interface RichTable {
   name: string
   columns: RichColumn[]
+  primaryKey?: { name?: string; parts?: Array<{ column?: string }> }
   primary_key?: { name?: string; parts?: Array<{ column?: string }> }
   indexes?: Array<{ name?: string; unique?: boolean; parts?: Array<{ column?: string }> }>
+  foreignKeys?: RichForeignKey[]
   foreign_keys?: RichForeignKey[]
 }
 
@@ -54,9 +57,14 @@ interface RichColumn {
 interface RichForeignKey {
   symbol?: string
   columns?: string[]
+  refTable?: string
   ref_table?: string
+  refSchema?: string
   ref_columns?: string[]
+  refColumns?: string[]
+  onUpdate?: string
   on_update?: string
+  onDelete?: string
   on_delete?: string
 }
 
@@ -147,7 +155,11 @@ function compareRealms(actual: Realm, snapshot: RichRealm): ComparisonResult {
         // Compare type T (the primary type identifier)
         const snapT = snapCol.type?.type?.T
         const actualT = actualCol.type?.type?.T
-        if (snapT && actualT && !typesEquivalent(snapT, actualT)) {
+        if (!!snapT !== !!actualT) {
+          differences.push(
+            `Type presence mismatch at ${colPath}: snapshot="${snapT ?? 'undefined'}" actual="${actualT ?? 'undefined'}"`,
+          )
+        } else if (snapT && actualT && !typesEquivalent(snapT, actualT)) {
           differences.push(`Type mismatch at ${colPath}: snapshot="${snapT}" actual="${actualT}"`)
         }
 
@@ -159,27 +171,32 @@ function compareRealms(actual: Realm, snapshot: RichRealm): ComparisonResult {
         }
       }
 
-      // Compare primary key existence
-      if (snapTable.primary_key && !actualTable.primaryKey) {
-        differences.push(`Missing primary key on ${tablePath}`)
+      const snapPk = primaryKeyColumnsFromSnapshot(snapshotPrimaryKey(snapTable))
+      const actualPk = primaryKeyColumnsFromActual(actualTable.primaryKey)
+      if (!arraysEqual(snapPk, actualPk)) {
+        differences.push(`Primary key mismatch on ${tablePath}: snapshot=[${snapPk}] actual=[${actualPk}]`)
       }
 
-      const snapFks = snapTable.foreign_keys ?? []
-      if (snapFks.length > 0) {
-        const actualFkCount = (actualTable.foreignKeys ?? []).length
-        if (snapFks.length !== actualFkCount) {
-          differences.push(
-            `Foreign key count mismatch on ${tablePath}: snapshot=${snapFks.length} actual=${actualFkCount}`,
-          )
-        }
+      const snapFks = snapshotForeignKeys(snapTable)
+      const actualFks = actualTable.foreignKeys ?? []
+      if (snapFks.length !== actualFks.length) {
+        differences.push(
+          `Foreign key count mismatch on ${tablePath}: snapshot=${snapFks.length} actual=${actualFks.length}`,
+        )
+      }
 
-        for (const snapFk of snapFks) {
-          const actualFk = (actualTable.foreignKeys ?? []).find(
-            (fk) => fk.refTable === snapFk.ref_table && arraysEqual(fk.columns ?? [], snapFk.columns ?? []),
-          )
-          if (!actualFk) {
-            differences.push(`Missing FK on ${tablePath}: columns=[${snapFk.columns}] -> ${snapFk.ref_table}`)
-          }
+      const snapFkSignatures = new Set(snapFks.map(foreignKeySignatureFromSnapshot))
+      const actualFkSignatures = new Set(actualFks.map(foreignKeySignatureFromActual))
+
+      for (const signature of snapFkSignatures) {
+        if (!actualFkSignatures.has(signature)) {
+          differences.push(`Missing FK on ${tablePath}: ${signature}`)
+        }
+      }
+
+      for (const signature of actualFkSignatures) {
+        if (!snapFkSignatures.has(signature)) {
+          differences.push(`Unexpected FK on ${tablePath}: ${signature}`)
         }
       }
 
@@ -212,7 +229,10 @@ function compareRealms(actual: Realm, snapshot: RichRealm): ComparisonResult {
     }
 
     // Compare composite types (only if snapshot has them -- WASI snapshots may omit composites)
-    const snapCompNames = (snapSchema.composite_types ?? []).map((c) => c.name).sort()
+    const snapCompNames = snapshotCompositeTypes(snapSchema)
+      .map((c) => c.name ?? c.T ?? '')
+      .filter(Boolean)
+      .sort()
     const actualCompNames = (actualSchema.compositeTypes ?? []).map((c) => c.T).sort()
     if (snapCompNames.length > 0 && snapCompNames.join(',') !== actualCompNames.join(',')) {
       const missing = snapCompNames.filter((n) => !actualCompNames.includes(n))
@@ -276,7 +296,153 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return true
 }
 
+function primaryKeyColumnsFromSnapshot(primaryKey: RichTable['primary_key'] | undefined): string[] {
+  return (primaryKey?.parts ?? []).flatMap((part) => (part.column ? [part.column] : []))
+}
+
+function primaryKeyColumnsFromActual(primaryKey: Index | undefined): string[] {
+  return (primaryKey?.parts ?? []).flatMap((part) => (part.column ? [part.column] : []))
+}
+
+function foreignKeySignatureFromSnapshot(fk: RichForeignKey): string {
+  return [
+    `cols=${(fk.columns ?? []).join(',')}`,
+    `ref=${fk.refSchema ? `${fk.refSchema}.` : ''}${fk.refTable ?? fk.ref_table ?? ''}`,
+    `refCols=${(fk.refColumns ?? fk.ref_columns ?? []).join(',')}`,
+    `onUpdate=${fk.onUpdate ?? fk.on_update ?? ''}`,
+    `onDelete=${fk.onDelete ?? fk.on_delete ?? ''}`,
+  ].join('|')
+}
+
+function foreignKeySignatureFromActual(fk: ForeignKey): string {
+  return [
+    `cols=${(fk.columns ?? []).join(',')}`,
+    `ref=${fk.refSchema ? `${fk.refSchema}.` : ''}${fk.refTable}`,
+    `refCols=${(fk.refColumns ?? []).join(',')}`,
+    `onUpdate=${fk.onUpdate ?? ''}`,
+    `onDelete=${fk.onDelete ?? ''}`,
+  ].join('|')
+}
+
+function snapshotPrimaryKey(table: RichTable): RichTable['primary_key'] | undefined {
+  return table.primaryKey ?? table.primary_key
+}
+
+function snapshotForeignKeys(table: RichTable): RichForeignKey[] {
+  return table.foreignKeys ?? table.foreign_keys ?? []
+}
+
+function snapshotCompositeTypes(
+  schema: RichSchema,
+): Array<{ name?: string; T?: string; fields: Array<{ name: string; type: string }> }> {
+  return schema.compositeTypes ?? schema.composite_types ?? []
+}
+
 // -- Tests --
+
+describe('compareRealms()', () => {
+  it('detects missing type metadata on either side', () => {
+    const actual: Realm = {
+      schemas: [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 'users',
+              columns: [
+                {
+                  name: 'id',
+                  type: {
+                    type: { kind: 'integer', T: 'integer' },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const snapshot: RichRealm = {
+      schemas: [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 'users',
+              columns: [{ name: 'id' }],
+            },
+          ],
+        },
+      ],
+    }
+
+    const comparison = compareRealms(actual, snapshot)
+    assert.equal(comparison.pass, false)
+    assert.ok(
+      comparison.differences.some((difference) => difference.includes('Type presence mismatch at public.users.id')),
+    )
+  })
+
+  it('detects extra primary keys and foreign keys in actual output', () => {
+    const actual: Realm = {
+      schemas: [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 'users',
+              columns: [
+                {
+                  name: 'id',
+                  type: {
+                    type: { kind: 'integer', T: 'integer' },
+                  },
+                },
+              ],
+              primaryKey: {
+                parts: [{ column: 'id' }],
+              },
+              foreignKeys: [
+                {
+                  columns: ['id'],
+                  refTable: 'accounts',
+                  refColumns: ['id'],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const snapshot: RichRealm = {
+      schemas: [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 'users',
+              columns: [
+                {
+                  name: 'id',
+                  type: {
+                    type: { T: 'integer' },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const comparison = compareRealms(actual, snapshot)
+    assert.equal(comparison.pass, false)
+    assert.ok(comparison.differences.some((difference) => difference.includes('Primary key mismatch on public.users')))
+    assert.ok(comparison.differences.some((difference) => difference.includes('Unexpected FK on public.users')))
+  })
+})
 
 describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
   it('pet-store-postgres: structural equivalence', async () => {

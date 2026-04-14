@@ -3,6 +3,7 @@ import type { SqlAstAdapter } from '../../ast/adapter.ts'
 import type { SqlStatement } from '../../ast/types.ts'
 import { compile } from '../../compiler/compile.ts'
 import type { NamespacePlugin, ResolvedConfig } from '../../compiler/types.ts'
+import type { Realm } from '../../schema.ts'
 
 /** Stub adapter that returns no comments */
 const stubAdapter: SqlAstAdapter = {
@@ -192,6 +193,93 @@ describe('compile()', () => {
     expect(capturedCtx.fileTags).toHaveLength(2)
     expect(capturedCtx.fileTags.some((ft: any) => ft.objectName === 't1')).toBeTruthy()
     expect(capturedCtx.fileTags.some((ft: any) => ft.objectName === 't2')).toBeTruthy()
+  })
+
+  it('keeps parser-derived tags separate when table and column names collide', () => {
+    const plugin = makePlugin({
+      name: 'ns',
+      tags: { mark: {} },
+      generateSQL: () => [],
+    })
+
+    const source = [
+      'CREATE TABLE "users"."id" (',
+      '  value INTEGER',
+      ');',
+      '',
+      'CREATE TABLE users (',
+      "  -- @lint.ignore('column-only')",
+      '  id INTEGER',
+      ');',
+    ].join('\n')
+
+    const schemaRealm: Realm = {
+      defaultSchema: 'public',
+      schemas: [
+        {
+          name: 'users',
+          tables: [
+            {
+              name: 'id',
+              columns: [
+                {
+                  name: 'value',
+                  type: {
+                    type: { kind: 'integer', T: 'integer' },
+                  },
+                },
+              ],
+              attrs: [{ kind: 'tag', name: 'ns.mark', args: '' }],
+            },
+          ],
+        },
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 'users',
+              columns: [
+                {
+                  name: 'id',
+                  type: {
+                    type: { kind: 'integer', T: 'integer' },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const result = compile({
+      source,
+      filePath: 'collision.sql',
+      plugins: new Map([['ns', plugin]]),
+      statements: makeStatements([
+        {
+          kind: 'table',
+          name: 'users.id',
+          line: lineOf(source, 'CREATE TABLE "users"."id"'),
+          columns: [{ name: 'value', type: 'integer', line: lineOf(source, 'value INTEGER') }],
+        },
+        {
+          kind: 'table',
+          name: 'users',
+          line: lineOf(source, 'CREATE TABLE users'),
+          columns: [{ name: 'id', type: 'integer', line: lineOf(source, 'id INTEGER') }],
+        },
+      ]),
+      adapter: stubAdapter,
+      config: { dialect: 'postgres' },
+      schemaRealm,
+    })
+
+    const tableTags = result.fileTags.find((ft) => ft.objectName === 'users.id' && ft.target === 'table')
+    const columnTags = result.fileTags.find((ft) => ft.objectName === 'users.id' && ft.target === 'column')
+
+    expect(tableTags?.tags).toEqual([{ namespace: 'ns', tag: 'mark', args: {} }])
+    expect(columnTags?.tags).toEqual([{ namespace: 'lint', tag: 'ignore', args: ['column-only'] }])
   })
 
   it('populates CompilerContext.config with namespace-specific config from ProjectConfig', () => {
