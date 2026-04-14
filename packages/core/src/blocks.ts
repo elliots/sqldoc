@@ -166,7 +166,7 @@ function resolveAstByLine(
   _firstTagLine: number, // 1-based
   lastTagLine: number, // 1-based
   stmts: SqlStatement[],
-  _sqlLines: string[],
+  sqlLines: string[],
 ): AstInfo {
   if (stmts.length === 0) {
     return { target: 'unknown' }
@@ -199,28 +199,34 @@ function resolveAstByLine(
     }
   }
 
-  // 3. Tag is after all nodes — find the enclosing table (if any)
-  // Walk backwards to find the last table statement
-  for (let i = nodes.length - 1; i >= 0; i--) {
-    const n = nodes[i].node
-    if (n.type === 'stmt' && n.stmt.kind === 'table') {
-      return {
-        target: 'table',
-        objectName: n.stmt.name,
-        astNode: n.stmt.node,
-      }
-    }
-    if (n.type === 'col') {
-      // We're after the last field of this object — object-level
-      return {
-        target: n.parentStmt.kind,
-        objectName: n.parentStmt.name,
-        astNode: n.parentStmt.node,
-      }
-    }
+  // 3. Only look backward if the upcoming SQL still closes the current object.
+  // A tag after a completed statement should not attach backward to that statement.
+  if (!isStillInsideCurrentObject(sqlLines)) {
+    return { target: 'unknown' }
   }
 
-  return { target: 'unknown' }
+  const trailingNode = nodes.at(-1)?.node
+  if (!trailingNode) {
+    return { target: 'unknown' }
+  }
+  if (trailingNode.type === 'col') {
+    return {
+      target: trailingNode.parentStmt.kind,
+      objectName: trailingNode.parentStmt.name,
+      astNode: trailingNode.parentStmt.node,
+    }
+  }
+  return {
+    target: trailingNode.stmt.kind,
+    objectName: trailingNode.stmt.name,
+    astNode: trailingNode.stmt.node,
+  }
+}
+
+function isStillInsideCurrentObject(sqlLines: string[]): boolean {
+  const nextLine = sqlLines.find((line) => line.trim() !== '')
+  if (!nextLine) return false
+  return /^\)\s*;?\s*$/.test(nextLine.trim())
 }
 
 function astInfoFromNode(
