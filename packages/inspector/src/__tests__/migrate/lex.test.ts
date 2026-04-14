@@ -186,7 +186,15 @@ describe('Scanner errors', () => {
 describe('Scanner with directive delimiter', () => {
   it('handles sqldoc:delimiter directive at start of file', () => {
     const input = '-- sqldoc:delimiter \\n\nSELECT 1\nSELECT 2'
-    const result = stmts(input)
-    assert.equal(result.length, 2)
+    assert.deepEqual(stmts(input), ['SELECT 1', 'SELECT 2'])
+    const result = scanStmts(input)
+    assert.equal(result[0].pos, '-- sqldoc:delimiter \\n\n'.length)
+  })
+
+  it('trims CRLF and trailing whitespace from the delimiter directive', () => {
+    const input = '-- sqldoc:delimiter $$  \r\nSELECT 1$$SELECT 2$$'
+    assert.deepEqual(stmts(input), ['SELECT 1', 'SELECT 2'])
+    const result = scanStmts(input)
+    assert.equal(result[0].pos, '-- sqldoc:delimiter $$  \r\n'.length)
   })
 })

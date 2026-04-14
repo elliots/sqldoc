@@ -44,7 +44,7 @@ export interface Stmt {
 
 // -- File-level delimiter directive --
 
-const reFileDelimiter = /^-- sqldoc:delimiter(?: +(.+))?/
+const reFileDelimiter = /^-- sqldoc:delimiter(?: +([^\r\n]+))?/
 
 // -- Scanner Options --
 
@@ -111,12 +111,13 @@ export class Scanner {
 
     const m = reFileDelimiter.exec(input)
     if (m) {
-      const d = m[1] ?? ''
+      const d = (m[1] ?? '').trimEnd()
       this.setDelim(d)
       const nl = input.indexOf('\n')
       if (nl === -1) {
         throw this.error(this.pos, `no input found after delimiter "${d}"`)
       }
+      this.total = nl + 1
       this.input = input.slice(nl + 1)
     }
   }
