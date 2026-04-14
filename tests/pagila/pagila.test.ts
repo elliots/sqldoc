@@ -30,7 +30,7 @@ versions.forEach((version) => {
 
     before(async () => {
       runner = await createRunner({
-        dialect: 'postgres',
+        engine: 'postgres',
         devUrl,
       })
     })

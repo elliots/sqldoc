@@ -1,5 +1,5 @@
 export default {
-  dialect: 'sqlite' as const,
+  engine: 'sqlite' as const,
   schema: 'schema.sql',
   migrations: {
     dir: 'migrations',

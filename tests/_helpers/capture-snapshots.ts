@@ -10,6 +10,7 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { dialectForEngine } from '@sqldoc/core'
 import { createRunner, extractExtensions } from '@sqldoc/db'
 
 const snapshotDir = path.join(import.meta.dirname, 'snapshots', 'inspector')
@@ -17,7 +18,7 @@ const testsDir = path.resolve(import.meta.dirname, '..')
 
 interface SchemaConfig {
   name: string
-  dialect: 'postgres' | 'mysql' | 'sqlite' | 'mssql'
+  engine: 'postgres' | 'mysql' | 'sqlite' | 'mssql'
   files: string[]
   devUrl?: string
   /** SQL to prepend before the schema files (e.g. role creation) */
@@ -32,23 +33,23 @@ const pagilaPreamble = `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE ro
 const schemas: SchemaConfig[] = [
   {
     name: 'pagila',
-    dialect: 'postgres',
+    engine: 'postgres',
     files: [path.join(testsDir, 'pagila', 'pagila-schema.sql')],
     preamble: pagilaPreamble,
   },
   {
     name: 'kitchen-sink',
-    dialect: 'postgres',
+    engine: 'postgres',
     files: [path.join(testsDir, 'postgraphile-kitchensink', 'kitchen-sink-schema.sql')],
   },
   {
     name: 'pet-store-postgres',
-    dialect: 'postgres',
+    engine: 'postgres',
     files: [path.join(testsDir, 'pet-store-postgres', 'schema.sql')],
   },
   {
     name: 'pet-store-sqlite',
-    dialect: 'sqlite',
+    engine: 'sqlite',
     files: [
       path.join(testsDir, 'pet-store-sqlite', 'schema.sql'),
       path.join(testsDir, 'pet-store-sqlite', 'include', 'reviews.sql'),
@@ -57,7 +58,7 @@ const schemas: SchemaConfig[] = [
   },
   {
     name: 'pet-store-mysql',
-    dialect: 'mysql',
+    engine: 'mysql',
     devUrl: 'docker://mysql:8',
     files: [path.join(testsDir, 'pet-store-mysql', 'schema.sql')],
   },
@@ -65,14 +66,14 @@ const schemas: SchemaConfig[] = [
 
 async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
   const outFile = path.join(snapshotDir, `${config.name}.json`)
-  console.log(`\nCapturing ${config.name} (${config.dialect})...`)
+  console.log(`\nCapturing ${config.name} (${config.engine})...`)
 
   try {
     const fileSqls = config.files.map((f) => fs.readFileSync(f, 'utf-8'))
 
     // Auto-detect extensions from SQL for Postgres schemas
     let extensions = config.extensions
-    if (!extensions && config.dialect === 'postgres') {
+    if (!extensions && dialectForEngine(config.engine) === 'postgres') {
       const extracted = extractExtensions(fileSqls)
       if (extracted.extensions.length > 0) {
         extensions = extracted.extensions
@@ -84,7 +85,7 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
     const inspectSqls = config.preamble ? [config.preamble + fileSqls[0], ...fileSqls.slice(1)] : fileSqls
 
     const runner = await createRunner({
-      dialect: config.dialect,
+      engine: config.engine,
       devUrl: config.devUrl,
       extensions,
     })
@@ -122,7 +123,7 @@ async function captureSnapshot(config: SchemaConfig): Promise<boolean> {
     const message = err instanceof Error ? err.message : String(err)
     // For mysql with Docker, write placeholder if Docker is unavailable
     if (
-      config.dialect === 'mysql' &&
+      config.engine === 'mysql' &&
       (message.includes('Docker') ||
         message.includes('docker') ||
         message.includes('ECONNREFUSED') ||

@@ -1,17 +1,11 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: original Go runtime entrypoint
 
-import {
-  type DatabaseEngine,
-  type Dialect,
-  defaultSchemaForDialect,
-  getEngineSpec,
-  quoteIdentifier,
-} from '@sqldoc/core'
+import { type DatabaseEngine, type Dialect, defaultSchemaForDialect, quoteIdentifier } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
 import {
   filterSystemSchemas,
-  getInspectorEngineSpec,
+  getInspectorRuntime,
   resolveInspectorEngine,
   stripDefaultSchemaQualifier,
 } from './dialects.ts'
@@ -27,8 +21,7 @@ import type { Column, Realm, Rename, RenameCandidate, Schema, Table } from './sc
 
 export interface InspectorOptions {
   db: DatabaseAdapter
-  dialect?: Dialect
-  engine?: DatabaseEngine
+  engine: DatabaseEngine
 }
 
 /** Result from the inspector — uses rich Realm types directly. */
@@ -336,14 +329,14 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
 export async function createInspector(options: InspectorOptions): Promise<InspectorRunner> {
   const { db } = options
   const engine = resolveInspectorEngine(options)
-  const dialect = getEngineSpec(engine).dialect
-  const dialectSpec = getInspectorEngineSpec(engine)
+  const runtime = getInspectorRuntime(engine)
+  const { dialect } = runtime
   const eq = new ExecQuerierAdapter(db)
-  const { inspector, differ, planner } = dialectSpec.createComponents(db, eq)
+  const { inspector, differ, planner } = runtime.createComponents(db, eq)
 
   function createInspectorForDb(sourceDb: DatabaseAdapter): Inspector {
     const sourceEq = new ExecQuerierAdapter(sourceDb)
-    return dialectSpec.createComponents(sourceDb, sourceEq).inspector
+    return runtime.createComponents(sourceDb, sourceEq).inspector
   }
 
   // Diff two realms and apply changes. Used by restore and other internal paths.
@@ -369,7 +362,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
   // Capture initial dev DB state for the snapshot/restore pattern used by the original runtime.
   const initialRealm = await inspector.inspectRealm()
   // Postgres-family runtimes add IF EXISTS + CASCADE to drops, matching the original runtime.
-  const restoreTransform = dialectSpec.restoreTransform
+  const restoreTransform = runtime.restoreTransform
   const restore = createRestoreFunc(inspector, initialRealm, diffAndApply, restoreTransform)
 
   return {
@@ -377,17 +370,17 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       if (files.length === 0) {
         // No files -- inspect existing database state
         let realm = await inspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
-        realm = filterSystemSchemas(realm, dialect)
+        realm = filterSystemSchemas(realm, engine)
         return { schema: realm }
       }
 
       // Execute SQL files against dev DB and inspect (with restore after)
       const realm = await snapshot(eq, inspector, files, {
         schema: opts?.schema,
-        dialect,
+        engine,
         restore,
       })
-      const filtered = filterSystemSchemas(realm, dialect)
+      const filtered = filterSystemSchemas(realm, engine)
 
       // Extract and apply tags from original SQL comments
       applyTags(filtered, files, opts?.fileNames)
@@ -407,39 +400,39 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         if (from.length === 0) {
           // Empty from: inspect the dev DB's existing state (e.g. public schema exists)
           fromRealm = await inspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
-          fromRealm = filterSystemSchemas(fromRealm, dialect)
+          fromRealm = filterSystemSchemas(fromRealm, engine)
         } else {
           fromRealm = await snapshot(eq, inspector, from, {
             schema: resolvedFromSchema,
-            dialect,
+            engine,
             restore,
           })
-          fromRealm = filterSystemSchemas(fromRealm, dialect)
+          fromRealm = filterSystemSchemas(fromRealm, engine)
         }
       } else {
         // Live database connection
         const fromInspector = createInspectorForDb(from)
         fromRealm = await fromInspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
-        fromRealm = filterSystemSchemas(fromRealm, dialect)
+        fromRealm = filterSystemSchemas(fromRealm, engine)
       }
 
       // Inspect "to" side
       if (Array.isArray(to)) {
         if (to.length === 0) {
           toRealm = await inspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
-          toRealm = filterSystemSchemas(toRealm, dialect)
+          toRealm = filterSystemSchemas(toRealm, engine)
         } else {
           toRealm = await snapshot(eq, inspector, to, {
             schema: resolvedToSchema,
-            dialect,
+            engine,
             restore,
           })
-          toRealm = filterSystemSchemas(toRealm, dialect)
+          toRealm = filterSystemSchemas(toRealm, engine)
         }
       } else {
         const toInspector = createInspectorForDb(to)
         toRealm = await toInspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
-        toRealm = filterSystemSchemas(toRealm, dialect)
+        toRealm = filterSystemSchemas(toRealm, engine)
       }
 
       if (resolvedDefaultSchema) {
@@ -481,7 +474,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         ? (resolvedDefaultSchema ?? fromRealm.defaultSchema)
         : resolvedDefaultSchema
       if (defSchema) {
-        statements = stripDefaultSchemaQualifier(statements, dialect, defSchema)
+        statements = stripDefaultSchemaQualifier(statements, engine, defSchema)
       }
 
       return { statements, changes, renameCandidates }

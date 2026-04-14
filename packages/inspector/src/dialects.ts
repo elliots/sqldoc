@@ -1,4 +1,4 @@
-import { type DatabaseEngine, type Dialect, getEngineSpec, quoteIdentifier } from '@sqldoc/core'
+import { type DatabaseEngine, type Dialect, getEngineSpec, quoteIdentifier, resolveDatabaseEngine } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
 import type { PlanDriver } from './internal/plan.ts'
 import type { DiffDriver } from './internal/sqlx.ts'
@@ -45,6 +45,10 @@ interface DialectRuntimeSpec {
 interface InspectorDialectVariantSpec {
   createComponents: (db: DatabaseAdapter, eq: ExecQuerier) => InspectorDialectComponents
   restoreTransform?: ChangeTransform
+}
+
+export interface InspectorEngineRuntime extends DialectRuntimeSpec, InspectorDialectVariantSpec {
+  dialect: Dialect
 }
 
 function schemaSetMatcher(
@@ -135,16 +139,7 @@ const INSPECTOR_ENGINE_SPECS: Record<DatabaseEngine, InspectorDialectVariantSpec
 }
 
 export function resolveInspectorEngine(options: { dialect?: Dialect; engine?: DatabaseEngine }): DatabaseEngine {
-  if (options.engine) {
-    if (options.dialect && getEngineSpec(options.engine).dialect !== options.dialect) {
-      throw new Error(
-        `engine "${options.engine}" belongs to dialect "${getEngineSpec(options.engine).dialect}", got "${options.dialect}"`,
-      )
-    }
-    return options.engine
-  }
-  if (options.dialect) return options.dialect
-  throw new Error('Inspector requires either a dialect or an engine')
+  return resolveDatabaseEngine(options, 'Inspector')
 }
 
 export function getDialectRuntimeSpec(dialect: Dialect): DialectRuntimeSpec {
@@ -155,23 +150,37 @@ export function getInspectorEngineSpec(engine: DatabaseEngine): InspectorDialect
   return INSPECTOR_ENGINE_SPECS[engine]
 }
 
-export function filterSystemSchemas(realm: Realm, dialect: Dialect): Realm {
-  const runtime = getDialectRuntimeSpec(dialect)
+export function getInspectorRuntime(engine: DatabaseEngine): InspectorEngineRuntime {
+  const dialect = getEngineSpec(engine).dialect
+  return {
+    dialect,
+    ...getDialectRuntimeSpec(dialect),
+    ...getInspectorEngineSpec(engine),
+  }
+}
+
+export function filterSystemSchemas(realm: Realm, engine: DatabaseEngine): Realm {
+  const runtime = getInspectorRuntime(engine)
   const filteredSchemas = realm.schemas.filter((schema) => !runtime.isSystemSchema(schema.name))
   if (filteredSchemas.length === realm.schemas.length) return realm
   return { ...realm, schemas: filteredSchemas }
 }
 
-export function scanDialectStatements(input: string, dialect?: Dialect): Stmt[] {
-  return getDialectRuntimeSpec(dialect ?? 'postgres').scanStatements(input)
+export function scanEngineStatements(input: string, engine: DatabaseEngine = 'postgres'): Stmt[] {
+  return getInspectorRuntime(engine).scanStatements(input)
 }
 
-export function getDialectStatementBatchSize(dialect?: Dialect): number {
-  return getDialectRuntimeSpec(dialect ?? 'postgres').statementBatchSize
+export function getEngineStatementBatchSize(engine: DatabaseEngine = 'postgres'): number {
+  return getInspectorRuntime(engine).statementBatchSize
 }
 
-export function stripDefaultSchemaQualifier(statements: string[], dialect: Dialect, defaultSchema?: string): string[] {
+export function stripDefaultSchemaQualifier(
+  statements: string[],
+  engine: DatabaseEngine,
+  defaultSchema?: string,
+): string[] {
   if (!defaultSchema) return statements
+  const { dialect } = getInspectorRuntime(engine)
   const prefix = `${quoteIdentifier(defaultSchema, dialect)}.`
   return statements.map((statement) => statement.split(prefix).join(''))
 }

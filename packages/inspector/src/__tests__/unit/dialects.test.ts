@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { filterSystemSchemas, resolveInspectorEngine, stripDefaultSchemaQualifier } from '../../dialects.ts'
+import {
+  filterSystemSchemas,
+  getInspectorRuntime,
+  resolveInspectorEngine,
+  stripDefaultSchemaQualifier,
+} from '../../dialects.ts'
 import type { Realm } from '../../schema/schema.ts'
 
 function makeRealm(schemaNames: string[]): Realm {
@@ -51,6 +56,21 @@ describe('filterSystemSchemas', () => {
   })
 })
 
+describe('getInspectorRuntime', () => {
+  it('combines engine variants with dialect-family runtime behavior', () => {
+    const crdb = getInspectorRuntime('crdb')
+    const tidb = getInspectorRuntime('tidb')
+
+    assert.equal(crdb.dialect, 'postgres')
+    assert.equal(crdb.statementBatchSize, 50)
+    assert.equal(typeof crdb.scanStatements, 'function')
+
+    assert.equal(tidb.dialect, 'mysql')
+    assert.equal(tidb.statementBatchSize, 50)
+    assert.equal(typeof tidb.isSystemSchema, 'function')
+  })
+})
+
 describe('stripDefaultSchemaQualifier', () => {
   it('strips quoted default schema prefixes for each supported family', () => {
     assert.deepEqual(
@@ -60,7 +80,7 @@ describe('stripDefaultSchemaQualifier', () => {
     assert.deepEqual(stripDefaultSchemaQualifier(['ALTER TABLE `app`.`users` ADD COLUMN `x` INT'], 'mysql', 'app'), [
       'ALTER TABLE `users` ADD COLUMN `x` INT',
     ])
-    assert.deepEqual(stripDefaultSchemaQualifier(['ALTER TABLE [dbo].[users] ADD [x] INT'], 'mssql', 'dbo'), [
+    assert.deepEqual(stripDefaultSchemaQualifier(['ALTER TABLE [dbo].[users] ADD [x] INT'], 'azuresql', 'dbo'), [
       'ALTER TABLE [users] ADD [x] INT',
     ])
   })

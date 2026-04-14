@@ -47,7 +47,7 @@ describe('ns-temporal integration - Postgres', () => {
   })
 
   it('INSERT sets valid_from, current view works', async () => {
-    db = await createAdapter({ dialect: 'postgres' })
+    db = await createAdapter({ engine: 'postgres' })
     await db.exec('CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT NOT NULL, price NUMERIC)')
 
     for (const sql of getSql('postgres', 'products', columns, ['id'])) await db.exec(sql)
@@ -109,7 +109,7 @@ describe('ns-temporal integration - MySQL', () => {
   })
 
   it('INSERT sets valid_from, current view works', async () => {
-    db = await createAdapter({ dialect: 'mysql' })
+    db = await createAdapter({ engine: 'mysql' })
     await db.exec(
       'CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10,2))',
     )

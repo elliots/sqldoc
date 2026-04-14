@@ -109,7 +109,7 @@ describe('pglite extension loading (integration)', () => {
       CREATE EXTENSION IF NOT EXISTS hstore;
       CREATE TABLE settings (id serial PRIMARY KEY, data hstore);
     `
-    const runner = await createRunner({ dialect: 'postgres', extensions: ['hstore'] })
+    const runner = await createRunner({ engine: 'postgres', extensions: ['hstore'] })
     try {
       const result = await runner.inspect([sql], { schema: 'public' })
       expect(result.error).toBe(undefined)

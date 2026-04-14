@@ -117,7 +117,7 @@ describe('codegen workflow', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   namespaces: {
     docs: {
@@ -183,7 +183,7 @@ CREATE TABLE users (
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   namespaces: {
     codegen: {
@@ -236,7 +236,7 @@ describe('schema inspect workflow', () => {
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -306,7 +306,7 @@ describe('schema diff workflow', () => {
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -344,7 +344,7 @@ describe('schema diff workflow', () => {
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -383,7 +383,7 @@ CREATE TABLE orders (
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -408,7 +408,7 @@ CREATE TABLE orders (
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -447,7 +447,7 @@ describe('lint workflow', () => {
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres', schema: 'schema.sql' }
+      `export default { engine: 'postgres', schema: 'schema.sql' }
 `,
     )
 
@@ -488,7 +488,7 @@ CREATE TABLE unaudited_table (
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   lint: {
     rules: {
@@ -527,7 +527,7 @@ CREATE TABLE important_table (
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   lint: {
     rules: {
@@ -567,7 +567,7 @@ CREATE TABLE staging_data (
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres', schema: 'schema.sql' }
+      `export default { engine: 'postgres', schema: 'schema.sql' }
 `,
     )
 
@@ -598,7 +598,7 @@ describe('migrate workflow', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   migrations: {
     dir: 'migrations',
@@ -645,7 +645,7 @@ describe('migrate workflow', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   migrations: {
     dir: 'migrations',
@@ -686,7 +686,7 @@ describe('migrate workflow', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   migrations: {
     dir: 'migrations',
@@ -745,7 +745,7 @@ DROP TABLE "public"."users";
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   migrations: {
     dir: 'migrations',
@@ -794,7 +794,7 @@ describe('validate workflow', () => {
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -821,7 +821,7 @@ CREATE TABLE users (
 
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
-      `export default { dialect: 'postgres' }
+      `export default { engine: 'postgres' }
 `,
     )
 
@@ -853,7 +853,7 @@ describe('combined workflow', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'sqldoc.config.ts'),
       `export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema.sql',
   namespaces: {
     codegen: {

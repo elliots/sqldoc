@@ -19,7 +19,7 @@ describe('ns-rls integration - Postgres', () => {
   })
 
   it('ENABLE RLS + policy restricts access', async () => {
-    db = await createAdapter({ dialect: 'postgres' })
+    db = await createAdapter({ engine: 'postgres' })
 
     // Create table and a test role
     await db.exec('CREATE TABLE documents (id SERIAL PRIMARY KEY, owner TEXT NOT NULL, content TEXT)')

@@ -13,7 +13,7 @@ let inspector: InspectorRunner
 describe('PostgreSQL Inspector', () => {
   before(async () => {
     db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    inspector = await createInspector({ db, dialect: 'postgres' })
+    inspector = await createInspector({ db, engine: 'postgres' })
   })
 
   after(async () => {
@@ -23,7 +23,7 @@ describe('PostgreSQL Inspector', () => {
   it('inspects a basic table with columns, PK, and NOT NULL', async () => {
     // Create a fresh DB adapter for isolation
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const sql = `
@@ -85,7 +85,7 @@ describe('PostgreSQL Inspector', () => {
     const sql = fs.readFileSync(schemaPath, 'utf-8')
 
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const result = await localInspector.inspect([sql])
@@ -134,7 +134,7 @@ describe('PostgreSQL Inspector', () => {
 
   it('inspects advanced Postgres types (enum, jsonb, timestamptz, bigserial, numeric)', async () => {
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const sql = `
@@ -183,7 +183,7 @@ describe('PostgreSQL Inspector', () => {
 
   it('inspects views and functions', async () => {
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const sql = `
@@ -228,7 +228,7 @@ describe('PostgreSQL Inspector', () => {
 
   it('inspects RLS policies', async () => {
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const sql = `
@@ -268,7 +268,7 @@ describe('PostgreSQL Inspector', () => {
 
   it('diffs two schemas and produces migration SQL', async () => {
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const fromSql = `
@@ -306,7 +306,7 @@ describe('PostgreSQL Inspector', () => {
 
   it('domain migration preserves NOT NULL, type size, and detects definition changes', async () => {
     const localDb = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const localInspector = await createInspector({ db: localDb, dialect: 'postgres' })
+    const localInspector = await createInspector({ db: localDb, engine: 'postgres' })
 
     try {
       const sql = `

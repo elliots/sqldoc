@@ -12,23 +12,12 @@ describe('resolveProject', () => {
     expect(config.dialect).toBe('postgres')
   })
 
-  it('resolves dialect-only config to a matching default engine', () => {
-    const config = resolveProject({
-      dialect: 'mysql',
-      schema: 'schema.sql',
-    })
-
-    expect(config.engine).toBe('mysql')
-    expect(config.dialect).toBe('mysql')
-  })
-
-  it('rejects mismatched engine and dialect combinations', () => {
+  it('requires an engine in project config', () => {
     expect(() =>
       resolveProject({
-        engine: 'tidb',
-        dialect: 'postgres',
+        schema: 'schema.sql',
       }),
-    ).toThrow('engine "tidb" belongs to dialect "mysql", got "postgres"')
+    ).toThrow('Project config requires an engine')
   })
 })
 

@@ -1,5 +1,5 @@
 export default {
-  dialect: 'mysql' as const,
+  engine: 'mysql' as const,
   schema: 'schema.sql',
   devUrl: 'docker://mysql:8',
   migrations: {

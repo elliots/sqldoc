@@ -18,7 +18,7 @@ describe('MSSQL Inspector', () => {
       adapterPlugin: mssqlPlugin,
       reuseContainer: true,
     })
-    inspector = await createInspector({ db, dialect: 'mssql' })
+    inspector = await createInspector({ db, engine: 'mssql' })
   })
 
   after(async () => {

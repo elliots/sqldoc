@@ -21,8 +21,6 @@ export interface ProjectConfig<Namespaces = Record<string, unknown>> {
   schema?: string
   /** SQL engine variant (for example postgres, crdb, tidb, azuresql). */
   engine?: DatabaseEngine
-  /** SQL dialect family. Optional when engine is provided. */
-  dialect?: Dialect
   /** Dev database URL. Default: pglite */
   devUrl?: string
   /** Migration settings */
@@ -62,7 +60,7 @@ export type SqldocConfig<Namespaces = Record<string, unknown>> = ProjectConfig<N
  * Resolved single-project config — always a single ProjectConfig.
  * Used internally after resolving --project/--all flags.
  */
-export type ResolvedConfig = Omit<ProjectConfig, 'dialect' | 'engine'> & {
+export type ResolvedConfig = Omit<ProjectConfig, 'engine'> & {
   dialect: Dialect
   engine: DatabaseEngine
 }

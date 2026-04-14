@@ -1,8 +1,8 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: sql/internal/sqlx/dev.go
 
-import type { Dialect } from '../dialects.ts'
-import { getDialectStatementBatchSize, scanDialectStatements } from '../dialects.ts'
+import type { DatabaseEngine } from '../dialects.ts'
+import { getEngineStatementBatchSize, scanEngineStatements } from '../dialects.ts'
 
 import type { ExecQuerier, Inspector } from '../schema/inspect.ts'
 import type { Change } from '../schema/migrate.ts'
@@ -18,8 +18,8 @@ export type TransformChanges = (changes: Change[]) => Change[]
 export interface SnapshotOptions {
   /** Schema name to inspect. If empty, inspects the default/attached schema. */
   schema?: string
-  /** SQL dialect for quoting. */
-  dialect?: Dialect
+  /** SQL engine identity for statement scanning and batching. */
+  engine?: DatabaseEngine
 }
 
 /**
@@ -67,10 +67,10 @@ export async function snapshot(
     // Execute each SQL file's statements against the dev database.
     // Uses dialect-specific scanner (matches Go Driver.ScanStmts per dialect).
     // Batches up to 50 statements per exec call, falls back to one-by-one on failure.
-    const statementBatchSize = getDialectStatementBatchSize(opts.dialect)
+    const statementBatchSize = getEngineStatementBatchSize(opts.engine)
     for (const sql of files) {
       if (sql.trim() === '') continue
-      const statements = scanDialectStatements(sql, opts.dialect).filter((s) => s.text.trim() !== '')
+      const statements = scanEngineStatements(sql, opts.engine).filter((s) => s.text.trim() !== '')
       // MSSQL: no batching — CREATE PROCEDURE/FUNCTION must be the only statement in a batch
       for (let i = 0; i < statements.length; i += statementBatchSize) {
         const batch = statements.slice(i, i + statementBatchSize)

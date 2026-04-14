@@ -13,7 +13,7 @@ const TEMPLATES = readdirSync(srcDir, { withFileTypes: true })
   .sort()
 
 export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   namespaces: {
     codegen: {
       templates: TEMPLATES.map((name) => ({

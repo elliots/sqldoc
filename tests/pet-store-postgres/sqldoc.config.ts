@@ -1,5 +1,5 @@
 export default {
-  dialect: 'postgres' as const,
+  engine: 'postgres' as const,
   schema: 'schema.sql',
   migrations: {
     dir: 'migrations',

@@ -40,7 +40,7 @@ describe('ns-validate integration - Postgres', () => {
   })
 
   it('range constraint rejects out-of-range values', async () => {
-    db = await createAdapter({ dialect: 'postgres' })
+    db = await createAdapter({ engine: 'postgres' })
     await db.exec('CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT NOT NULL, price NUMERIC, age INTEGER)')
 
     // Add range constraint on age: 0-120
@@ -113,7 +113,7 @@ describe('ns-validate integration - MySQL', () => {
   })
 
   it('range constraint rejects out-of-range values', async () => {
-    db = await createAdapter({ dialect: 'mysql' })
+    db = await createAdapter({ engine: 'mysql' })
     await db.exec('CREATE TABLE items (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, score INT)')
 
     for (const sql of getConstraintSql('mysql', 'items', 'score', 'range', { min: 1, max: 100 })) {

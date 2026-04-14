@@ -98,7 +98,10 @@ export function resolveAllProjects(config: SqldocConfig): ResolvedConfig[] {
 }
 
 function resolveProjectConfig(config: ProjectConfig): ResolvedConfig {
-  const engine = resolveDatabaseEngine(config, 'Project config')
+  if (!config.engine) {
+    throw new Error('Project config requires an engine')
+  }
+  const engine = resolveDatabaseEngine({ engine: config.engine }, 'Project config')
   return {
     ...config,
     engine,
@@ -115,12 +118,12 @@ async function loadConfigFile(configPath: string): Promise<ConfigResult> {
   let mod = (await tsImport(abs)) as any
   // Unwrap ESM default exports (CJS compat can double-wrap)
   // Detect both single config (has namespaces/dialect/schema) and arrays
-  mod = unwrapDefault(mod, (m: any) => !!m.namespaces || !!m.engine || !!m.dialect || !!m.schema || Array.isArray(m))
+  mod = unwrapDefault(mod, (m: any) => !!m.namespaces || !!m.engine || !!m.schema || Array.isArray(m))
   const config: SqldocConfig = mod ?? { engine: 'postgres' }
   const isMulti = Array.isArray(config)
   debug(
     'config',
-    `loadConfigFile: loaded (${isMulti ? `${config.length} projects` : `engine=${(config as ProjectConfig).engine ?? (config as ProjectConfig).dialect}`})`,
+    `loadConfigFile: loaded (${isMulti ? `${config.length} projects` : `engine=${(config as ProjectConfig).engine}`})`,
   )
   return { config, configPath: abs }
 }

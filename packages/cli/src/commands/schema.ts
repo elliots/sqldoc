@@ -164,7 +164,6 @@ export async function schemaDiffCommand(options: {
 
   for (const config of projects) {
     if (options.devUrl) config.devUrl = options.devUrl
-    const dialect = config.dialect
     const format = (options.format ?? 'sql') as Format
 
     // Default --to to config.schema, --from to config.migrations.dir when both omitted

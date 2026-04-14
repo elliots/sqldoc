@@ -51,7 +51,7 @@ describe('ns-history integration - Postgres', () => {
   })
 
   it('UPDATE creates history record with old values', async () => {
-    db = await createAdapter({ dialect: 'postgres' })
+    db = await createAdapter({ engine: 'postgres' })
     await db.exec('CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT NOT NULL, price NUMERIC)')
     for (const sql of getSql('postgres', 'products', pgColumns)) await db.exec(sql)
 
@@ -96,7 +96,7 @@ describe('ns-history integration - SQLite', () => {
   })
 
   it('UPDATE and DELETE create history records', async () => {
-    db = await createAdapter({ dialect: 'sqlite' })
+    db = await createAdapter({ engine: 'sqlite' })
     await db.exec('CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL)')
 
     const sqliteColumns = [
@@ -130,7 +130,7 @@ describe('ns-history integration - MySQL', () => {
   })
 
   it('UPDATE and DELETE create history records', async () => {
-    db = await createAdapter({ dialect: 'mysql' })
+    db = await createAdapter({ engine: 'mysql' })
     await db.exec(
       'CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, price DECIMAL(10,2))',
     )

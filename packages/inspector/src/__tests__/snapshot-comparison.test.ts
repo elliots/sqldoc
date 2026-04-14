@@ -455,7 +455,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     const sql = fs.readFileSync(schemaPath, 'utf-8')
 
     const db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const inspector = await createInspector({ db, dialect: 'postgres' })
+    const inspector = await createInspector({ db, engine: 'postgres' })
 
     try {
       const result = await inspector.inspect([sql])
@@ -494,7 +494,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     )
 
     const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, dialect: 'sqlite' })
+    const inspector = await createInspector({ db, engine: 'sqlite' })
 
     try {
       const result = await inspector.inspect([externalLocationsSql, schemaSql, includeReviewsSql])
@@ -535,7 +535,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     const preamble = `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN CREATE ROLE postgres SUPERUSER; END IF; END $$;\n`
 
     const db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const inspector = await createInspector({ db, dialect: 'postgres' })
+    const inspector = await createInspector({ db, engine: 'postgres' })
 
     try {
       const result = await inspector.inspect([preamble + sql])
@@ -573,7 +573,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     const sql = fs.readFileSync(schemaPath, 'utf-8')
 
     const db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const inspector = await createInspector({ db, dialect: 'postgres' })
+    const inspector = await createInspector({ db, engine: 'postgres' })
 
     try {
       const result = await inspector.inspect([sql])

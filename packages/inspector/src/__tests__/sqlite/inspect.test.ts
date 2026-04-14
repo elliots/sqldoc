@@ -8,7 +8,7 @@ import { createInspector } from '../../inspector.ts'
 describe('SQLite Inspector', () => {
   it('inspects a basic table with columns and PK', async () => {
     const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, dialect: 'sqlite' })
+    const inspector = await createInspector({ db, engine: 'sqlite' })
 
     try {
       const sql = `
@@ -57,7 +57,7 @@ describe('SQLite Inspector', () => {
     )
 
     const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, dialect: 'sqlite' })
+    const inspector = await createInspector({ db, engine: 'sqlite' })
 
     try {
       // Execute all SQL files (locations first since reviews references it)
@@ -95,7 +95,7 @@ describe('SQLite Inspector', () => {
 
   it('inspects SQLite type affinity correctly', async () => {
     const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, dialect: 'sqlite' })
+    const inspector = await createInspector({ db, engine: 'sqlite' })
 
     try {
       const sql = `
@@ -133,7 +133,7 @@ describe('SQLite Inspector', () => {
 
   it('inspects CHECK constraints', async () => {
     const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, dialect: 'sqlite' })
+    const inspector = await createInspector({ db, engine: 'sqlite' })
 
     try {
       const sql = `
@@ -164,7 +164,7 @@ describe('SQLite Inspector', () => {
 
   it('diffs two SQLite schemas', async () => {
     const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, dialect: 'sqlite' })
+    const inspector = await createInspector({ db, engine: 'sqlite' })
 
     try {
       const fromSql = `

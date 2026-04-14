@@ -19,7 +19,7 @@ describe('sakila schema - mssql', { timeout: 180_000 }, () => {
 
   before(async () => {
     runner = await createRunner({
-      dialect: 'mssql',
+      engine: 'mssql',
       devUrl,
       adapterPlugin: mssqlPlugin,
     })

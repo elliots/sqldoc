@@ -64,7 +64,7 @@ describe('createAdapter defaults', () => {
   })
 
   it('uses the centralized sqlite default dev url', async () => {
-    adapter = await createAdapter({ dialect: 'sqlite' })
+    adapter = await createAdapter({ engine: 'sqlite' })
     expect(adapter.currentSchema).toBe(defaultSchemaForDialect('sqlite'))
     const result = await adapter.query('SELECT 1 AS num')
     expect(result.rows).toEqual([[1]])
@@ -75,12 +75,6 @@ describe('createAdapter defaults', () => {
     expect(adapter.currentSchema).toBe(defaultSchemaForDialect('sqlite'))
     const result = await adapter.query('SELECT 1 AS num')
     expect(result.rows).toEqual([[1]])
-  })
-
-  it('rejects mismatched engine and dialect combinations', async () => {
-    await expect(createAdapter({ engine: 'tidb', dialect: 'postgres' })).rejects.toThrow(
-      'engine "tidb" belongs to dialect "mysql", got "postgres"',
-    )
   })
 
   it('uses a provided adapterPlugin for non-docker postgres URLs', async () => {
@@ -104,7 +98,7 @@ describe('createAdapter defaults', () => {
     }
 
     adapter = await createAdapter({
-      dialect: 'postgres',
+      engine: 'postgres',
       devUrl: 'custompg://dev-db',
       extensions: ['pg_trgm'],
       adapterPlugin: plugin,
@@ -140,7 +134,7 @@ describe('createAdapter defaults', () => {
     }
 
     adapter = await createAdapter({
-      dialect: 'mysql',
+      engine: 'mysql',
       devUrl: 'custommysql://dev-db',
       extensions: ['pg_trgm'],
       adapterPlugin: plugin,

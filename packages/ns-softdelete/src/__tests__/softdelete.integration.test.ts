@@ -25,7 +25,7 @@ describe('ns-softdelete integration - Postgres', () => {
   })
 
   it('active view filters soft-deleted rows', async () => {
-    db = await createAdapter({ dialect: 'postgres' })
+    db = await createAdapter({ engine: 'postgres' })
     await db.exec('CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT NOT NULL)')
     for (const sql of getSql('postgres', 'products')) await db.exec(sql)
 
@@ -56,7 +56,7 @@ describe('ns-softdelete integration - SQLite', () => {
   })
 
   it('active view filters soft-deleted rows', async () => {
-    db = await createAdapter({ dialect: 'sqlite' })
+    db = await createAdapter({ engine: 'sqlite' })
     await db.exec('CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT NOT NULL)')
     for (const sql of getSql('sqlite', 'items')) await db.exec(sql)
 
@@ -79,7 +79,7 @@ describe('ns-softdelete integration - MySQL', () => {
   })
 
   it('active view filters soft-deleted rows', async () => {
-    db = await createAdapter({ dialect: 'mysql' })
+    db = await createAdapter({ engine: 'mysql' })
     await db.exec('CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, total DECIMAL(10,2) NOT NULL)')
     for (const sql of getSql('mysql', 'orders')) await db.exec(sql)
 

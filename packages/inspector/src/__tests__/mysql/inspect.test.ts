@@ -27,7 +27,7 @@ if (!optIn) {
 
     before(async () => {
       db = await createMysqlDockerAdapter('docker://mysql:8')
-      inspector = await createInspector({ db, dialect: 'mysql' })
+      inspector = await createInspector({ db, engine: 'mysql' })
     })
 
     after(async () => {
