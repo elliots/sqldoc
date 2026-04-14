@@ -161,6 +161,7 @@ describe('built-in lint rules', () => {
 
       // Schema realm with no primary key on users
       const schemaRealm = {
+        defaultSchema: 'public',
         schemas: [{ name: 'public', tables: [{ name: 'users', columns: [] }] }],
       }
 
@@ -186,9 +187,68 @@ describe('built-in lint rules', () => {
 
       // Schema realm with primary key on users
       const schemaRealm = {
+        defaultSchema: 'public',
         schemas: [
           {
             name: 'public',
+            tables: [{ name: 'users', columns: [], primaryKey: { parts: [{ column: 'id' }] } }],
+          },
+        ],
+      }
+
+      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
+      expect(results).toHaveLength(0)
+    })
+
+    it('flags schema-qualified tables without a primary key', () => {
+      const plugins = new Map<string, NamespacePlugin>()
+      plugins.set('validate', validatePlugin)
+
+      const output = makeOutput({
+        fileTags: [
+          {
+            objectName: 'tenant.users',
+            target: 'table',
+            tags: [],
+          },
+          {
+            objectName: 'tenant.users.id',
+            target: 'column',
+            tags: [],
+          },
+        ],
+      })
+
+      const schemaRealm = {
+        defaultSchema: 'public',
+        schemas: [{ name: 'tenant', tables: [{ name: 'users', columns: [] }] }],
+      }
+
+      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
+      expect(results).toHaveLength(1)
+      expect(results[0].ruleName).toBe('validate.require-pk')
+      expect(results[0].objectName).toBe('tenant.users')
+    })
+
+    it('does not flag schema-qualified tables when the matching table has a primary key', () => {
+      const plugins = new Map<string, NamespacePlugin>()
+      plugins.set('validate', validatePlugin)
+
+      const output = makeOutput({
+        fileTags: [
+          {
+            objectName: 'tenant.users',
+            target: 'table',
+            tags: [],
+          },
+        ],
+      })
+
+      const schemaRealm = {
+        defaultSchema: 'public',
+        schemas: [
+          {
+            name: 'tenant',
             tables: [{ name: 'users', columns: [], primaryKey: { parts: [{ column: 'id' }] } }],
           },
         ],

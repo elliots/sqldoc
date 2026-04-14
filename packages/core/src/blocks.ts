@@ -211,9 +211,9 @@ function resolveAstByLine(
       }
     }
     if (n.type === 'col') {
-      // We're after the last column of this table — table-level
+      // We're after the last field of this object — object-level
       return {
-        target: 'table',
+        target: n.parentStmt.kind,
         objectName: n.parentStmt.name,
         astNode: n.parentStmt.node,
       }

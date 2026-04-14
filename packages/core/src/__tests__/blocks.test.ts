@@ -77,4 +77,33 @@ describe('block resolution from tags.sql', () => {
     expect(ast.target).toBe('table')
     expect(ast.objectName).toBe('one')
   })
+
+  it('keeps the enclosing type target when a tag appears after the last composite field', () => {
+    const source = [
+      "-- @docs.description('Composite type for reporting')",
+      'CREATE TYPE adoption_report AS (',
+      '  pet_name TEXT,',
+      '  owner_name TEXT',
+      ');',
+      "-- @docs.description('Type-level docs after the last field')",
+    ].join('\n')
+
+    const { tags } = parse(source)
+    const blocks = buildBlocks(tags, source, source.split('\n'), [
+      {
+        kind: 'type',
+        name: 'adoption_report',
+        line: 2,
+        columns: [
+          { name: 'pet_name', type: 'text', line: 3 },
+          { name: 'owner_name', type: 'text', line: 4 },
+        ],
+        node: null,
+      },
+    ])
+
+    expect(blocks).toHaveLength(2)
+    expect(blocks[1].ast.target).toBe('type')
+    expect(blocks[1].ast.objectName).toBe('adoption_report')
+  })
 })

@@ -1,5 +1,5 @@
 import type { LintDiagnostic, NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
-import { getPrimaryKeyColumns, getSchemaRealm, getSchemaTables, quoteIdentifier } from '@sqldoc/core'
+import { getPrimaryKeyColumns, getSchemaRealm, quoteIdentifier } from '@sqldoc/core'
 
 function isTextType(type: string | undefined): boolean {
   if (!type) return false
@@ -220,18 +220,22 @@ const plugin: NamespacePlugin = {
         const realm = getSchemaRealm(ctx)
         if (!realm) return diagnostics
 
+        const defaultSchema = realm.defaultSchema ?? ''
         const tablesWithPk = new Set<string>()
-        for (const table of getSchemaTables(realm)) {
-          if (getPrimaryKeyColumns(table).length > 0) {
-            tablesWithPk.add(table.name.toLowerCase())
+        for (const schema of realm.schemas) {
+          for (const table of schema.tables ?? []) {
+            if (getPrimaryKeyColumns(table).length === 0) continue
+
+            const qualifiedName =
+              schema.name && schema.name !== defaultSchema ? `${schema.name}.${table.name}` : table.name
+            tablesWithPk.add(qualifiedName.toLowerCase())
           }
         }
 
         for (const output of ctx.outputs) {
           for (const obj of output.fileTags) {
+            if (obj.target === 'column') continue
             if (obj.target !== 'table') continue
-            // Skip objects that look like column-level tags (table.column)
-            if (obj.objectName.includes('.')) continue
 
             if (!tablesWithPk.has(obj.objectName.toLowerCase())) {
               diagnostics.push({
