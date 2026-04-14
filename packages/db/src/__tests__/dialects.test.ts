@@ -1,6 +1,15 @@
 import { after, describe, expect, it } from '@sqldoc/test-utils'
 import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin } from '../db/types.ts'
-import { createAdapter, defaultDevUrlForDialect, defaultSchemaForDialect, getDialectSpec } from '../index.ts'
+import {
+  createAdapter,
+  defaultDevUrlForDialect,
+  defaultDevUrlForEngine,
+  defaultSchemaForDialect,
+  defaultSchemaForEngine,
+  dialectForEngine,
+  getDialectSpec,
+  getEngineSpec,
+} from '../index.ts'
 
 describe('dialect metadata', () => {
   it('returns centralized defaults for every dialect', () => {
@@ -34,6 +43,17 @@ describe('dialect metadata', () => {
     expect(defaultDevUrlForDialect('sqlite')).toBe(':memory:')
     expect(defaultDevUrlForDialect('mssql')).toBe('docker://mcr.microsoft.com/mssql/server:2022-latest')
   })
+
+  it('exposes engine metadata separately from dialect families', () => {
+    expect(getEngineSpec('crdb')).toEqual({
+      dialect: 'postgres',
+      defaultDevUrl: 'pglite',
+      defaultSchema: 'public',
+    })
+    expect(dialectForEngine('tidb')).toBe('mysql')
+    expect(defaultSchemaForEngine('azuresql')).toBe('dbo')
+    expect(defaultDevUrlForEngine('crdb')).toBe('pglite')
+  })
 })
 
 describe('createAdapter defaults', () => {
@@ -48,6 +68,19 @@ describe('createAdapter defaults', () => {
     expect(adapter.currentSchema).toBe(defaultSchemaForDialect('sqlite'))
     const result = await adapter.query('SELECT 1 AS num')
     expect(result.rows).toEqual([[1]])
+  })
+
+  it('accepts engine identity when creating adapters', async () => {
+    adapter = await createAdapter({ engine: 'sqlite' })
+    expect(adapter.currentSchema).toBe(defaultSchemaForDialect('sqlite'))
+    const result = await adapter.query('SELECT 1 AS num')
+    expect(result.rows).toEqual([[1]])
+  })
+
+  it('rejects mismatched engine and dialect combinations', async () => {
+    await expect(createAdapter({ engine: 'tidb', dialect: 'postgres' })).rejects.toThrow(
+      'engine "tidb" belongs to dialect "mysql", got "postgres"',
+    )
   })
 
   it('uses a provided adapterPlugin for non-docker postgres URLs', async () => {

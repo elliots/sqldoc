@@ -1,9 +1,20 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 // Source: original Go runtime entrypoint
 
-import { type Dialect, defaultSchemaForDialect, quoteIdentifier } from '@sqldoc/core'
+import {
+  type DatabaseEngine,
+  type Dialect,
+  defaultSchemaForDialect,
+  getEngineSpec,
+  quoteIdentifier,
+} from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
-import { filterSystemSchemas, getInspectorDialectVariantSpec, stripDefaultSchemaQualifier } from './dialects.ts'
+import {
+  filterSystemSchemas,
+  getInspectorEngineSpec,
+  resolveInspectorEngine,
+  stripDefaultSchemaQualifier,
+} from './dialects.ts'
 import { createRestoreFunc, snapshot } from './internal/dev.ts'
 import { realmDiff } from './internal/diff.ts'
 import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
@@ -16,13 +27,8 @@ import type { Column, Realm, Rename, RenameCandidate, Schema, Table } from './sc
 
 export interface InspectorOptions {
   db: DatabaseAdapter
-  dialect: Dialect
-  /** Optional: CockroachDB mode (uses crdb variant of postgres) */
-  crdb?: boolean
-  /** Optional: TiDB mode (uses tidb variant of mysql) */
-  tidb?: boolean
-  /** Optional: Azure SQL Database mode (uses azuresql variant of mssql) */
-  azuresql?: boolean
+  dialect?: Dialect
+  engine?: DatabaseEngine
 }
 
 /** Result from the inspector — uses rich Realm types directly. */
@@ -328,8 +334,10 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
  * With direct async TypeScript calls to DatabaseAdapter.
  */
 export async function createInspector(options: InspectorOptions): Promise<InspectorRunner> {
-  const { db, dialect } = options
-  const dialectSpec = getInspectorDialectVariantSpec(dialect, options)
+  const { db } = options
+  const engine = resolveInspectorEngine(options)
+  const dialect = getEngineSpec(engine).dialect
+  const dialectSpec = getInspectorEngineSpec(engine)
   const eq = new ExecQuerierAdapter(db)
   const { inspector, differ, planner } = dialectSpec.createComponents(db, eq)
 

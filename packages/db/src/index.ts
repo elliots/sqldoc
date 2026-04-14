@@ -1,13 +1,14 @@
 // @sqldoc/db -- Database adapters and schema types for sqldoc
 // Schema types are re-exported from @sqldoc/inspector.
 
-import { defaultDevUrlForDialect } from '@sqldoc/core'
+import type { DatabaseEngine } from '@sqldoc/core'
+import { defaultDevUrlForEngine, getEngineSpec } from '@sqldoc/core'
 import { createMssqlDockerAdapter } from './db/mssql-docker.ts'
 import { createMysqlDockerAdapter } from './db/mysql-docker.ts'
 import type { OnMissingPlugin, ResolvePluginOptions } from './db/plugin-resolver.ts'
 import { resolveAdapterPlugin } from './db/plugin-resolver.ts'
 import { createPostgresDockerAdapter } from './db/postgres-docker.ts'
-import type { AdapterPluginContext, Dialect } from './db/types.ts'
+import type { AdapterPluginContext, DatabaseAdapter, DatabaseAdapterPlugin, Dialect } from './db/types.ts'
 import { validatePostgresExtensions } from './extensions.ts'
 
 // Re-export schema types from @sqldoc/inspector
@@ -94,8 +95,16 @@ export type {
 
 import type { InspectorRunner } from '@sqldoc/inspector'
 
-export type { DialectSpec } from '@sqldoc/core'
-export { defaultDevUrlForDialect, defaultSchemaForDialect, getDialectSpec } from '@sqldoc/core'
+export type { DatabaseEngine, DatabaseEngineSpec, DialectSpec } from '@sqldoc/core'
+export {
+  defaultDevUrlForDialect,
+  defaultDevUrlForEngine,
+  defaultSchemaForDialect,
+  defaultSchemaForEngine,
+  dialectForEngine,
+  getDialectSpec,
+  getEngineSpec,
+} from '@sqldoc/core'
 export {
   ChangeKind,
   Changes,
@@ -150,13 +159,13 @@ export type {
 } from './db/types.ts'
 export { createBunSqlAdapter, isBun, normalizeValue } from './db/types.ts'
 
-import type { DatabaseAdapter, DatabaseAdapterPlugin } from './db/types.ts'
-
 export { extractExtensions, validatePostgresExtensions } from './extensions.ts'
 
 export interface CreateRunnerConfig {
-  /** SQL dialect (required) */
-  dialect: Dialect
+  /** SQL engine variant (for example postgres, crdb, tidb). */
+  engine?: DatabaseEngine
+  /** SQL dialect family. Required when engine is not provided. */
+  dialect?: Dialect
   /** Database connection URL. If omitted, uses dialect-specific default. */
   devUrl?: string
   /** Postgres extensions to load. Validated against the dev database. */
@@ -176,14 +185,14 @@ type DockerAdapterOptions = Pick<ResolvePluginOptions, 'sqldocDir' | 'onMissingP
 type DockerAdapterFactory = (devUrl: string, options: DockerAdapterOptions) => Promise<DatabaseAdapter>
 
 interface DialectAdapterRuntime {
-  createContext(config: CreateRunnerConfig): AdapterPluginContext
+  createContext(dialect: Dialect, config: CreateRunnerConfig): AdapterPluginContext
   createDockerAdapter?: DockerAdapterFactory
   validateAdapter?: (db: DatabaseAdapter, context: AdapterPluginContext) => Promise<void>
 }
 
 const DIALECT_ADAPTER_RUNTIMES: Record<Dialect, DialectAdapterRuntime> = {
   postgres: {
-    createContext: (config) => ({ dialect: 'postgres', extensions: config.extensions ?? [] }),
+    createContext: (_dialect, config) => ({ dialect: 'postgres', extensions: config.extensions ?? [] }),
     createDockerAdapter: createPostgresDockerAdapter,
     validateAdapter: async (db, context) => {
       if (context.extensions.length === 0) return
@@ -213,6 +222,19 @@ function getDialectAdapterRuntime(dialect: Dialect): DialectAdapterRuntime {
   return DIALECT_ADAPTER_RUNTIMES[dialect]
 }
 
+function resolveConfiguredEngine(config: CreateRunnerConfig): DatabaseEngine {
+  if (config.engine) {
+    if (config.dialect && getEngineSpec(config.engine).dialect !== config.dialect) {
+      throw new Error(
+        `engine "${config.engine}" belongs to dialect "${getEngineSpec(config.engine).dialect}", got "${config.dialect}"`,
+      )
+    }
+    return config.engine
+  }
+  if (config.dialect) return config.dialect
+  throw new Error('createAdapter requires either a dialect or an engine')
+}
+
 function isDockerDevUrl(devUrl: string): boolean {
   return devUrl.startsWith('docker://') || devUrl.startsWith('dockerfile://')
 }
@@ -228,10 +250,11 @@ function isDockerDevUrl(devUrl: string): boolean {
  * delegates to the plugin system for the actual DB connection.
  */
 export async function createAdapter(config: CreateRunnerConfig): Promise<DatabaseAdapter> {
-  const dialect = config.dialect
-  const devUrl = config.devUrl ?? defaultDevUrlForDialect(dialect)
+  const engine = resolveConfiguredEngine(config)
+  const dialect = getEngineSpec(engine).dialect
+  const devUrl = config.devUrl ?? defaultDevUrlForEngine(engine)
   const runtime = getDialectAdapterRuntime(dialect)
-  const context = runtime.createContext(config)
+  const context = runtime.createContext(dialect, config)
   const pluginOpts = {
     context,
     sqldocDir: config.sqldocDir,
@@ -269,9 +292,10 @@ export async function createAdapter(config: CreateRunnerConfig): Promise<Databas
  */
 export async function createRunner(config: CreateRunnerConfig): Promise<InspectorRunner> {
   const { createInspector } = await import('@sqldoc/inspector')
+  const engine = resolveConfiguredEngine(config)
   const db = await createAdapter(config)
   try {
-    return await createInspector({ db, dialect: config.dialect })
+    return await createInspector({ db, engine })
   } catch (err) {
     try {
       await db.close()

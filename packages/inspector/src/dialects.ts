@@ -1,4 +1,4 @@
-import { type Dialect, quoteIdentifier } from '@sqldoc/core'
+import { type DatabaseEngine, type Dialect, getEngineSpec, quoteIdentifier } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
 import type { PlanDriver } from './internal/plan.ts'
 import type { DiffDriver } from './internal/sqlx.ts'
@@ -26,13 +26,7 @@ import { sqliteScanStmts } from './sqlite/driver.ts'
 import { SqliteInspector } from './sqlite/inspect.ts'
 import { SqlitePlan } from './sqlite/migrate.ts'
 
-export type { Dialect } from '@sqldoc/core'
-
-export interface DialectVariantOptions {
-  crdb?: boolean
-  tidb?: boolean
-  azuresql?: boolean
-}
+export type { DatabaseEngine, Dialect } from '@sqldoc/core'
 
 export interface InspectorDialectComponents {
   inspector: Inspector
@@ -40,7 +34,6 @@ export interface InspectorDialectComponents {
   planner: PlanDriver
 }
 
-export type InspectorDialectVariant = 'postgres' | 'crdb' | 'mysql' | 'tidb' | 'sqlite' | 'mssql' | 'azuresql'
 export type ChangeTransform = (changes: Change[]) => Change[]
 
 interface DialectRuntimeSpec {
@@ -50,7 +43,6 @@ interface DialectRuntimeSpec {
 }
 
 interface InspectorDialectVariantSpec {
-  dialect: Dialect
   createComponents: (db: DatabaseAdapter, eq: ExecQuerier) => InspectorDialectComponents
   restoreTransform?: ChangeTransform
 }
@@ -88,9 +80,8 @@ const DIALECT_RUNTIME_SPECS: Record<Dialect, DialectRuntimeSpec> = {
   },
 }
 
-const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVariantSpec> = {
+const INSPECTOR_ENGINE_SPECS: Record<DatabaseEngine, InspectorDialectVariantSpec> = {
   postgres: {
-    dialect: 'postgres',
     createComponents: (db) => ({
       inspector: new PostgresInspector(db),
       differ: new PostgresDiff(),
@@ -99,7 +90,6 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
     restoreTransform: withCascade,
   },
   crdb: {
-    dialect: 'postgres',
     createComponents: (db) => ({
       inspector: new CrdbInspector(db),
       differ: new CrdbDiff(),
@@ -108,7 +98,6 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
     restoreTransform: withCascade,
   },
   mysql: {
-    dialect: 'mysql',
     createComponents: (_db, eq) => ({
       inspector: new MysqlInspector(eq),
       differ: new MysqlDiff(),
@@ -116,7 +105,6 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
     }),
   },
   tidb: {
-    dialect: 'mysql',
     createComponents: (_db, eq) => ({
       inspector: new TidbInspect(eq),
       differ: new TidbDiff(),
@@ -124,7 +112,6 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
     }),
   },
   sqlite: {
-    dialect: 'sqlite',
     createComponents: (_db, eq) => ({
       inspector: new SqliteInspector(eq),
       differ: new SqliteDiff(),
@@ -132,7 +119,6 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
     }),
   },
   mssql: {
-    dialect: 'mssql',
     createComponents: (_db, eq) => ({
       inspector: new MssqlInspector(eq),
       differ: new MssqlDiff(),
@@ -140,7 +126,6 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
     }),
   },
   azuresql: {
-    dialect: 'mssql',
     createComponents: (_db, eq) => ({
       inspector: new AzureSqlInspector(eq),
       differ: new MssqlDiff(),
@@ -149,38 +134,25 @@ const DIALECT_VARIANT_SPECS: Record<InspectorDialectVariant, InspectorDialectVar
   },
 }
 
-function assertCompatibleVariant(dialect: Dialect, options: DialectVariantOptions): void {
-  if (options.crdb && dialect !== 'postgres') {
-    throw new Error(`crdb mode is only valid for postgres dialect, got "${dialect}"`)
+export function resolveInspectorEngine(options: { dialect?: Dialect; engine?: DatabaseEngine }): DatabaseEngine {
+  if (options.engine) {
+    if (options.dialect && getEngineSpec(options.engine).dialect !== options.dialect) {
+      throw new Error(
+        `engine "${options.engine}" belongs to dialect "${getEngineSpec(options.engine).dialect}", got "${options.dialect}"`,
+      )
+    }
+    return options.engine
   }
-  if (options.tidb && dialect !== 'mysql') {
-    throw new Error(`tidb mode is only valid for mysql dialect, got "${dialect}"`)
-  }
-  if (options.azuresql && dialect !== 'mssql') {
-    throw new Error(`azuresql mode is only valid for mssql dialect, got "${dialect}"`)
-  }
-}
-
-export function resolveInspectorDialectVariant(
-  dialect: Dialect,
-  options: DialectVariantOptions = {},
-): InspectorDialectVariant {
-  assertCompatibleVariant(dialect, options)
-  if (options.crdb) return 'crdb'
-  if (options.tidb) return 'tidb'
-  if (options.azuresql) return 'azuresql'
-  return dialect
+  if (options.dialect) return options.dialect
+  throw new Error('Inspector requires either a dialect or an engine')
 }
 
 export function getDialectRuntimeSpec(dialect: Dialect): DialectRuntimeSpec {
   return DIALECT_RUNTIME_SPECS[dialect]
 }
 
-export function getInspectorDialectVariantSpec(
-  dialect: Dialect,
-  options: DialectVariantOptions = {},
-): InspectorDialectVariantSpec {
-  return DIALECT_VARIANT_SPECS[resolveInspectorDialectVariant(dialect, options)]
+export function getInspectorEngineSpec(engine: DatabaseEngine): InspectorDialectVariantSpec {
+  return INSPECTOR_ENGINE_SPECS[engine]
 }
 
 export function filterSystemSchemas(realm: Realm, dialect: Dialect): Realm {

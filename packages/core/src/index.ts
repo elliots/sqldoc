@@ -44,8 +44,16 @@ export {
 } from './compiler/index.ts'
 // Debug
 export { debug, setDebugLogger } from './debug.ts'
-export type { DialectSpec } from './dialects.ts'
-export { defaultDevUrlForDialect, defaultSchemaForDialect, getDialectSpec } from './dialects.ts'
+export type { DatabaseEngine, DatabaseEngineSpec, DialectSpec } from './dialects.ts'
+export {
+  defaultDevUrlForDialect,
+  defaultDevUrlForEngine,
+  defaultSchemaForDialect,
+  defaultSchemaForEngine,
+  dialectForEngine,
+  getDialectSpec,
+  getEngineSpec,
+} from './dialects.ts'
 // Directives
 export type { FileDirective, FileProvenance } from './directives.ts'
 export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'

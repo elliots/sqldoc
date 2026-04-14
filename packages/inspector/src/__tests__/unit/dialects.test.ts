@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { filterSystemSchemas, resolveInspectorDialectVariant, stripDefaultSchemaQualifier } from '../../dialects.ts'
+import { filterSystemSchemas, resolveInspectorEngine, stripDefaultSchemaQualifier } from '../../dialects.ts'
 import type { Realm } from '../../schema/schema.ts'
 
 function makeRealm(schemaNames: string[]): Realm {
@@ -9,22 +9,26 @@ function makeRealm(schemaNames: string[]): Realm {
   }
 }
 
-describe('resolveInspectorDialectVariant', () => {
-  it('resolves dialect-specific variants', () => {
-    assert.equal(resolveInspectorDialectVariant('postgres'), 'postgres')
-    assert.equal(resolveInspectorDialectVariant('postgres', { crdb: true }), 'crdb')
-    assert.equal(resolveInspectorDialectVariant('mysql', { tidb: true }), 'tidb')
-    assert.equal(resolveInspectorDialectVariant('mssql', { azuresql: true }), 'azuresql')
+describe('resolveInspectorEngine', () => {
+  it('defaults engine identity from the dialect family', () => {
+    assert.equal(resolveInspectorEngine({ dialect: 'postgres' }), 'postgres')
+    assert.equal(resolveInspectorEngine({ dialect: 'mysql' }), 'mysql')
   })
 
-  it('rejects incompatible variant flags', () => {
+  it('accepts explicit engine variants', () => {
+    assert.equal(resolveInspectorEngine({ engine: 'crdb' }), 'crdb')
+    assert.equal(resolveInspectorEngine({ dialect: 'mysql', engine: 'tidb' }), 'tidb')
+    assert.equal(resolveInspectorEngine({ dialect: 'mssql', engine: 'azuresql' }), 'azuresql')
+  })
+
+  it('rejects mismatched engine and dialect combinations', () => {
     assert.throws(
-      () => resolveInspectorDialectVariant('mysql', { crdb: true }),
-      /crdb mode is only valid for postgres dialect/,
+      () => resolveInspectorEngine({ dialect: 'mysql', engine: 'crdb' }),
+      /engine "crdb" belongs to dialect "postgres", got "mysql"/,
     )
     assert.throws(
-      () => resolveInspectorDialectVariant('sqlite', { azuresql: true }),
-      /azuresql mode is only valid for mssql dialect/,
+      () => resolveInspectorEngine({ dialect: 'sqlite', engine: 'azuresql' }),
+      /engine "azuresql" belongs to dialect "mssql", got "sqlite"/,
     )
   })
 })
