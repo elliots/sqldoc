@@ -109,6 +109,8 @@ function makeCtx(realm: Realm, overrides?: Partial<TemplateContext>): TemplateCo
     realm,
     allFileTags: [],
     docsMeta: [],
+    engine: 'postgres',
+    dialect: 'postgres',
     config: {},
     output: './out',
     templateName: 'typescript',

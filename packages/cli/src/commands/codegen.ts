@@ -126,6 +126,7 @@ export async function codegenCommand(
       for (const [nsName, plugin] of projectPlugins) {
         const hook = plugin.afterCompile ?? plugin.generateProject
         const ctx: ProjectContext = {
+          engine: config.engine,
           dialect: config.dialect,
           outputs,
           mergedSql,

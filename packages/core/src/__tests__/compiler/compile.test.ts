@@ -148,6 +148,8 @@ describe('compile()', () => {
     })
 
     expect(capturedCtx).not.toBe(null)
+    expect(capturedCtx.engine).toBe('postgres')
+    expect(capturedCtx.dialect).toBe('postgres')
     expect(capturedCtx.siblingTags.some((t: any) => t.namespace === 'beta' && t.tag === 'check')).toBeTruthy()
     // siblingTags should include tags from ALL namespaces (including own)
     expect(capturedCtx.siblingTags.some((t: any) => t.namespace === 'alpha' && t.tag === 'run')).toBeTruthy()
@@ -190,6 +192,8 @@ describe('compile()', () => {
     })
 
     expect(capturedCtx).not.toBe(null)
+    expect(capturedCtx.engine).toBe('postgres')
+    expect(capturedCtx.dialect).toBe('postgres')
     expect(capturedCtx.fileTags).toHaveLength(2)
     expect(capturedCtx.fileTags.some((ft: any) => ft.objectName === 't1')).toBeTruthy()
     expect(capturedCtx.fileTags.some((ft: any) => ft.objectName === 't2')).toBeTruthy()

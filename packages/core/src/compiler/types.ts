@@ -72,6 +72,8 @@ export type NamespaceConfig = Record<string, unknown>
 
 /** Rich context passed to onTag for each tag occurrence */
 export interface TagContext {
+  /** Target database engine variant */
+  engine: DatabaseEngine
   /** Target database dialect */
   dialect: Dialect
   /** The SQL object this tag is attached to */
@@ -129,6 +131,8 @@ export type CompilerContext = TagContext
 
 /** Context for afterCompile hook — receives ALL compiled file data */
 export interface ProjectContext {
+  /** Target database engine variant */
+  engine: DatabaseEngine
   /** Target database dialect */
   dialect: Dialect
   /** All compiled file outputs */

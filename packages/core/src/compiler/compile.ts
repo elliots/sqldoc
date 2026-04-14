@@ -169,6 +169,7 @@ function compileTier1(
       }))
 
       const ctx: TagContext = {
+        engine: config.engine,
         dialect: config.dialect,
         target,
         objectName: objectName ?? 'unknown',
@@ -487,6 +488,7 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
   allTagOccurrences.push({ objectName: fileTagObjectName, target, namespace, tag: tagName, args })
 
   const ctx: TagContext = {
+    engine: config.engine,
     dialect,
     target,
     objectName,

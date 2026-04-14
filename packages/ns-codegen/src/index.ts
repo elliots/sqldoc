@@ -84,6 +84,8 @@ const plugin: NamespacePlugin = {
       const defaultSchema = realm.defaultSchema
 
       const templateCtx: TemplateContext = {
+        engine: ctx.engine,
+        dialect: ctx.dialect,
         realm,
         allFileTags: ctx.allFileTags,
         docsMeta: ctx.docsMeta,

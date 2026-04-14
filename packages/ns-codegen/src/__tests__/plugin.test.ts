@@ -31,7 +31,7 @@ describe('ns-codegen plugin', () => {
     })
 
     it('returns empty files when config.templates is undefined', async () => {
-      const ctx = makeProjectCtx({ config: { dialect: 'postgres' } })
+      const ctx = makeProjectCtx({ config: {} })
       const result = await plugin.afterCompile!(ctx)
       expect(result.files).toEqual([])
     })
@@ -99,6 +99,8 @@ describe('ns-codegen plugin', () => {
       expect(capturedCtx.config).toEqual(templateConfig)
       expect(capturedCtx.output).toBe('generated')
       expect(capturedCtx.templateName).toBe('mock-template')
+      expect(capturedCtx.engine).toBe('postgres')
+      expect(capturedCtx.dialect).toBe('postgres')
 
       // Clean up
       fs.rmSync(tmpDir, { recursive: true })
@@ -129,7 +131,7 @@ describe('ns-codegen plugin', () => {
             {
               template: templatePath,
               output: 'src/generated',
-              config: { dialect: 'postgres' },
+              config: {},
             },
           ],
         },

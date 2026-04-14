@@ -1,4 +1,4 @@
-import type { ArgType, DocsMeta, InferSchema, Realm } from '@sqldoc/core'
+import type { ArgType, DatabaseEngine, Dialect, DocsMeta, InferSchema, Realm } from '@sqldoc/core'
 
 /** Config for the codegen namespace in sqldoc.config.ts namespaces.codegen */
 export interface CodegenConfig {
@@ -23,6 +23,10 @@ export interface TemplateEntry {
 
 /** Context passed to each template's generate function */
 export interface TemplateContext<C = Record<string, unknown>> {
+  /** Target database engine variant */
+  engine: DatabaseEngine
+  /** Target database dialect family */
+  dialect: Dialect
   /** Full post-compile schema realm */
   realm: Realm
   /** All tags across all files, grouped by source file then by SQL object */

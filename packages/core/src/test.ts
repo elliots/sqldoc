@@ -4,11 +4,19 @@
  * Import via `@sqldoc/core/test` — keeps test utilities out of the main barrel.
  */
 
+import { dialectForEngine, resolveDatabaseEngine } from './dialects.ts'
 import type { CompilerOutput, LintRule, NamespacePlugin, ProjectContext, TagContext } from './index.ts'
 
 /** Create a minimal TagContext with sensible defaults */
 export function makeTagCtx(overrides: Partial<TagContext> | Record<string, unknown> = {}): TagContext {
+  const input = overrides as Partial<TagContext>
+  const engine = resolveDatabaseEngine(
+    { engine: input.engine ?? input.dialect ?? 'postgres', dialect: input.dialect },
+    'makeTagCtx',
+  )
   return {
+    engine,
+    dialect: dialectForEngine(engine),
     target: 'table',
     objectName: 'users',
     tag: { name: '$self', args: {} },
@@ -17,7 +25,7 @@ export function makeTagCtx(overrides: Partial<TagContext> | Record<string, unkno
     fileTags: [],
     astNode: null,
     fileStatements: [],
-    config: { dialect: 'postgres', engine: 'postgres' },
+    config: {},
     filePath: 'test.sql',
     ...overrides,
   } as TagContext
@@ -25,12 +33,19 @@ export function makeTagCtx(overrides: Partial<TagContext> | Record<string, unkno
 
 /** Create a minimal ProjectContext with sensible defaults */
 export function makeProjectCtx(overrides: Partial<ProjectContext> | Record<string, unknown> = {}): ProjectContext {
+  const input = overrides as Partial<ProjectContext>
+  const engine = resolveDatabaseEngine(
+    { engine: input.engine ?? input.dialect ?? 'postgres', dialect: input.dialect },
+    'makeProjectCtx',
+  )
   return {
+    engine,
+    dialect: dialectForEngine(engine),
     outputs: [],
     mergedSql: '',
     allFileTags: [],
     docsMeta: [],
-    config: { dialect: 'postgres', engine: 'postgres' },
+    config: {},
     projectRoot: '/tmp/test',
     schemaRealm: { schemas: [{ name: 'public', tables: [] }] },
     ...overrides,
