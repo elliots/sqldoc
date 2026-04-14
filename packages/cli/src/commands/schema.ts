@@ -1,9 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { Dialect, Realm, ResolvedConfig } from '@sqldoc/core'
+import type { Realm, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { InspectorResult } from '@sqldoc/db'
-import { createRunner, defaultSchemaForDialect, extractExtensions, extractScheme } from '@sqldoc/db'
+import { createRunner, defaultSchemaForEngine, extractExtensions, extractScheme } from '@sqldoc/db'
 import pc from 'picocolors'
 import { resolveConfigRoot } from '../debug.ts'
 import { CliError } from '../errors.ts'
@@ -99,7 +99,6 @@ export async function schemaInspectCommand(
     if (!resolvedSource) {
       throw new CliError('No source provided. Specify a path argument or set "schema" in sqldoc.config.ts')
     }
-    const dialect = config.dialect
     const format = (options.format ?? 'sql') as Format
 
     try {
@@ -107,10 +106,14 @@ export async function schemaInspectCommand(
 
       if (resolved.type === 'database') {
         // Live database — inspect directly, no compilation needed
-        const runner = await createRunner({ dialect, devUrl: resolved.value, ...pluginInstallConfig(configRoot) })
+        const runner = await createRunner({
+          engine: config.engine,
+          devUrl: resolved.value,
+          ...pluginInstallConfig(configRoot),
+        })
         try {
           const result = await runner.inspect([], {
-            schema: defaultSchemaForDialect(dialect),
+            schema: defaultSchemaForEngine(config.engine),
           })
           if (result.error) {
             throw new CliError(`Inspect error: ${result.error}`)
@@ -187,7 +190,7 @@ export async function schemaDiffCommand(options: {
         : { type: 'file' as const, value: '' } // empty = no existing schema
 
       if (fromResolved.type === 'database' || toResolved.type === 'database') {
-        await diffWithLiveDb(fromResolved, toResolved, config, dialect, format, options.check ?? false, configRoot)
+        await diffWithLiveDb(fromResolved, toResolved, config, format, options.check ?? false, configRoot)
         return
       }
 
@@ -210,14 +213,14 @@ export async function schemaDiffCommand(options: {
       const allSql = [...fromSql, ...toSql].filter(Boolean)
       const { extensions } = extractExtensions(allSql)
       const runner = await createRunner({
-        dialect,
+        engine: config.engine,
         devUrl: config.devUrl,
         extensions,
         ...pluginInstallConfig(configRoot),
       })
       try {
         const result = await runner.diff(fromSql, toSql, {
-          schema: defaultSchemaForDialect(dialect),
+          schema: defaultSchemaForEngine(config.engine),
           matchDefaultSchemas: true,
           stripDefaultSchema: true,
         })
@@ -236,17 +239,20 @@ async function diffWithLiveDb(
   from: ResolvedSource,
   to: ResolvedSource,
   config: ResolvedConfig,
-  dialect: Dialect,
   format: Format,
   check: boolean,
   configRoot: string,
 ): Promise<void> {
-  const schemaOpt = defaultSchemaForDialect(dialect)
+  const schemaOpt = defaultSchemaForEngine(config.engine)
 
   const liveSource = from.type === 'database' ? from : to
   const sqlSource = from.type === 'database' ? to : from
 
-  const liveRunner = await createRunner({ dialect, devUrl: liveSource.value, ...pluginInstallConfig(configRoot) })
+  const liveRunner = await createRunner({
+    engine: config.engine,
+    devUrl: liveSource.value,
+    ...pluginInstallConfig(configRoot),
+  })
   let liveRealm
   try {
     const liveResult = await liveRunner.inspect([], { schema: schemaOpt })
@@ -257,7 +263,7 @@ async function diffWithLiveDb(
   }
 
   const devRunner = await createRunner({
-    dialect,
+    engine: config.engine,
     devUrl: config.devUrl,
     extensions: extractExtensions([sqlSource.value]).extensions,
     ...pluginInstallConfig(configRoot),
@@ -273,7 +279,7 @@ async function diffWithLiveDb(
 
   const diffSql = [...(from.type !== 'database' ? [from.value] : []), ...(to.type !== 'database' ? [to.value] : [])]
   const diffRunner = await createRunner({
-    dialect,
+    engine: config.engine,
     devUrl: config.devUrl,
     extensions: extractExtensions(diffSql).extensions,
     ...pluginInstallConfig(configRoot),

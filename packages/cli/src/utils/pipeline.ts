@@ -13,7 +13,7 @@ import {
   compile,
   createAstAdapter,
   debug,
-  defaultSchemaForDialect,
+  defaultSchemaForEngine,
   findSqldocDir,
   loadImports,
   parse,
@@ -60,7 +60,7 @@ export async function runCompilePipeline(
   config: ResolvedConfig,
   configRoot: string,
 ): Promise<PipelineResult> {
-  debug('pipeline', `runCompilePipeline: input=${inputPath}, dialect=${config.dialect}`)
+  debug('pipeline', `runCompilePipeline: input=${inputPath}, engine=${config.engine}, dialect=${config.dialect}`)
   // Discover SQL files
   const sqlFiles = await discoverSqlFiles(inputPath, config.include, configRoot)
   if (sqlFiles.length === 0) {
@@ -108,7 +108,6 @@ export async function runCompilePipeline(
   const allFiles = [...resolved.externalFiles, ...sqlFiles]
 
   // ── Schema inspection -- required for compilation ──────────────────
-  const dialect = config.dialect
   const allRawContents = allFiles.map((f) =>
     resolved.provenanceMap.get(f) === 'external'
       ? fs.readFileSync(f, 'utf-8')
@@ -125,7 +124,7 @@ export async function runCompilePipeline(
   const { extensions } = extractExtensions(allSqlContents)
   const sqldocDir = findSqldocDir(configRoot) ?? undefined
   const runner = await createRunner({
-    dialect,
+    engine: config.engine,
     devUrl: config.devUrl,
     extensions,
     sqldocDir,
@@ -161,7 +160,7 @@ export async function runCompilePipeline(
       // Inspection 1: external files only -> externalRealm
       const externalContents = resolved.externalFiles.map((f) => stripMigrationDown(fs.readFileSync(f, 'utf-8')))
       const externalResult = await runner.inspect(externalContents, {
-        schema: defaultSchemaForDialect(dialect),
+        schema: defaultSchemaForEngine(config.engine),
       })
       if (!externalResult.schema) {
         throw new Error(externalResult.error ?? 'Schema inspection failed to parse external schema')

@@ -2,20 +2,19 @@ import { describe, expect, it } from '@sqldoc/test-utils'
 import { namespacesToInstall, scaffoldConfig, scaffoldExample } from '../scaffold.ts'
 
 describe('scaffoldConfig', () => {
-  it('generates minimal config with default postgres dialect', () => {
+  it('generates minimal config with default postgres engine', () => {
     const result = scaffoldConfig({ dialect: 'postgres', namespaces: [], templates: [] })
     expect(result).toContain("import type { SqldocConfig } from './.sqldoc/config'")
     expect(result).toContain('const config: SqldocConfig')
     expect(result).toContain('export default config')
-    // Dialect is always emitted (mandatory field)
-    expect(result).toContain("dialect: 'postgres'")
+    expect(result).toContain("engine: 'postgres'")
     // Should have devUrl hint
     expect(result).toContain('// devUrl:')
   })
 
-  it('sets dialect for non-default', () => {
+  it('sets engine for non-default', () => {
     const result = scaffoldConfig({ dialect: 'mysql', namespaces: [], templates: [] })
-    expect(result).toContain("dialect: 'mysql'")
+    expect(result).toContain("engine: 'mysql'")
     expect(result).toContain('mysql://localhost')
   })
 
@@ -43,7 +42,7 @@ describe('scaffoldConfig', () => {
 
   it('generates sqlite config', () => {
     const result = scaffoldConfig({ dialect: 'sqlite', namespaces: [], templates: [] })
-    expect(result).toContain("dialect: 'sqlite'")
+    expect(result).toContain("engine: 'sqlite'")
     expect(result).toContain('sqlite://dev.db')
   })
 })

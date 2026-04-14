@@ -70,7 +70,7 @@ function makeCtx(overrides?: Partial<TemplateContext>): TemplateContext<any> {
     realm: testRealm,
     allFileTags: [],
     docsMeta: [],
-    config: { dialect: 'postgres' },
+    config: { dialect: 'postgres', engine: 'postgres' },
     output: './out',
     templateName: 'go-structs',
     defaultSchema: 'public',

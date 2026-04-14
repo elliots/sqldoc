@@ -1,4 +1,5 @@
 import type { SqlStatement } from '../ast/types.ts'
+import type { DatabaseEngine } from '../dialects.ts'
 import type { FileProvenance } from '../directives.ts'
 import type { Column, Realm, Table } from '../schema.ts'
 import type { Dialect } from '../sql-emitter.ts'
@@ -18,8 +19,10 @@ export interface ProjectConfig<Namespaces = Record<string, unknown>> {
   name?: string
   /** Schema source: file or directory of SQL files with sqldoc tags */
   schema?: string
-  /** SQL dialect — mandatory */
-  dialect: Dialect
+  /** SQL engine variant (for example postgres, crdb, tidb, azuresql). */
+  engine?: DatabaseEngine
+  /** SQL dialect family. Optional when engine is provided. */
+  dialect?: Dialect
   /** Dev database URL. Default: pglite */
   devUrl?: string
   /** Migration settings */
@@ -59,7 +62,10 @@ export type SqldocConfig<Namespaces = Record<string, unknown>> = ProjectConfig<N
  * Resolved single-project config — always a single ProjectConfig.
  * Used internally after resolving --project/--all flags.
  */
-export type ResolvedConfig = ProjectConfig
+export type ResolvedConfig = Omit<ProjectConfig, 'dialect' | 'engine'> & {
+  dialect: Dialect
+  engine: DatabaseEngine
+}
 
 /** Generic constraint for per-namespace config */
 export type NamespaceConfig = Record<string, unknown>

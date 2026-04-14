@@ -53,6 +53,7 @@ export {
   dialectForEngine,
   getDialectSpec,
   getEngineSpec,
+  resolveDatabaseEngine,
 } from './dialects.ts'
 // Directives
 export type { FileDirective, FileProvenance } from './directives.ts'

@@ -31,7 +31,7 @@ describe('lint engine', () => {
     const plugins = new Map<string, NamespacePlugin>()
     plugins.set('test', { apiVersion: 1, name: 'test', tags: {} })
 
-    const results = lint([makeOutput()], plugins, { dialect: 'postgres' })
+    const results = lint([makeOutput()], plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toEqual([])
   })
 
@@ -46,7 +46,7 @@ describe('lint engine', () => {
     const plugins = new Map<string, NamespacePlugin>()
     plugins.set('test', makePlugin('test', [rule]))
 
-    const results = lint([makeOutput()], plugins, { dialect: 'postgres' })
+    const results = lint([makeOutput()], plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toHaveLength(1)
     expect(results[0]).toEqual({
       ruleName: 'test.always-fail',
@@ -70,6 +70,7 @@ describe('lint engine', () => {
 
     const config: ResolvedConfig = {
       dialect: 'postgres',
+      engine: 'postgres',
       lint: {
         rules: { 'test.check': 'error' },
       },
@@ -93,6 +94,7 @@ describe('lint engine', () => {
 
     const config: ResolvedConfig = {
       dialect: 'postgres',
+      engine: 'postgres',
       lint: {
         rules: { 'test.check': 'off' },
       },
@@ -124,7 +126,7 @@ describe('lint engine', () => {
       ],
     })
 
-    const results = lint([output], plugins, { dialect: 'postgres' })
+    const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toHaveLength(1)
     expect(results[0].severity).toBe('skip')
     expect(results[0].ignoreReason).toBe('Temporary staging table')
@@ -153,7 +155,7 @@ describe('lint engine', () => {
       ],
     })
 
-    const results = lint([output], plugins, { dialect: 'postgres' })
+    const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toHaveLength(1)
     expect(results[0].severity).toBe('warn')
   })
@@ -177,7 +179,7 @@ describe('lint engine', () => {
     plugins.set('audit', makePlugin('audit', [rule1]))
     plugins.set('rls', makePlugin('rls', [rule2]))
 
-    const results = lint([makeOutput()], plugins, { dialect: 'postgres' })
+    const results = lint([makeOutput()], plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toHaveLength(2)
     expect(results.map((r) => r.ruleName)).toEqual(['audit.require-audit', 'rls.require-policy'])
     expect(results[0].severity).toBe('warn')
@@ -220,7 +222,7 @@ describe('lint engine', () => {
       }),
     ]
 
-    const results = lint(outputs, plugins, { dialect: 'postgres' })
+    const results = lint(outputs, plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toHaveLength(2)
     expect(results[0].sourceFile).toBe('a.sql')
     expect(results[0].objectName).toBe('users')
@@ -262,7 +264,7 @@ describe('lint engine', () => {
       }),
     ]
 
-    const results = lint(outputs, plugins, { dialect: 'postgres' })
+    const results = lint(outputs, plugins, { dialect: 'postgres', engine: 'postgres' })
     expect(results).toHaveLength(1)
     // The ignore is in a.sql but the diagnostic is in b.sql, so it should NOT be skipped
     expect(results[0].severity).toBe('warn')

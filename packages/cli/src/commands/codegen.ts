@@ -84,7 +84,6 @@ export async function codegenCommand(
     )
 
     if (projectPlugins.length > 0) {
-      const dialect = config.dialect
       const allFileTags = outputs.map((o) => ({
         sourceFile: o.sourceFile,
         objects: o.fileTags.map((ft) => ({
@@ -102,7 +101,7 @@ export async function codegenCommand(
       if (hasGeneratedSql) {
         // Re-inspect with the merged SQL (includes generated tables like audit_log)
         const freshRunner = await createRunner({
-          dialect,
+          engine: config.engine,
           devUrl: config.devUrl,
           extensions: extractExtensions([mergedSql]).extensions,
           sqldocDir: findSqldocDir(configRoot) ?? undefined,

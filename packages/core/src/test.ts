@@ -17,7 +17,7 @@ export function makeTagCtx(overrides: Partial<TagContext> | Record<string, unkno
     fileTags: [],
     astNode: null,
     fileStatements: [],
-    config: { dialect: 'postgres' },
+    config: { dialect: 'postgres', engine: 'postgres' },
     filePath: 'test.sql',
     ...overrides,
   } as TagContext
@@ -30,7 +30,7 @@ export function makeProjectCtx(overrides: Partial<ProjectContext> | Record<strin
     mergedSql: '',
     allFileTags: [],
     docsMeta: [],
-    config: { dialect: 'postgres' },
+    config: { dialect: 'postgres', engine: 'postgres' },
     projectRoot: '/tmp/test',
     schemaRealm: { schemas: [{ name: 'public', tables: [] }] },
     ...overrides,

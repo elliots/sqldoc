@@ -41,7 +41,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
       expect(results).toHaveLength(2)
       expect(results[0].ruleName).toBe('audit.require-audit')
       expect(results[0].objectName).toBe('users')
@@ -63,7 +63,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
       expect(results).toHaveLength(0)
     })
 
@@ -81,7 +81,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
       expect(results).toHaveLength(0)
     })
 
@@ -99,7 +99,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
       expect(results).toHaveLength(0)
     })
   })
@@ -119,7 +119,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
       expect(results).toHaveLength(1)
       expect(results[0].ruleName).toBe('rls.require-policy')
       expect(results[0].message).toContain('users')
@@ -139,7 +139,7 @@ describe('built-in lint rules', () => {
         ],
       })
 
-      const results = lint([output], plugins, { dialect: 'postgres' })
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' })
       expect(results).toHaveLength(0)
     })
   })
@@ -165,7 +165,7 @@ describe('built-in lint rules', () => {
         schemas: [{ name: 'public', tables: [{ name: 'users', columns: [] }] }],
       }
 
-      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' }, schemaRealm)
       expect(results).toHaveLength(1)
       expect(results[0].ruleName).toBe('validate.require-pk')
       expect(results[0].message).toContain('users')
@@ -196,7 +196,7 @@ describe('built-in lint rules', () => {
         ],
       }
 
-      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' }, schemaRealm)
       expect(results).toHaveLength(0)
     })
 
@@ -224,7 +224,7 @@ describe('built-in lint rules', () => {
         schemas: [{ name: 'tenant', tables: [{ name: 'users', columns: [] }] }],
       }
 
-      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' }, schemaRealm)
       expect(results).toHaveLength(1)
       expect(results[0].ruleName).toBe('validate.require-pk')
       expect(results[0].objectName).toBe('tenant.users')
@@ -254,7 +254,7 @@ describe('built-in lint rules', () => {
         ],
       }
 
-      const results = lint([output], plugins, { dialect: 'postgres' }, schemaRealm)
+      const results = lint([output], plugins, { dialect: 'postgres', engine: 'postgres' }, schemaRealm)
       expect(results).toHaveLength(0)
     })
   })
@@ -267,6 +267,7 @@ describe('built-in lint rules', () => {
 
       const config: ResolvedConfig = {
         dialect: 'postgres',
+        engine: 'postgres',
         lint: {
           rules: {
             'audit.require-audit': 'error', // upgrade from warn

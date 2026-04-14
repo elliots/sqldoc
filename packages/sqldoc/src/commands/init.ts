@@ -40,7 +40,7 @@ function getInstalledCliVersion(sqldocDir: string): string | null {
 const DEFAULT_CONFIG = `import type { Config } from './.sqldoc/config'
 
 export default {
-  dialect: 'postgres',
+  engine: 'postgres',
   schema: 'schema/',
   migrations: {
     dir: 'migrations/',

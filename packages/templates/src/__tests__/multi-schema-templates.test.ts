@@ -91,7 +91,7 @@ function makeCtx(templateName: string, overrides?: Partial<TemplateContext>): Te
     realm: multiSchemaRealm,
     allFileTags: [],
     docsMeta: [],
-    config: { dialect: 'postgres' },
+    config: { dialect: 'postgres', engine: 'postgres' },
     output: './out',
     templateName,
     defaultSchema: 'public',

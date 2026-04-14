@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { debug } from '../debug.ts'
+import { dialectForEngine, resolveDatabaseEngine } from '../dialects.ts'
 import { tsImport } from '../ts-import.ts'
 import { unwrapDefault } from '../utils.ts'
 import type { ProjectConfig, ResolvedConfig, SqldocConfig } from './types.ts'
@@ -66,7 +67,7 @@ export function resolveProject(config: SqldocConfig, projectName?: string): Reso
     if (projectName && config.name && config.name !== projectName) {
       throw new Error(`Project "${projectName}" not found. Available: ${config.name}`)
     }
-    return config
+    return resolveProjectConfig(config)
   }
 
   // Multi-project config
@@ -77,12 +78,12 @@ export function resolveProject(config: SqldocConfig, projectName?: string): Reso
     if (!found) {
       throw new Error(`Project "${projectName}" not found. Available: ${names.join(', ')}`)
     }
-    return found
+    return resolveProjectConfig(found)
   }
 
   // No --project specified
   if (config.length === 1) {
-    return config[0]
+    return resolveProjectConfig(config[0])
   }
 
   throw new Error(`Multiple projects configured. Use --project <name> to select one.\nAvailable: ${names.join(', ')}`)
@@ -92,8 +93,17 @@ export function resolveProject(config: SqldocConfig, projectName?: string): Reso
  * Resolve all projects from the config.
  * Returns an array regardless of single/multi config.
  */
-export function resolveAllProjects(config: SqldocConfig): ProjectConfig[] {
-  return Array.isArray(config) ? config : [config]
+export function resolveAllProjects(config: SqldocConfig): ResolvedConfig[] {
+  return (Array.isArray(config) ? config : [config]).map(resolveProjectConfig)
+}
+
+function resolveProjectConfig(config: ProjectConfig): ResolvedConfig {
+  const engine = resolveDatabaseEngine(config, 'Project config')
+  return {
+    ...config,
+    engine,
+    dialect: dialectForEngine(engine),
+  }
 }
 
 /**
@@ -105,12 +115,12 @@ async function loadConfigFile(configPath: string): Promise<ConfigResult> {
   let mod = (await tsImport(abs)) as any
   // Unwrap ESM default exports (CJS compat can double-wrap)
   // Detect both single config (has namespaces/dialect/schema) and arrays
-  mod = unwrapDefault(mod, (m: any) => !!m.namespaces || !!m.dialect || !!m.schema || Array.isArray(m))
-  const config: SqldocConfig = mod ?? { dialect: 'postgres' }
+  mod = unwrapDefault(mod, (m: any) => !!m.namespaces || !!m.engine || !!m.dialect || !!m.schema || Array.isArray(m))
+  const config: SqldocConfig = mod ?? { engine: 'postgres' }
   const isMulti = Array.isArray(config)
   debug(
     'config',
-    `loadConfigFile: loaded (${isMulti ? `${config.length} projects` : `dialect=${(config as ProjectConfig).dialect}`})`,
+    `loadConfigFile: loaded (${isMulti ? `${config.length} projects` : `engine=${(config as ProjectConfig).engine ?? (config as ProjectConfig).dialect}`})`,
   )
   return { config, configPath: abs }
 }
@@ -138,5 +148,5 @@ export async function loadConfig(projectRoot: string, configFile?: string): Prom
   }
 
   debug('config', 'loadConfig: no config file found, using defaults')
-  return { config: { dialect: 'postgres' } as ProjectConfig, configPath: null }
+  return { config: { engine: 'postgres' } as ProjectConfig, configPath: null }
 }

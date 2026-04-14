@@ -34,7 +34,7 @@ async function compileFixture(fixtureName: string, dialect: Dialect = 'postgres'
   const plugins = new Map<string, NamespacePlugin>([...namespaces].map(([k, v]) => [k, v as NamespacePlugin]))
   const adapter = adapters[dialect]
   const statements = adapter.parseStatements(source)
-  return compile({ source, filePath, plugins, statements, adapter, config: { dialect } })
+  return compile({ source, filePath, plugins, statements, adapter, config: { dialect, engine: dialect } })
 }
 
 describe('ns-anon: anon-test.sql', () => {

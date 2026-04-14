@@ -81,6 +81,23 @@ export function defaultSchemaForEngine(engine: DatabaseEngine): string | undefin
   return getEngineSpec(engine).defaultSchema
 }
 
+export function resolveDatabaseEngine(
+  options: { dialect?: Dialect; engine?: DatabaseEngine },
+  consumer = 'Database configuration',
+): DatabaseEngine {
+  if (options.engine) {
+    if (options.dialect && getEngineSpec(options.engine).dialect !== options.dialect) {
+      throw new Error(
+        `engine "${options.engine}" belongs to dialect "${getEngineSpec(options.engine).dialect}", got "${options.dialect}"`,
+      )
+    }
+    return options.engine
+  }
+
+  if (options.dialect) return options.dialect
+  throw new Error(`${consumer} requires either a dialect or an engine`)
+}
+
 export function getDialectSpec(dialect: Dialect): DialectSpec {
   return DIALECT_SPECS[dialect]
 }

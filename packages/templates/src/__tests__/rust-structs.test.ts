@@ -52,7 +52,7 @@ function makeCtx(overrides: Partial<TemplateContext> = {}): TemplateContext<any>
     realm: testRealm,
     allFileTags: [],
     docsMeta: [],
-    config: { dialect: 'postgres' },
+    config: { dialect: 'postgres', engine: 'postgres' },
     output: './generated',
     templateName: 'rust-structs',
     defaultSchema: 'public',

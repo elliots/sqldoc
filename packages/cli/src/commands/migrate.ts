@@ -4,7 +4,7 @@ import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { Change, Rename, RenameCandidate } from '@sqldoc/db'
-import { createRunner, defaultSchemaForDialect, extractExtensions } from '@sqldoc/db'
+import { createRunner, defaultSchemaForEngine, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { debug, resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
@@ -62,7 +62,6 @@ async function migrateProject(
     throw new CliError('No "migrations.dir" configured. Set "migrations.dir" in sqldoc.config.ts')
   }
 
-  const dialect = config.dialect
   const format = config.migrations.format ?? 'plain'
   const namingConfig = config.migrations.naming ?? 'timestamp'
 
@@ -121,12 +120,12 @@ async function migrateProject(
 
   // ── Step 4: Diff current -> desired (up migration) ─────────────────
   // Inspect all schemas (no scope restriction) but strip the default schema from output.
-  const defaultSchemaOpt = defaultSchemaForDialect(dialect)
+  const defaultSchemaOpt = defaultSchemaForEngine(config.engine)
 
   const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)
   const runner = await createRunner({
-    dialect,
+    engine: config.engine,
     devUrl: config.devUrl,
     extensions,
     sqldocDir: findSqldocDir(configRoot) ?? undefined,

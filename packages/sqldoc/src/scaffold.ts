@@ -24,8 +24,8 @@ export function scaffoldConfig(opts: ScaffoldOptions): string {
   // Config object
   lines.push('const config: SqldocConfig = {')
 
-  // Dialect (mandatory)
-  lines.push(`  dialect: '${opts.dialect}',`)
+  // Engine (mandatory)
+  lines.push(`  engine: '${opts.dialect}',`)
 
   // Dev URL hint
   const devUrlHint = devUrlForDialect(opts.dialect)

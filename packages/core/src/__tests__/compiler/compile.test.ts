@@ -79,7 +79,7 @@ describe('compile()', () => {
       plugins: new Map([['test', plugin]]),
       statements: makeStatements([{ kind: 'table', name: 'users', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(result.sqlOutputs).toHaveLength(1)
@@ -106,7 +106,7 @@ describe('compile()', () => {
       plugins: new Map([['codegen', plugin]]),
       statements: makeStatements([{ kind: 'table', name: 'orders', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(result.codeOutputs).toHaveLength(1)
@@ -144,7 +144,7 @@ describe('compile()', () => {
       ]),
       statements: makeStatements([{ kind: 'table', name: 'products', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(capturedCtx).not.toBe(null)
@@ -186,7 +186,7 @@ describe('compile()', () => {
         { kind: 'table', name: 't2', line: lineOf(source, 'CREATE TABLE t2') },
       ]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(capturedCtx).not.toBe(null)
@@ -271,7 +271,7 @@ describe('compile()', () => {
         },
       ]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
       schemaRealm,
     })
 
@@ -337,7 +337,7 @@ describe('compile()', () => {
       plugins: new Map([['ns', plugin]]),
       statements: makeStatements([{ kind: 'table', name: 'users', line: lineOf(source, 'CREATE TABLE users') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
       schemaRealm,
     })
 
@@ -368,6 +368,7 @@ describe('compile()', () => {
 
     const config: ResolvedConfig = {
       dialect: 'postgres',
+      engine: 'postgres',
       namespaces: {
         myns: { outputFormat: 'json', verbose: true },
       },
@@ -406,7 +407,7 @@ describe('compile()', () => {
       plugins: new Map([['multi', plugin]]),
       statements: makeStatements([{ kind: 'table', name: 'nstags', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(capturedCtx).not.toBe(null)
@@ -457,7 +458,7 @@ describe('compile()', () => {
         },
       ]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     // First tag is above CREATE TABLE -- should be table-level
@@ -491,7 +492,7 @@ describe('compile()', () => {
       plugins: new Map([['err', plugin]]),
       statements: makeStatements([{ kind: 'table', name: 'broken', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(result.errors.length >= 1).toBeTruthy()
@@ -518,7 +519,7 @@ describe('compile()', () => {
       plugins: new Map([['passive', plugin]]),
       statements: makeStatements([{ kind: 'table', name: 'inert', line: lineOf(source, 'CREATE') }]),
       adapter: stubAdapter,
-      config: { dialect: 'postgres' },
+      config: { dialect: 'postgres', engine: 'postgres' },
     })
 
     expect(result.sqlOutputs).toHaveLength(0)
