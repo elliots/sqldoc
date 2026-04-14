@@ -282,6 +282,76 @@ describe('compile()', () => {
     expect(columnTags?.tags).toEqual([{ namespace: 'lint', tag: 'ignore', args: ['column-only'] }])
   })
 
+  it('scopes schema-aware compilation to objects defined in the current file', () => {
+    const seenObjects: string[] = []
+
+    const plugin = makePlugin({
+      name: 'ns',
+      tags: { mark: {} },
+      generateSQL: (ctx) => {
+        seenObjects.push(ctx.objectName)
+        return [{ sql: `-- generated for ${ctx.objectName}` }]
+      },
+    })
+
+    const source = ['-- @ns.mark', 'CREATE TABLE users (', '  id SERIAL PRIMARY KEY', ');'].join('\n')
+
+    const schemaRealm: Realm = {
+      defaultSchema: 'public',
+      schemas: [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 'users',
+              columns: [
+                {
+                  name: 'id',
+                  type: {
+                    type: { kind: 'integer', T: 'integer' },
+                  },
+                },
+              ],
+              attrs: [{ kind: 'tag', name: 'ns.mark', args: '' }],
+            },
+            {
+              name: 'orders',
+              columns: [
+                {
+                  name: 'id',
+                  type: {
+                    type: { kind: 'integer', T: 'integer' },
+                  },
+                },
+              ],
+              attrs: [{ kind: 'tag', name: 'ns.mark', args: '' }],
+            },
+          ],
+        },
+      ],
+    }
+
+    const result = compile({
+      source,
+      filePath: 'users.sql',
+      plugins: new Map([['ns', plugin]]),
+      statements: makeStatements([{ kind: 'table', name: 'users', line: lineOf(source, 'CREATE TABLE users') }]),
+      adapter: stubAdapter,
+      config: { dialect: 'postgres' },
+      schemaRealm,
+    })
+
+    expect(seenObjects).toEqual(['users'])
+    expect(result.sqlOutputs).toHaveLength(1)
+    expect(result.sqlOutputs[0].sql).toBe('-- generated for users')
+    expect(result.fileTags).toHaveLength(1)
+    expect(result.fileTags[0]).toEqual({
+      objectName: 'users',
+      target: 'table',
+      tags: [{ namespace: 'ns', tag: 'mark', args: {} }],
+    })
+  })
+
   it('populates CompilerContext.config with namespace-specific config from ProjectConfig', () => {
     let capturedCtx: any = null
 

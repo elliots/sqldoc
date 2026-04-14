@@ -232,6 +232,7 @@ function compileWithRealm(
 
   // Parse source to find which namespaces THIS file uses (not other files in the realm)
   const fileNamespaces = new Set(parse(source).tags.map((t) => t.namespace))
+  const fileObjectKeys = collectFileObjectKeys(statements, realm.defaultSchema)
 
   const skippedPlugins = new Set<string>()
   const missingNamespaces = new Set<string>()
@@ -249,6 +250,7 @@ function compileWithRealm(
     skippedPlugins,
     missingNamespaces,
     fileNamespaces,
+    fileObjectKeys,
   }
   // Default schema is set by the inspector on the realm
   const defaultSchema = realm.defaultSchema ?? ''
@@ -259,14 +261,18 @@ function compileWithRealm(
     // Process tables
     if (schema.tables) {
       for (const table of schema.tables) {
-        processRealmObject(table, 'table', qualify(table.name), actx)
+        if (shouldProcessRealmObject('table', table.name, schema.name, actx.fileObjectKeys, defaultSchema)) {
+          processRealmObject(table, 'table', qualify(table.name), actx)
+        }
       }
     }
 
     // Process views
     if (schema.views) {
       for (const view of schema.views) {
-        processRealmObject(view, 'view', qualify(view.name), actx)
+        if (shouldProcessRealmObject('view', view.name, schema.name, actx.fileObjectKeys, defaultSchema)) {
+          processRealmObject(view, 'view', qualify(view.name), actx)
+        }
       }
     }
   }
@@ -301,25 +307,12 @@ interface RealmObjectContext {
   skippedPlugins: Set<string>
   missingNamespaces: Set<string>
   fileNamespaces: Set<string>
+  fileObjectKeys: Set<string>
 }
 
 /** Process a single inspected object (table or view) and its columns for tag invocation */
 function processRealmObject(obj: Table | View, target: SqlTarget, objectName: string, actx: RealmObjectContext): void {
-  const {
-    realm,
-    filePath,
-    plugins,
-    statements,
-    config,
-    sqlOutputs,
-    codeOutputs,
-    docsMeta,
-    errors,
-    allTagOccurrences,
-    skippedPlugins,
-    missingNamespaces,
-    fileNamespaces,
-  } = actx
+  const { realm } = actx
   // Extract tags from object-level attrs
   const objectTags = findTags(obj.attrs)
 
@@ -344,36 +337,6 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
   // Process object-level tags (table/view level)
   for (const atag of objectTags) {
     const { namespace, tag: tagName } = splitTagName(atag.name)
-    const plugin = plugins.get(namespace)
-    if (!plugin) {
-      if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
-        missingNamespaces.add(namespace)
-        errors.push({
-          namespace,
-          message: `No plugin loaded for namespace '${namespace}'. Is '@sqldoc/ns-${namespace}' imported?`,
-        })
-      }
-      continue
-    }
-
-    // Check plugin compatibility with target dialect
-    const dialect = config.dialect
-    if (!isPluginCompatible(plugin, dialect)) {
-      if (!skippedPlugins.has(plugin.name)) {
-        skippedPlugins.add(plugin.name)
-        errors.push({
-          namespace: plugin.name,
-          message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
-        })
-      }
-      continue
-    }
-
-    const tagHandler = plugin.onTag ?? plugin.generateSQL
-    if (!tagHandler && !plugin.generateCode) continue
-
-    const args = parseTagArgs(atag.args)
-
     // Build namespaceTags: all tags from same namespace on this object
     const namespaceTags = allObjectTagsParsed
       .filter((t) => t.namespace === namespace)
@@ -386,35 +349,17 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
       args: parseTagArgs(t.argsStr),
     }))
 
-    // Track for fileTags
-    allTagOccurrences.push({ objectName, target, namespace, tag: tagName, args })
-
-    const ctx: TagContext = {
-      dialect: config.dialect,
+    dispatchTag(actx, {
+      namespace,
+      tagName,
+      rawArgs: atag.args,
       target,
       objectName,
-      tag: { name: tagName, args },
       namespaceTags,
       siblingTags,
-      fileTags: [], // Placeholder — will be set after all objects processed
-      astNode: null,
-      fileStatements: statements,
-      config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
-      filePath,
       schemaTable: target === 'table' ? (obj as Table) : undefined,
       schemaRealm: realm,
-    }
-
-    invokePlugin(
-      plugin,
-      tagHandler,
-      ctx,
-      { namespace, tag: tagName, rawArgs: atag.args },
-      sqlOutputs,
-      codeOutputs,
-      docsMeta,
-      errors,
-    )
+    })
   }
 
   // Process column-level tags
@@ -423,35 +368,6 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
       const colTags = findTags(col.attrs)
       for (const atag of colTags) {
         const { namespace, tag: tagName } = splitTagName(atag.name)
-        const plugin = plugins.get(namespace)
-        if (!plugin) {
-          if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
-            missingNamespaces.add(namespace)
-            errors.push({
-              namespace,
-              message: `No plugin loaded for namespace '${namespace}'. Is '@sqldoc/ns-${namespace}' imported?`,
-            })
-          }
-          continue
-        }
-
-        // Check plugin compatibility with target dialect
-        const dialect = config.dialect
-        if (!isPluginCompatible(plugin, dialect)) {
-          if (!skippedPlugins.has(plugin.name)) {
-            skippedPlugins.add(plugin.name)
-            errors.push({
-              namespace: plugin.name,
-              message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
-            })
-          }
-          continue
-        }
-
-        const tagHandler = plugin.onTag ?? plugin.generateSQL
-        if (!tagHandler && !plugin.generateCode) continue
-
-        const args = parseTagArgs(atag.args)
         const columnType = col.type.raw ?? col.type.type.T
 
         // Build per-column tag set: object-level tags + this column's tags only
@@ -473,47 +389,123 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
           args: parseTagArgs(t.argsStr),
         }))
 
-        // Track for fileTags — use table.column as objectName so templates can look up per-column
-        allTagOccurrences.push({
-          objectName: `${objectName}.${col.name}`,
-          target: 'column',
+        dispatchTag(actx, {
           namespace,
-          tag: tagName,
-          args,
-        })
-
-        const ctx: TagContext = {
-          dialect: config.dialect,
+          tagName,
+          rawArgs: atag.args,
           target: 'column',
           objectName,
+          fileTagObjectName: `${objectName}.${col.name}`,
           columnName: col.name,
           columnType,
-          tag: { name: tagName, args },
           namespaceTags,
           siblingTags,
-          fileTags: [], // Placeholder
-          astNode: null,
-          fileStatements: statements,
-          config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
-          filePath,
           schemaTable: target === 'table' ? (obj as Table) : undefined,
           schemaColumn: col,
           schemaRealm: realm,
-        }
-
-        invokePlugin(
-          plugin,
-          tagHandler,
-          ctx,
-          { namespace, tag: tagName, rawArgs: atag.args },
-          sqlOutputs,
-          codeOutputs,
-          docsMeta,
-          errors,
-        )
+        })
       }
     }
   }
+}
+
+interface DispatchTagParams {
+  namespace: string
+  tagName: string | null
+  rawArgs: string
+  target: SqlTarget
+  objectName: string
+  fileTagObjectName?: string
+  columnName?: string
+  columnType?: string
+  namespaceTags: TagContext['namespaceTags']
+  siblingTags: TagContext['siblingTags']
+  schemaTable?: Table
+  schemaColumn?: Table['columns'][number]
+  schemaRealm: Realm
+}
+
+function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void {
+  const {
+    filePath,
+    plugins,
+    statements,
+    config,
+    sqlOutputs,
+    codeOutputs,
+    docsMeta,
+    errors,
+    allTagOccurrences,
+    skippedPlugins,
+    missingNamespaces,
+    fileNamespaces,
+  } = actx
+  const {
+    namespace,
+    tagName,
+    rawArgs,
+    target,
+    objectName,
+    fileTagObjectName = objectName,
+    columnName,
+    columnType,
+    namespaceTags,
+    siblingTags,
+    schemaTable,
+    schemaColumn,
+    schemaRealm,
+  } = params
+
+  const plugin = plugins.get(namespace)
+  if (!plugin) {
+    if (fileNamespaces.has(namespace) && !missingNamespaces.has(namespace)) {
+      missingNamespaces.add(namespace)
+      errors.push({
+        namespace,
+        message: `No plugin loaded for namespace '${namespace}'. Is '@sqldoc/ns-${namespace}' imported?`,
+      })
+    }
+    return
+  }
+
+  const dialect = config.dialect
+  if (!isPluginCompatible(plugin, dialect)) {
+    if (!skippedPlugins.has(plugin.name)) {
+      skippedPlugins.add(plugin.name)
+      errors.push({
+        namespace: plugin.name,
+        message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
+      })
+    }
+    return
+  }
+
+  const tagHandler = plugin.onTag ?? plugin.generateSQL
+  if (!tagHandler && !plugin.generateCode) return
+
+  const args = parseTagArgs(rawArgs)
+  allTagOccurrences.push({ objectName: fileTagObjectName, target, namespace, tag: tagName, args })
+
+  const ctx: TagContext = {
+    dialect,
+    target,
+    objectName,
+    columnName,
+    columnType,
+    tag: { name: tagName, args },
+    namespaceTags,
+    siblingTags,
+    fileTags: [],
+    astNode: null,
+    fileStatements: statements,
+    config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
+    filePath,
+    schemaTable,
+    schemaColumn,
+    schemaRealm,
+  }
+
+  invokePlugin(plugin, tagHandler, ctx, { namespace, tag: tagName, rawArgs }, sqlOutputs, codeOutputs, docsMeta, errors)
 }
 
 // ── Shared plugin invocation ──────────────────────────────────────────
@@ -777,6 +769,49 @@ function parsedArgsToValue(rawArgs: string | null): Record<string, unknown> | un
   if (rawArgs === null) return {}
   const parsed = parseArgs(rawArgs)
   return parsed.values
+}
+
+function collectFileObjectKeys(statements: SqlStatement[], defaultSchema?: string): Set<string> {
+  const keys = new Set<string>()
+  for (const stmt of statements) {
+    if (stmt.kind !== 'table' && stmt.kind !== 'view') continue
+    for (const alias of objectNameAliases(stmt.name, defaultSchema)) {
+      keys.add(fileObjectKey(stmt.kind, alias))
+    }
+  }
+  return keys
+}
+
+function shouldProcessRealmObject(
+  target: Extract<SqlTarget, 'table' | 'view'>,
+  name: string,
+  schemaName: string,
+  fileObjectKeys: Set<string>,
+  defaultSchema?: string,
+): boolean {
+  if (fileObjectKeys.size === 0) return true
+  for (const alias of objectNameAliases(schemaName === defaultSchema ? name : `${schemaName}.${name}`, defaultSchema)) {
+    if (fileObjectKeys.has(fileObjectKey(target, alias))) {
+      return true
+    }
+  }
+  return false
+}
+
+function objectNameAliases(name: string, defaultSchema?: string): string[] {
+  if (!name) return []
+  const aliases = new Set<string>([name])
+  const dotIdx = name.indexOf('.')
+  if (dotIdx === -1) {
+    if (defaultSchema) aliases.add(`${defaultSchema}.${name}`)
+  } else if (defaultSchema && name.slice(0, dotIdx) === defaultSchema) {
+    aliases.add(name.slice(dotIdx + 1))
+  }
+  return Array.from(aliases)
+}
+
+function fileObjectKey(target: Extract<SqlTarget, 'table' | 'view'>, objectName: string): string {
+  return `${target}:${objectName}`
 }
 
 /**
