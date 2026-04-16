@@ -105,6 +105,26 @@ END;`,
   ]
 }
 
+// -- Handlers --
+
+function handleSoftdelete(ctx: TagContext): TagOutput {
+  const { objectName, dialect, tag } = ctx
+  const args = tag.args as Record<string, unknown>
+  const columnName = (args.column as string) || (ctx.config.column as string) || 'deleted_at'
+  const viewName = (args.view as string) || (ctx.config.view as string) || `${objectName}_active`
+
+  return {
+    sql: [
+      { sql: generateAddColumnSql(objectName, columnName, dialect) },
+      { sql: generateActiveViewSql(objectName, viewName, columnName, dialect) },
+    ],
+    docs: {
+      relationships: [{ from: objectName, to: viewName, label: 'active view', style: 'dashed' }],
+      annotations: [{ object: objectName, text: `Soft-deletable (${columnName})` }],
+    },
+  }
+}
+
 // -- Plugin definition --
 
 const plugin = defineNamespace({
@@ -127,6 +147,10 @@ const plugin = defineNamespace({
       validate: requireNamespaceOnSameTable('softdelete', '@softdelete.cascade requires @softdelete on the same table'),
     },
   },
+  handlers: {
+    $self: handleSoftdelete,
+    cascade: handleCascade,
+  },
   examples: [
     {
       title: 'Add soft delete behavior',
@@ -139,47 +163,6 @@ CREATE TABLE users (
 );`,
     },
   ],
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName } = ctx
-    const dialect = ctx.dialect
-
-    if (tag.name === 'cascade') {
-      return handleCascade(ctx)
-    }
-
-    if (tag.name !== '$self' && tag.name !== null) return undefined
-
-    const args = tag.args as Record<string, unknown>
-    const columnName = (args.column as string) || (ctx.config.column as string) || 'deleted_at'
-    const viewName = (args.view as string) || (ctx.config.view as string) || `${objectName}_active`
-
-    const sql: SqlOutput[] = [
-      { sql: generateAddColumnSql(objectName, columnName, dialect) },
-      { sql: generateActiveViewSql(objectName, viewName, columnName, dialect) },
-    ]
-
-    return {
-      sql,
-      docs: {
-        relationships: [
-          {
-            from: objectName,
-            to: viewName,
-            label: 'active view',
-            style: 'dashed',
-          },
-        ],
-        annotations: [
-          {
-            object: objectName,
-            text: `Soft-deletable (${columnName})`,
-          },
-        ],
-      },
-    }
-  },
-
   lintRules: [
     createRequireTableTagLintRule('softdelete', {
       description: 'Tables should have a @softdelete tag',

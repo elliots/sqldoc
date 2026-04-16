@@ -119,6 +119,57 @@ END;`,
   return outputs
 }
 
+// -- Handler --
+
+function handleHistory(ctx: TagContext): TagOutput {
+  const { objectName, dialect, tag } = ctx
+  const args = tag.args as Record<string, unknown>
+  const operations = (args.on as string[] | undefined) ?? ['update', 'delete']
+  const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_history`
+
+  const relationship = {
+    from: objectName,
+    to: destination,
+    label: 'history',
+    style: 'dashed' as const,
+  }
+
+  const columns = getSchemaColumns(getSchemaTable(ctx))
+  if (columns.length === 0) {
+    return {
+      sql: [],
+      docs: {
+        relationships: [relationship],
+        annotations: [
+          {
+            object: objectName,
+            text: 'History triggers require Tier 2 compilation (column enumeration needed for history table DDL)',
+          },
+        ],
+      },
+    }
+  }
+
+  const triggerSqls =
+    dialect === 'postgres'
+      ? generatePostgresHistoryTriggers(objectName, destination, operations, columns)
+      : dialect === 'mysql' || dialect === 'sqlite'
+        ? generatePerEventHistoryTriggers(objectName, destination, operations, columns, dialect)
+        : dialect === 'mssql'
+          ? []
+          : (() => {
+              throw new Error(`ns-history: unsupported dialect '${dialect}'`)
+            })()
+
+  return {
+    sql: [{ sql: generateHistoryTableSql(destination, columns, dialect) }, ...triggerSqls],
+    docs: {
+      relationships: [relationship],
+      annotations: [{ object: objectName, text: `History tracked (${operations.join(', ')})` }],
+    },
+  }
+}
+
 // -- Plugin definition --
 
 const plugin = defineNamespace({
@@ -135,6 +186,9 @@ const plugin = defineNamespace({
       },
     },
   },
+  handlers: {
+    $self: handleHistory,
+  },
   examples: [
     {
       title: 'Track row history',
@@ -148,82 +202,6 @@ CREATE TABLE accounts (
 );`,
     },
   ],
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName } = ctx
-    const dialect = ctx.dialect
-
-    if (tag.name !== '$self' && tag.name !== null) return undefined
-
-    const args = tag.args as Record<string, unknown>
-    const operations = (args.on as string[] | undefined) ?? ['update', 'delete']
-    const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_history`
-
-    // History table requires column info from schema inspection for ALL dialects
-    const columns = getSchemaColumns(getSchemaTable(ctx))
-
-    if (columns.length === 0) {
-      return {
-        sql: [],
-        docs: {
-          relationships: [
-            {
-              from: objectName,
-              to: destination,
-              label: 'history',
-              style: 'dashed',
-            },
-          ],
-          annotations: [
-            {
-              object: objectName,
-              text: 'History triggers require Tier 2 compilation (column enumeration needed for history table DDL)',
-            },
-          ],
-        },
-      }
-    }
-
-    // History table DDL
-    const historyTableSql: SqlOutput = { sql: generateHistoryTableSql(destination, columns, dialect) }
-
-    // Trigger generation
-    let triggerSqls: SqlOutput[]
-
-    if (dialect === 'postgres') {
-      triggerSqls = generatePostgresHistoryTriggers(objectName, destination, operations, columns)
-    } else if (dialect === 'mssql') {
-      // MSSQL: trigger generation not yet implemented
-      triggerSqls = []
-    } else if (dialect === 'mysql' || dialect === 'sqlite') {
-      triggerSqls = generatePerEventHistoryTriggers(objectName, destination, operations, columns, dialect)
-    } else {
-      throw new Error(`ns-history: unsupported dialect '${dialect}'`)
-    }
-
-    const sql: SqlOutput[] = [historyTableSql, ...triggerSqls]
-
-    return {
-      sql,
-      docs: {
-        relationships: [
-          {
-            from: objectName,
-            to: destination,
-            label: 'history',
-            style: 'dashed',
-          },
-        ],
-        annotations: [
-          {
-            object: objectName,
-            text: `History tracked (${operations.join(', ')})`,
-          },
-        ],
-      },
-    }
-  },
-
   lintRules: [
     createRequireTableTagLintRule('history', {
       description: 'Tables should have a @history tag',

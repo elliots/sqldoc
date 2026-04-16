@@ -149,6 +149,49 @@ END;`
   return [{ sql: insertTrigger }]
 }
 
+// -- Handler --
+
+function handleTemporal(ctx: TagContext): TagOutput {
+  const { objectName, dialect, tag } = ctx
+  const args = tag.args as Record<string, unknown>
+  const viewName = (args.view as string) || (ctx.config.view as string) || `${objectName}_current`
+
+  const table = getSchemaTable(ctx)
+  const pkColumns = getPrimaryKeyColumns(table)
+  const columns = getSchemaColumns(table)
+
+  const columnSqls = generateTemporalColumnsSql(objectName, dialect, pkColumns)
+  const viewSql: SqlOutput = { sql: generateCurrentViewSql(objectName, viewName, dialect) }
+
+  const extraAnnotations: Array<{ object: string; text: string }> = []
+  let triggerSqls: SqlOutput[]
+
+  if (dialect === 'mysql') {
+    triggerSqls = generateMysqlTriggers(objectName)
+    extraAnnotations.push({
+      object: objectName,
+      text: 'MySQL does not support self-referential triggers for UPDATE/DELETE temporal behavior. Use application-level logic.',
+    })
+  } else if (pkColumns.length === 0 || columns.length === 0) {
+    triggerSqls = []
+    extraAnnotations.push({
+      object: objectName,
+      text: 'Temporal triggers require Tier 2 compilation (PK columns needed for trigger generation)',
+    })
+  } else {
+    triggerSqls = generatePostgresTriggers(objectName, pkColumns, columns)
+  }
+
+  return {
+    sql: [...columnSqls, viewSql, ...triggerSqls],
+    docs: {
+      relationships: [{ from: objectName, to: viewName, label: 'current view', style: 'dashed' }],
+      annotations: [{ object: objectName, text: 'Temporal (SCD Type 2)' }, ...extraAnnotations],
+      columns: [{ header: 'Temporal', object: objectName, value: 'valid_from / valid_to' }],
+    },
+  }
+}
+
 // -- Plugin definition --
 
 const plugin = defineNamespace({
@@ -164,6 +207,9 @@ const plugin = defineNamespace({
       },
     },
   },
+  handlers: {
+    $self: handleTemporal,
+  },
   examples: [
     {
       title: 'Version rows over time',
@@ -176,79 +222,6 @@ CREATE TABLE accounts (
 );`,
     },
   ],
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName } = ctx
-    const dialect = ctx.dialect
-
-    if (tag.name !== '$self' && tag.name !== null) return undefined
-
-    const args = tag.args as Record<string, unknown>
-    const viewName = (args.view as string) || (ctx.config.view as string) || `${objectName}_current`
-
-    // Triggers need schemaTable for PK columns (Postgres, SQLite) or column list
-    const table = getSchemaTable(ctx)
-    const pkColumns = getPrimaryKeyColumns(table)
-
-    // Temporal column DDL + composite PK alteration
-    const columnSqls = generateTemporalColumnsSql(objectName, dialect, pkColumns)
-    const viewSql: SqlOutput = { sql: generateCurrentViewSql(objectName, viewName, dialect) }
-
-    const extraAnnotations: Array<{ object: string; text: string }> = []
-    let triggerSqls: SqlOutput[]
-
-    const columns = getSchemaColumns(table)
-
-    if (dialect === 'mysql') {
-      // MySQL: limited trigger support (self-referential triggers not supported)
-      triggerSqls = generateMysqlTriggers(objectName)
-      extraAnnotations.push({
-        object: objectName,
-        text: 'MySQL does not support self-referential triggers for UPDATE/DELETE temporal behavior. Use application-level logic.',
-      })
-    } else if (pkColumns.length === 0 || columns.length === 0) {
-      // Need schemaTable for Postgres triggers
-      triggerSqls = []
-      extraAnnotations.push({
-        object: objectName,
-        text: 'Temporal triggers require Tier 2 compilation (PK columns needed for trigger generation)',
-      })
-    } else {
-      // Postgres
-      triggerSqls = generatePostgresTriggers(objectName, pkColumns, columns)
-    }
-
-    const sql: SqlOutput[] = [...columnSqls, viewSql, ...triggerSqls]
-
-    return {
-      sql,
-      docs: {
-        relationships: [
-          {
-            from: objectName,
-            to: viewName,
-            label: 'current view',
-            style: 'dashed',
-          },
-        ],
-        annotations: [
-          {
-            object: objectName,
-            text: 'Temporal (SCD Type 2)',
-          },
-          ...extraAnnotations,
-        ],
-        columns: [
-          {
-            header: 'Temporal',
-            object: objectName,
-            value: 'valid_from / valid_to',
-          },
-        ],
-      },
-    }
-  },
-
   lintRules: [
     createRequireTableTagLintRule('temporal', {
       description: 'Tables should have a @temporal tag',

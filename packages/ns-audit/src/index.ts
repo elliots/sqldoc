@@ -127,6 +127,50 @@ $$ LANGUAGE plpgsql;`
   return [{ sql: fnSql }, { sql: triggerSql }]
 }
 
+// -- Handler --
+
+function handleAudit(ctx: TagContext): TagOutput {
+  const { objectName, dialect, tag } = ctx
+  const args = tag.args as Record<string, unknown>
+  const operations = (args.on as string[] | undefined) ?? ['insert', 'update', 'delete']
+  const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_audit_log`
+
+  const auditTableSql: SqlOutput = { sql: generateAuditTableSql(destination, dialect) }
+  const extraAnnotations: Array<{ object: string; text: string }> = []
+  let triggerSqls: SqlOutput[]
+
+  if (dialect === 'postgres') {
+    triggerSqls = generatePostgresTriggers(objectName, destination, operations)
+  } else if (dialect === 'mssql') {
+    triggerSqls = []
+    extraAnnotations.push({
+      object: objectName,
+      text: 'MSSQL audit triggers will use inserted/deleted tables (not yet implemented)',
+    })
+  } else if (dialect === 'mysql' || dialect === 'sqlite') {
+    const columns = getSchemaColumns(getSchemaTable(ctx))
+    if (columns.length === 0) {
+      triggerSqls = []
+      extraAnnotations.push({
+        object: objectName,
+        text: 'Audit triggers require Tier 2 compilation for MySQL/SQLite (column enumeration needed for JSON serialization)',
+      })
+    } else {
+      triggerSqls = generatePerEventTriggers(objectName, destination, operations, columns, dialect)
+    }
+  } else {
+    throw new Error(`ns-audit: unsupported dialect '${dialect}'`)
+  }
+
+  return {
+    sql: [auditTableSql, ...triggerSqls],
+    docs: {
+      relationships: [{ from: objectName, to: destination, label: 'audit events', style: 'dashed' }],
+      annotations: [{ object: objectName, text: `Audited (${operations.join(', ')})` }, ...extraAnnotations],
+    },
+  }
+}
+
 // -- Plugin definition --
 
 const plugin = defineNamespace({
@@ -151,6 +195,9 @@ const plugin = defineNamespace({
       validate: requireNamespaceOnSameTable('audit', '@audit.redact requires @audit on the same table'),
     },
   },
+  handlers: {
+    $self: handleAudit,
+  },
   examples: [
     {
       title: 'Audit inserts, updates, and deletes',
@@ -164,76 +211,6 @@ CREATE TABLE orders (
 );`,
     },
   ],
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName } = ctx
-    const dialect = ctx.dialect
-
-    if (tag.name === 'redact') return undefined
-    if (tag.name !== '$self' && tag.name !== null) return undefined
-
-    const args = tag.args as Record<string, unknown>
-    const operations = (args.on as string[] | undefined) ?? ['insert', 'update', 'delete']
-    const destination = (args.destination as string) || (ctx.config.destination as string) || `${objectName}_audit_log`
-
-    // Audit log table DDL (dialect-aware types)
-    const auditTableSql: SqlOutput = { sql: generateAuditTableSql(destination, dialect) }
-
-    // Trigger generation depends on dialect
-    let triggerSqls: SqlOutput[]
-    const extraAnnotations: Array<{ object: string; text: string }> = []
-
-    if (dialect === 'postgres') {
-      // Postgres: PL/pgSQL function + multi-event trigger
-      triggerSqls = generatePostgresTriggers(objectName, destination, operations)
-    } else if (dialect === 'mssql') {
-      // MSSQL: trigger generation not yet implemented — emit table DDL only
-      triggerSqls = []
-      extraAnnotations.push({
-        object: objectName,
-        text: 'MSSQL audit triggers will use inserted/deleted tables (not yet implemented)',
-      })
-    } else if (dialect === 'mysql' || dialect === 'sqlite') {
-      // MySQL/SQLite: need column info from schemaTable for JSON serialization
-      const columns = getSchemaColumns(getSchemaTable(ctx))
-
-      if (columns.length === 0) {
-        triggerSqls = []
-        extraAnnotations.push({
-          object: objectName,
-          text: 'Audit triggers require Tier 2 compilation for MySQL/SQLite (column enumeration needed for JSON serialization)',
-        })
-      } else {
-        triggerSqls = generatePerEventTriggers(objectName, destination, operations, columns, dialect)
-      }
-    } else {
-      throw new Error(`ns-audit: unsupported dialect '${dialect}'`)
-    }
-
-    const sql: SqlOutput[] = [auditTableSql, ...triggerSqls]
-
-    return {
-      sql,
-      docs: {
-        relationships: [
-          {
-            from: objectName,
-            to: destination,
-            label: 'audit events',
-            style: 'dashed',
-          },
-        ],
-        annotations: [
-          {
-            object: objectName,
-            text: `Audited (${operations.join(', ')})`,
-          },
-          ...extraAnnotations,
-        ],
-      },
-    }
-  },
-
   lintRules: [
     createRequireTableTagLintRule('audit', {
       description: 'Tables should have an @audit tag',

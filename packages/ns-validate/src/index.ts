@@ -23,6 +23,125 @@ function isTextType(type: string | undefined): boolean {
   )
 }
 
+function constraintName(table: string, column: string, suffix: string): string {
+  return `${table}_${column}_${suffix}`
+}
+
+function handleCheck(ctx: TagContext): TagOutput | undefined {
+  const { tag, objectName, columnName, dialect } = ctx
+  if (dialect === 'sqlite') return { docs: undefined }
+
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  const expression = Array.isArray(tag.args)
+    ? (tag.args[0] as string)
+    : ((tag.args as Record<string, unknown>).positional as string)
+
+  return {
+    sql: [
+      {
+        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'check'))} CHECK (${expression});`,
+      },
+    ],
+  }
+}
+
+function handleNotEmpty(ctx: TagContext): TagOutput {
+  const { objectName, columnName, dialect } = ctx
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  const docs = {
+    columns: [{ header: 'Validation', object: objectName, column: columnName, value: 'Not empty' }],
+  }
+
+  if (dialect === 'sqlite') return { docs }
+
+  const notEmptyExpr =
+    dialect === 'mssql' ? `LEN(LTRIM(RTRIM(${q(columnName!)}))) > 0` : `length(trim(${q(columnName!)})) > 0`
+  return {
+    sql: [
+      {
+        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'not_empty'))} CHECK (${notEmptyExpr});`,
+      },
+    ],
+    docs,
+  }
+}
+
+function handleRange(ctx: TagContext): TagOutput {
+  const { tag, objectName, columnName, dialect } = ctx
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  const args = tag.args as Record<string, unknown>
+  const min = args.min as number
+  const max = args.max as number
+
+  return {
+    sql: [
+      {
+        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'range'))} CHECK (${q(columnName!)} >= ${min} AND ${q(columnName!)} <= ${max});`,
+      },
+    ],
+    docs: {
+      columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}\u2013${max}` }],
+    },
+  }
+}
+
+function handleLength(ctx: TagContext): TagOutput {
+  const { tag, objectName, columnName, dialect } = ctx
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  const args = tag.args as Record<string, unknown>
+  const min = args.min as number | undefined
+  const max = args.max as number | undefined
+  const lenFn = dialect === 'mssql' ? 'LEN' : 'length'
+
+  let checkExpr: string
+  let label: string
+  if (min != null && max != null) {
+    checkExpr = `${lenFn}(${q(columnName!)}) >= ${min} AND ${lenFn}(${q(columnName!)}) <= ${max}`
+    label = `Length: ${min}\u2013${max}`
+  } else if (min != null) {
+    checkExpr = `${lenFn}(${q(columnName!)}) >= ${min}`
+    label = `Min length: ${min}`
+  } else {
+    checkExpr = `${lenFn}(${q(columnName!)}) <= ${max}`
+    label = `Max length: ${max}`
+  }
+  const docs = { columns: [{ header: 'Validation', object: objectName, column: columnName, value: label }] }
+
+  if (dialect === 'sqlite') return { docs }
+
+  return {
+    sql: [
+      {
+        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'length'))} CHECK (${checkExpr});`,
+      },
+    ],
+    docs,
+  }
+}
+
+function handlePattern(ctx: TagContext): TagOutput {
+  const { tag, objectName, columnName, dialect } = ctx
+  const q = (name: string) => quoteIdentifier(name, dialect)
+  const pattern = Array.isArray(tag.args)
+    ? (tag.args[0] as string)
+    : ((tag.args as Record<string, unknown>).positional as string)
+  const docs = {
+    columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Pattern: ${pattern}` }],
+  }
+
+  if (dialect === 'sqlite' || dialect === 'mssql') return { docs }
+
+  const regexOp = dialect === 'mysql' ? 'REGEXP' : '~'
+  return {
+    sql: [
+      {
+        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'pattern'))} CHECK (${q(columnName!)} ${regexOp} '${pattern}');`,
+      },
+    ],
+    docs,
+  }
+}
+
 const plugin = defineNamespace({
   name: 'validate',
   description: 'Column-level validation constraints plus documentation and schema linting',
@@ -86,6 +205,13 @@ const plugin = defineNamespace({
       args: [{ type: 'string' }],
     },
   },
+  handlers: {
+    check: handleCheck,
+    notEmpty: handleNotEmpty,
+    range: handleRange,
+    length: handleLength,
+    pattern: handlePattern,
+  },
   examples: [
     {
       title: 'Add validation constraints',
@@ -103,135 +229,6 @@ const plugin = defineNamespace({
 ALTER TABLE "products" ADD CONSTRAINT "products_price_range" CHECK ("price" >= 0 AND "price" <= 99999);`,
     },
   ],
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName, columnName, dialect } = ctx
-    const q = (name: string) => quoteIdentifier(name, dialect)
-
-    switch (tag.name) {
-      case 'check': {
-        const expression = Array.isArray(tag.args)
-          ? (tag.args[0] as string)
-          : ((tag.args as Record<string, unknown>).positional as string)
-
-        if (dialect === 'sqlite') {
-          return { docs: undefined }
-        }
-
-        return {
-          sql: [
-            {
-              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_check`)} CHECK (${expression});`,
-            },
-          ],
-        }
-      }
-
-      case 'notEmpty': {
-        const docs = {
-          columns: [{ header: 'Validation', object: objectName, column: columnName, value: 'Not empty' }],
-        }
-
-        if (dialect === 'sqlite') {
-          return { docs }
-        }
-
-        const notEmptyExpr =
-          dialect === 'mssql' ? `LEN(LTRIM(RTRIM(${q(columnName!)}))) > 0` : `length(trim(${q(columnName!)})) > 0`
-        return {
-          sql: [
-            {
-              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_not_empty`)} CHECK (${notEmptyExpr});`,
-            },
-          ],
-          docs,
-        }
-      }
-
-      case 'range': {
-        const args = tag.args as Record<string, unknown>
-        const min = args.min as number
-        const max = args.max as number
-        const docs = {
-          columns: [
-            { header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}\u2013${max}` },
-          ],
-        }
-
-        return {
-          sql: [
-            {
-              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_range`)} CHECK (${q(columnName!)} >= ${min} AND ${q(columnName!)} <= ${max});`,
-            },
-          ],
-          docs,
-        }
-      }
-
-      case 'length': {
-        const args = tag.args as Record<string, unknown>
-        const min = args.min as number | undefined
-        const max = args.max as number | undefined
-        const lenFn = dialect === 'mssql' ? 'LEN' : 'length'
-        let checkExpr: string
-        let label: string
-        if (min != null && max != null) {
-          checkExpr = `${lenFn}(${q(columnName!)}) >= ${min} AND ${lenFn}(${q(columnName!)}) <= ${max}`
-          label = `Length: ${min}\u2013${max}`
-        } else if (min != null) {
-          checkExpr = `${lenFn}(${q(columnName!)}) >= ${min}`
-          label = `Min length: ${min}`
-        } else {
-          checkExpr = `${lenFn}(${q(columnName!)}) <= ${max}`
-          label = `Max length: ${max}`
-        }
-        const docs = {
-          columns: [{ header: 'Validation', object: objectName, column: columnName, value: label }],
-        }
-
-        if (dialect === 'sqlite') {
-          return { docs }
-        }
-
-        return {
-          sql: [
-            {
-              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_length`)} CHECK (${checkExpr});`,
-            },
-          ],
-          docs,
-        }
-      }
-
-      case 'pattern': {
-        const pattern = Array.isArray(tag.args)
-          ? (tag.args[0] as string)
-          : ((tag.args as Record<string, unknown>).positional as string)
-        const docs = {
-          columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Pattern: ${pattern}` }],
-        }
-
-        if (dialect === 'sqlite' || dialect === 'mssql') {
-          // MSSQL has no regex operator in CHECK constraints; emit docs only
-          return { docs }
-        }
-
-        const regexOp = dialect === 'mysql' ? 'REGEXP' : '~'
-        return {
-          sql: [
-            {
-              sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(`${objectName}_${columnName}_pattern`)} CHECK (${q(columnName!)} ${regexOp} '${pattern}');`,
-            },
-          ],
-          docs,
-        }
-      }
-
-      default:
-        return undefined
-    }
-  },
-
   lintRules: [
     {
       name: 'validate.require-pk',
@@ -240,7 +237,6 @@ ALTER TABLE "products" ADD CONSTRAINT "products_price_range" CHECK ("price" >= 0
       check(ctx) {
         const diagnostics = [] as LintDiagnostic[]
 
-        // Use the inspected schema realm for PK detection (accurate, no regex)
         const realm = getSchemaRealm(ctx)
         if (!realm) return diagnostics
 
