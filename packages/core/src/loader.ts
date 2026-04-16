@@ -32,7 +32,10 @@ export interface ImportError {
 }
 
 const LOCAL_PLUGIN_EXTS = new Set(['.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'])
-const localPluginCache = new Map<string, Promise<LoadResult>>()
+// Keyed by loader identity → sqldocDir so that callers using different loaders
+// (e.g. a test stub vs. the real tsImport) don't share cached results.
+type Loader = (specifier: string, fromDir?: string) => Promise<any>
+const localPluginCache = new Map<Loader, Map<string, Promise<LoadResult>>>()
 
 /** Clear the local plugin cache. Used by tests and when .sqldoc/plugins/ changes. */
 export function clearLocalPluginCache() {
@@ -41,13 +44,16 @@ export function clearLocalPluginCache() {
 
 /**
  * Load all files in `.sqldoc/plugins/` as TagNamespace plugins.
- * Results are cached per sqldocDir for the process lifetime.
+ * Results are cached per (loader, sqldocDir) for the process lifetime.
  */
-export async function loadLocalPlugins(
-  sqldocDir: string,
-  loader?: (specifier: string, fromDir?: string) => Promise<any>,
-): Promise<LoadResult> {
-  const cached = localPluginCache.get(sqldocDir)
+export async function loadLocalPlugins(sqldocDir: string, loader?: Loader): Promise<LoadResult> {
+  const load = loader ?? defaultLoader
+  let byDir = localPluginCache.get(load)
+  if (!byDir) {
+    byDir = new Map()
+    localPluginCache.set(load, byDir)
+  }
+  const cached = byDir.get(sqldocDir)
   if (cached) return cached
 
   const task = (async (): Promise<LoadResult> => {
@@ -67,7 +73,6 @@ export async function loadLocalPlugins(
       .sort()
 
     log(`loadLocalPlugins: found ${files.length} file(s) in ${pluginsDir}`)
-    const load = loader ?? defaultLoader
 
     for (const file of files) {
       try {
@@ -97,11 +102,11 @@ export async function loadLocalPlugins(
 
     return { namespaces, errors }
   })().catch((err) => {
-    localPluginCache.delete(sqldocDir)
+    byDir.delete(sqldocDir)
     throw err
   })
 
-  localPluginCache.set(sqldocDir, task)
+  byDir.set(sqldocDir, task)
   return task
 }
 
