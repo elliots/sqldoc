@@ -59,7 +59,7 @@ describe('loadLocalPlugins()', () => {
     })
 
     const result = await loadLocalPlugins(sqldocDir, loader)
-    expect([...result.namespaces.keys()].sort()).toEqual(['a', 'b', 'c'])
+    expect([...result.namespaces.keys()]).toEqual(['a', 'b', 'c'])
     expect(result.errors).toEqual([])
   })
 

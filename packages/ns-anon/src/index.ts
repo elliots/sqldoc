@@ -1,16 +1,20 @@
-import { defineNamespace, type TagContext, type TagOutput } from '@sqldoc/core'
+import { defineNamespace, escapeString, quoteIdentifier, type TagContext, type TagOutput } from '@sqldoc/core'
 
 function handleAnonColumn(mode: 'Masked' | 'Fake', ctx: TagContext): TagOutput | undefined {
-  const { tag, objectName, columnName } = ctx
+  const { tag, objectName, columnName, dialect } = ctx
   if (!columnName) return undefined
 
   const fnExpr = Array.isArray(tag.args) ? tag.args[0] : undefined
   if (!fnExpr) return undefined
 
+  const quotedObject = quoteIdentifier(objectName, dialect)
+  const quotedColumn = quoteIdentifier(columnName, dialect)
+  const escapedLabel = escapeString(`MASKED WITH FUNCTION ${fnExpr}`, dialect)
+
   return {
     sql: [
       {
-        sql: `SECURITY LABEL FOR anon ON COLUMN "${objectName}"."${columnName}" IS 'MASKED WITH FUNCTION ${fnExpr}';`,
+        sql: `SECURITY LABEL FOR anon ON COLUMN ${quotedObject}.${quotedColumn} IS ${escapedLabel};`,
       },
     ],
     docs: {

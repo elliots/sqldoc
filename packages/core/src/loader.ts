@@ -96,7 +96,10 @@ export async function loadLocalPlugins(
     }
 
     return { namespaces, errors }
-  })()
+  })().catch((err) => {
+    localPluginCache.delete(sqldocDir)
+    throw err
+  })
 
   localPluginCache.set(sqldocDir, task)
   return task

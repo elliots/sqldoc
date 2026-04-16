@@ -267,7 +267,7 @@ function compileWithRealm(
     if (schema.tables) {
       for (const table of schema.tables) {
         if (shouldProcessRealmObject('table', table.name, schema.name, actx.fileObjectKeys, defaultSchema)) {
-          processRealmObject(table, 'table', qualify(table.name), actx)
+          processRealmObject(table, 'table', table.name, qualify(table.name), actx)
         }
       }
     }
@@ -276,7 +276,7 @@ function compileWithRealm(
     if (schema.views) {
       for (const view of schema.views) {
         if (shouldProcessRealmObject('view', view.name, schema.name, actx.fileObjectKeys, defaultSchema)) {
-          processRealmObject(view, 'view', qualify(view.name), actx)
+          processRealmObject(view, 'view', view.name, qualify(view.name), actx)
         }
       }
     }
@@ -307,7 +307,13 @@ interface RealmObjectContext {
 }
 
 /** Process a single inspected object (table or view) and its columns for tag invocation */
-function processRealmObject(obj: Table | View, target: SqlTarget, objectName: string, actx: RealmObjectContext): void {
+function processRealmObject(
+  obj: Table | View,
+  target: SqlTarget,
+  objectName: string,
+  qualifiedObjectName: string,
+  actx: RealmObjectContext,
+): void {
   const { realm } = actx
   // Extract tags from object-level attrs
   const objectTags = findTags(obj.attrs)
@@ -351,6 +357,7 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
       rawArgs: atag.args,
       target,
       objectName,
+      qualifiedObjectName,
       namespaceTags,
       siblingTags,
       schemaTable: target === 'table' ? (obj as Table) : undefined,
@@ -391,6 +398,7 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
           rawArgs: atag.args,
           target: 'column',
           objectName,
+          qualifiedObjectName,
           columnName: col.name,
           columnType,
           namespaceTags,
@@ -410,6 +418,7 @@ interface DispatchTagParams {
   rawArgs: string
   target: SqlTarget
   objectName: string
+  qualifiedObjectName?: string
   columnName?: string
   columnType?: string
   namespaceTags: TagContext['namespaceTags']
@@ -440,6 +449,7 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
     rawArgs,
     target,
     objectName,
+    qualifiedObjectName,
     columnName,
     columnType,
     namespaceTags,
@@ -484,6 +494,7 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
     dialect: config.dialect,
     target,
     objectName,
+    qualifiedObjectName,
     columnName,
     columnType,
     tag: { name: tagName, args },

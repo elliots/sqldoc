@@ -34,13 +34,10 @@ function handleComment(ctx: TagContext): SqlOutput[] | undefined {
         return [{ sql: `ALTER TABLE ${q(objectName)} COMMENT = ${esc(description)};` }]
       }
       if (target === 'column') {
-        if (!columnName) return undefined
-        const colType = ctx.columnType ?? 'TEXT'
-        return [
-          {
-            sql: `ALTER TABLE ${q(objectName)} MODIFY COLUMN ${q(columnName)} ${colType} COMMENT ${esc(description)};`,
-          },
-        ]
+        // MySQL requires the full column spec in MODIFY COLUMN.
+        // Without access to complete metadata, we cannot emit safe SQL.
+        // Return undefined to skip SQL emission (docs-only mode).
+        return undefined
       }
       return undefined
     case 'sqlite':

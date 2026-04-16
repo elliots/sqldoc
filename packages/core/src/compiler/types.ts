@@ -80,6 +80,8 @@ export interface TagContext {
   target: SqlTarget
   /** Name of the SQL object (table name, function name, etc.) */
   objectName: string
+  /** Schema-qualified object name (e.g., 'public.users' or 'auth.users'). Available in Tier 2 (schema-aware) mode. */
+  qualifiedObjectName?: string
   /** Column name when target is 'column' */
   columnName?: string
   /** Column data type when target is 'column' */

@@ -84,7 +84,8 @@ function generateExampleSection(plugin: PluginMeta): string {
   const sections: string[] = [plugin.examples.length > 1 ? '## Examples' : '## Example', '']
   for (const [index, example] of plugin.examples.entries()) {
     if (plugin.examples.length > 1 || example.title) {
-      sections.push(`### ${example.title}`, '')
+      const title = example.title ?? `Example ${index + 1}`
+      sections.push(`### ${title}`, '')
     }
     if (example.description) {
       sections.push(example.description, '')

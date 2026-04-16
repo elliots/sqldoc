@@ -51,13 +51,10 @@ function emitDeprecated(kind: '$self' | 'replace' | 'remove', ctx: TagContext): 
         }
       }
       if (target === 'column') {
-        const colType = ctx.columnType ?? 'TEXT'
-        return {
-          sql: [
-            { sql: `ALTER TABLE ${q(objectName)} MODIFY COLUMN ${q(columnName!)} ${colType} COMMENT ${esc(message)};` },
-          ],
-          docs,
-        }
+        // MySQL requires the full column spec in MODIFY COLUMN.
+        // Without access to complete metadata, we cannot emit safe SQL.
+        // Return docs-only.
+        return { sql: [], docs }
       }
       return { sql: [], docs }
     case 'sqlite':

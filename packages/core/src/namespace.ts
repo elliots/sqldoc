@@ -99,7 +99,7 @@ export function createRequireTableTagLintRule(
     check(ctx) {
       const diagnostics = []
       for (const output of ctx.outputs) {
-        const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
+        const tableObjects = output.fileTags.filter((obj) => obj.target === 'table')
 
         for (const obj of tableObjects) {
           if (options.supportedEngines && !options.supportedEngines.includes(ctx.config.engine)) continue

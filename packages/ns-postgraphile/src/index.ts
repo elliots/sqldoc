@@ -134,7 +134,8 @@ CREATE TABLE users (
     const lines = namespaceTags.map((entry) => tagLine(entry)).filter((line) => line.length > 0)
     if (lines.length === 0) return undefined
 
-    const commentBody = lines.join('\\n')
+    // Escape for E-strings: backslashes become double backslashes, single quotes become backslash-escaped
+    const commentBody = lines.join('\\n').replace(/\\/g, '\\\\').replace(/'/g, "\\'")
     const targetStr = commentTarget(target, objectName, columnName)
     const sql: SqlOutput[] = [{ sql: `COMMENT ON ${targetStr} IS E'${commentBody}';` }]
     const label = buildGraphqlLabel(namespaceTags)

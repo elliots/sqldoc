@@ -14,6 +14,7 @@ const plugin = defineNamespace({
     {
       title: 'Suppress a lint rule',
       description: 'Use this when an exception is intentional and documented.',
+      dialect: 'postgres',
       input: `-- @lint.ignore('audit.require-audit', 'Temporary staging table')
 CREATE TABLE temp_imports (
   id SERIAL PRIMARY KEY,

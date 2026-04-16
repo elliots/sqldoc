@@ -1,5 +1,6 @@
 import {
   defineNamespace,
+  escapeString,
   getPrimaryKeyColumns,
   getSchemaRealm,
   type LintDiagnostic,
@@ -132,10 +133,11 @@ function handlePattern(ctx: TagContext): TagOutput {
   if (dialect === 'sqlite' || dialect === 'mssql') return { docs }
 
   const regexOp = dialect === 'mysql' ? 'REGEXP' : '~'
+  const escapedPattern = escapeString(pattern, dialect)
   return {
     sql: [
       {
-        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'pattern'))} CHECK (${q(columnName!)} ${regexOp} '${pattern}');`,
+        sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'pattern'))} CHECK (${q(columnName!)} ${regexOp} ${escapedPattern});`,
       },
     ],
     docs,
