@@ -35,7 +35,6 @@ import {
   parametersQuery,
   parseType,
   routinesQuery,
-  schemasQuery,
   schemasQueryArgs,
   TypeJSON,
   TypeLongText,
@@ -328,14 +327,36 @@ export class MysqlInspector implements Inspector {
       }
     }
 
-    realm.defaultSchema = await this.currentSchema()
+    // MySQL has no "schema" concept separate from the database. Each connection
+    // is bound to one database, and sqldoc inspects exactly that one. Blank out
+    // every reference to the current DB name (Schema.name, Table.schema,
+    // View.schema, etc.) so realms produced by different shadow databases
+    // compare cleanly — the DB name is a DbSource implementation detail.
+    const currentDb = await this.currentSchema()
+    const strip = (s: string | undefined) => (s === currentDb ? '' : s)
+    for (const s of realm.schemas) {
+      if (s.name === currentDb) s.name = ''
+      for (const t of s.tables ?? []) {
+        t.schema = strip(t.schema)
+        for (const fk of t.foreignKeys ?? []) fk.refSchema = strip(fk.refSchema)
+      }
+      for (const v of s.views ?? []) v.schema = strip(v.schema)
+      for (const f of s.funcs ?? []) f.schema = strip(f.schema)
+      for (const p of s.procs ?? []) p.schema = strip(p.schema)
+      for (const tr of s.triggers ?? []) tr.schema = strip(tr.schema)
+    }
+    realm.defaultSchema = ''
     return realm
   }
 
   // -- Query schemas --
 
   protected async querySchemas(opts?: InspectRealmOption): Promise<Schema[]> {
-    let query = schemasQuery
+    // Default to the current database only. MySQL has no "schema" concept
+    // distinct from the database, and the server may have other unrelated
+    // databases (other projects, leftover shadow DBs) that aren't ours to
+    // inspect. If the caller wants a specific one, they can pass opts.schemas.
+    let query = schemasQueryArgs.replace('%s', '= SCHEMA()')
     const args: unknown[] = []
 
     if (opts?.schemas && opts.schemas.length > 0) {

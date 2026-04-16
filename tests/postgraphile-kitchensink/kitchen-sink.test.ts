@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { createPostgresDockerAdapter, createRunner, extractExtensions, registerBuiltin } from '@sqldoc/db'
+import { createAdapter, createRunner, extractExtensions, registerBuiltin } from '@sqldoc/db'
 import neonTemporaryPlugin from '@sqldoc/db-neon-temporary'
 import pglitePlugin from '@sqldoc/db-pglite'
 
@@ -71,7 +71,7 @@ versions.forEach((version) => {
     const liveIt = devUrl === 'neon-temporary' ? it.skip : it
     liveIt(`${testTitle}: live DB diff against original SQL produces zero changes`, async () => {
       const liveDb = devUrl
-        ? await createPostgresDockerAdapter(devUrl)
+        ? await createAdapter({ engine: 'postgres', devUrl })
         : await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions })
       try {
         await liveDb.exec(kitchenSinkSQL)

@@ -3,12 +3,21 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { createSqliteAdapter } from '@sqldoc/db'
+import type { DbSource } from '../../adapter.ts'
 import { createInspector } from '../../inspector.ts'
+
+function sqliteSource(): DbSource {
+  return {
+    async open() {
+      return createSqliteAdapter(':memory:')
+    },
+    async close() {},
+  }
+}
 
 describe('SQLite Inspector', () => {
   it('inspects a basic table with columns and PK', async () => {
-    const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, engine: 'sqlite' })
+    const inspector = await createInspector({ source: sqliteSource(), engine: 'sqlite' })
 
     try {
       const sql = `
@@ -56,8 +65,7 @@ describe('SQLite Inspector', () => {
       'utf-8',
     )
 
-    const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, engine: 'sqlite' })
+    const inspector = await createInspector({ source: sqliteSource(), engine: 'sqlite' })
 
     try {
       // Execute all SQL files (locations first since reviews references it)
@@ -94,8 +102,7 @@ describe('SQLite Inspector', () => {
   })
 
   it('inspects SQLite type affinity correctly', async () => {
-    const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, engine: 'sqlite' })
+    const inspector = await createInspector({ source: sqliteSource(), engine: 'sqlite' })
 
     try {
       const sql = `
@@ -132,8 +139,7 @@ describe('SQLite Inspector', () => {
   })
 
   it('inspects CHECK constraints', async () => {
-    const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, engine: 'sqlite' })
+    const inspector = await createInspector({ source: sqliteSource(), engine: 'sqlite' })
 
     try {
       const sql = `
@@ -163,8 +169,7 @@ describe('SQLite Inspector', () => {
   })
 
   it('diffs two SQLite schemas', async () => {
-    const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, engine: 'sqlite' })
+    const inspector = await createInspector({ source: sqliteSource(), engine: 'sqlite' })
 
     try {
       const fromSql = `

@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { pgDump } from '@electric-sql/pglite-tools/pg_dump'
-import { createPostgresDockerAdapter, createRunner, registerBuiltin } from '@sqldoc/db'
+import { createAdapter, createRunner, registerBuiltin } from '@sqldoc/db'
 import neonTemporaryPlugin from '@sqldoc/db-neon-temporary'
 import pglitePlugin from '@sqldoc/db-pglite'
 
@@ -67,7 +67,7 @@ versions.forEach((version) => {
         devUrl === 'neon-temporary'
           ? await neonTemporaryPlugin.createAdapter('neon-temporary', { dialect: 'postgres', extensions: [] })
           : devUrl
-            ? await createPostgresDockerAdapter(devUrl)
+            ? await createAdapter({ engine: 'postgres', devUrl })
             : await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
       try {
         await liveDb.exec(pagilaSQL) // execute original SQL directly

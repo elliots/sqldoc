@@ -1,7 +1,7 @@
 // Derived from Atlas by Atlas Authors, licensed under Apache 2.0
 
 // Database adapter interface
-export type { DatabaseAdapter, ExecResult, QueryResult } from './adapter.ts'
+export type { DatabaseAdapter, DbSource, ExecResult, QueryResult } from './adapter.ts'
 export type { DatabaseEngine, Dialect } from './dialects.ts'
 export type { DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
 // Main API

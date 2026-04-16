@@ -1,44 +1,68 @@
+import type { DbSource } from '@sqldoc/inspector'
 import { after, describe, expect, it } from '@sqldoc/test-utils'
-import { createMysqlDockerAdapter } from '../db/mysql-docker.ts'
-import type { DatabaseAdapter } from '../db/types.ts'
+import { createContainerDbSource } from '../db/dbsource-container.ts'
 
-describe('MySQL Docker adapter', () => {
-  const adapters: DatabaseAdapter[] = []
+describe('MySQL Docker container DbSource', () => {
+  const sources: DbSource[] = []
 
   after(async () => {
-    for (const a of adapters) {
-      await a.close()
+    for (const s of sources) {
+      await s.close()
     }
   })
 
-  it('creates adapter from docker://mysql:8 image', async () => {
-    const adapter = await createMysqlDockerAdapter('docker://mysql:8')
-    adapters.push(adapter)
+  it('opens a shadow db from docker://mysql:8 image', async () => {
+    const source = await createContainerDbSource({
+      devUrl: 'docker://mysql:8',
+      context: { dialect: 'mysql', extensions: [] },
+    })
+    sources.push(source)
 
-    const result = await adapter.query('SELECT 1 as num')
-    expect(result.columns).toHaveLength(1)
-    expect(result.rows[0][0]).toBe(1)
+    const db = await source.open()
+    try {
+      const result = await db.query('SELECT 1 as num')
+      expect(result.columns).toHaveLength(1)
+      expect(result.rows[0][0]).toBe(1)
+    } finally {
+      await db.close()
+    }
   })
 
-  it('can execute DDL and query tables', async () => {
-    const adapter = await createMysqlDockerAdapter('docker://mysql:8')
-    adapters.push(adapter)
+  it('can execute DDL and query tables in a shadow db', async () => {
+    const source = await createContainerDbSource({
+      devUrl: 'docker://mysql:8',
+      context: { dialect: 'mysql', extensions: [] },
+    })
+    sources.push(source)
 
-    await adapter.exec('CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)')
-    await adapter.exec("INSERT INTO test_table (name) VALUES ('hello')")
+    const db = await source.open()
+    try {
+      await db.exec('CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)')
+      await db.exec("INSERT INTO test_table (name) VALUES ('hello')")
 
-    const result = await adapter.query('SELECT * FROM test_table')
-    expect(result.columns).toHaveLength(2)
-    expect(result.rows).toHaveLength(1)
-    expect(result.rows[0][1]).toBe('hello')
+      const result = await db.query('SELECT * FROM test_table')
+      expect(result.columns).toHaveLength(2)
+      expect(result.rows).toHaveLength(1)
+      expect(result.rows[0][1]).toBe('hello')
+    } finally {
+      await db.close()
+    }
   })
 
   it('exec reports rows affected for INSERT', async () => {
-    const adapter = await createMysqlDockerAdapter('docker://mysql:8')
-    adapters.push(adapter)
+    const source = await createContainerDbSource({
+      devUrl: 'docker://mysql:8',
+      context: { dialect: 'mysql', extensions: [] },
+    })
+    sources.push(source)
 
-    await adapter.exec('CREATE TABLE affected_test (id INT AUTO_INCREMENT PRIMARY KEY, val TEXT)')
-    const result = await adapter.exec("INSERT INTO affected_test (val) VALUES ('a'), ('b'), ('c')")
-    expect(result.rowsAffected).toBe(3)
+    const db = await source.open()
+    try {
+      await db.exec('CREATE TABLE affected_test (id INT AUTO_INCREMENT PRIMARY KEY, val TEXT)')
+      const result = await db.exec("INSERT INTO affected_test (val) VALUES ('a'), ('b'), ('c')")
+      expect(result.rowsAffected).toBe(3)
+    } finally {
+      await db.close()
+    }
   })
 })

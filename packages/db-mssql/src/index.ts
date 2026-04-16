@@ -83,7 +83,11 @@ const plugin: DatabaseAdapterPlugin = {
     // @ts-expect-error `mssql` is an optional runtime dependency loaded dynamically by the adapter package.
     const mssql = await import('mssql')
     const config = parseConnectionUrl(connectionString)
-    const pool = await mssql.default.connect(config as any)
+    // Use an independent pool per adapter — mssql.default.connect() uses a
+    // global singleton that silently shares state between concurrent callers
+    // with different DB configs (breaks parallel shadow DB access).
+    const pool = new mssql.default.ConnectionPool(config as any)
+    await pool.connect()
     const log = process.env.DEBUG ? (msg: string) => console.error(`[mssql] ${msg}`) : () => {}
 
     let currentSchema: string

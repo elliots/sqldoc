@@ -1,53 +1,81 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import type { DbSource } from '@sqldoc/inspector'
 import { after, describe, expect, it } from '@sqldoc/test-utils'
-import { createPostgresDockerAdapter } from '../db/postgres-docker.ts'
-import type { DatabaseAdapter } from '../db/types.ts'
+import { createContainerDbSource } from '../db/dbsource-container.ts'
 
-describe('Docker adapter', () => {
-  const adapters: DatabaseAdapter[] = []
+describe('Docker container DbSource', () => {
+  const sources: DbSource[] = []
 
   after(async () => {
-    for (const a of adapters) {
-      await a.close()
+    for (const s of sources) {
+      await s.close()
     }
   })
 
-  it('creates adapter from docker:// image', async () => {
-    const adapter = await createPostgresDockerAdapter('docker://postgres:16')
-    adapters.push(adapter)
+  it('opens a shadow db from docker:// image', async () => {
+    const source = await createContainerDbSource({
+      devUrl: 'docker://postgres:16',
+      context: { dialect: 'postgres', extensions: [] },
+    })
+    sources.push(source)
 
-    const result = await adapter.query('SELECT 1 as num')
-    expect(result.columns).toHaveLength(1)
-    expect(result.rows[0][0]).toBe(1)
+    const db = await source.open()
+    try {
+      const result = await db.query('SELECT 1 as num')
+      expect(result.columns).toHaveLength(1)
+      expect(result.rows[0][0]).toBe(1)
+    } finally {
+      await db.close()
+    }
   })
 
-  it('can execute DDL and query tables', async () => {
-    const adapter = await createPostgresDockerAdapter('docker://postgres:16')
-    adapters.push(adapter)
+  it('each open() returns an isolated empty db', async () => {
+    const source = await createContainerDbSource({
+      devUrl: 'docker://postgres:16',
+      context: { dialect: 'postgres', extensions: [] },
+    })
+    sources.push(source)
 
-    await adapter.exec('CREATE TABLE test_table (id serial PRIMARY KEY, name text NOT NULL)')
-    await adapter.exec("INSERT INTO test_table (name) VALUES ('hello')")
+    const db1 = await source.open()
+    await db1.exec('CREATE TABLE test_table (id serial PRIMARY KEY, name text NOT NULL)')
+    await db1.exec("INSERT INTO test_table (name) VALUES ('hello')")
 
-    const result = await adapter.query('SELECT * FROM test_table')
-    expect(result.columns).toHaveLength(2)
+    const db2 = await source.open()
+    try {
+      const result = await db2.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+      // db2 should be empty — test_table only exists in db1
+      expect(result.rows).toHaveLength(0)
+    } finally {
+      await db2.close()
+    }
+
+    const result = await db1.query('SELECT * FROM test_table')
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0][1]).toBe('hello')
+    await db1.close()
   })
 
-  it('creates adapter from dockerfile://', async () => {
-    // Create a minimal Dockerfile
+  it('creates source from dockerfile://', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sqldoc-docker-test-'))
     const dockerfile = path.join(tmpDir, 'Dockerfile')
     fs.writeFileSync(dockerfile, 'FROM postgres:16\n')
 
     try {
-      const adapter = await createPostgresDockerAdapter(`dockerfile://${dockerfile}`)
-      adapters.push(adapter)
+      const source = await createContainerDbSource({
+        devUrl: `dockerfile://${dockerfile}`,
+        context: { dialect: 'postgres', extensions: [] },
+      })
+      sources.push(source)
 
-      const result = await adapter.query('SELECT current_database()')
-      expect(result.rows[0][0]).toBe('sqldoc_dev')
+      const db = await source.open()
+      try {
+        const result = await db.query('SELECT 1 as num')
+        expect(result.rows[0][0]).toBe(1)
+      } finally {
+        await db.close()
+      }
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true })
     }

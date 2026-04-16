@@ -14,7 +14,26 @@ import { describe, it } from 'node:test'
 import type { ForeignKey, Index, Realm } from '@sqldoc/db'
 import { createSqliteAdapter } from '@sqldoc/db'
 import pglitePlugin from '@sqldoc/db-pglite'
+import type { DbSource } from '../adapter.ts'
 import { createInspector } from '../inspector.ts'
+
+function pgliteSource(): DbSource {
+  return {
+    async open() {
+      return pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
+    },
+    async close() {},
+  }
+}
+
+function sqliteSource(): DbSource {
+  return {
+    async open() {
+      return createSqliteAdapter(':memory:')
+    },
+    async close() {},
+  }
+}
 
 // -- Snapshot Loading --
 
@@ -454,8 +473,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     const schemaPath = path.join(testsDir, 'pet-store-postgres/schema.sql')
     const sql = fs.readFileSync(schemaPath, 'utf-8')
 
-    const db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const inspector = await createInspector({ db, engine: 'postgres' })
+    const inspector = await createInspector({ source: pgliteSource(), engine: 'postgres' })
 
     try {
       const result = await inspector.inspect([sql])
@@ -493,8 +511,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
       'utf-8',
     )
 
-    const db = await createSqliteAdapter(':memory:')
-    const inspector = await createInspector({ db, engine: 'sqlite' })
+    const inspector = await createInspector({ source: sqliteSource(), engine: 'sqlite' })
 
     try {
       const result = await inspector.inspect([externalLocationsSql, schemaSql, includeReviewsSql])
@@ -534,8 +551,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     // pagila uses OWNER TO postgres -- ensure the role exists
     const preamble = `DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN CREATE ROLE postgres SUPERUSER; END IF; END $$;\n`
 
-    const db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const inspector = await createInspector({ db, engine: 'postgres' })
+    const inspector = await createInspector({ source: pgliteSource(), engine: 'postgres' })
 
     try {
       const result = await inspector.inspect([preamble + sql])
@@ -572,8 +588,7 @@ describe('Snapshot Comparison: TypeScript Inspector vs WASI Binary', () => {
     }
     const sql = fs.readFileSync(schemaPath, 'utf-8')
 
-    const db = await pglitePlugin.createAdapter('pglite', { dialect: 'postgres', extensions: [] })
-    const inspector = await createInspector({ db, engine: 'postgres' })
+    const inspector = await createInspector({ source: pgliteSource(), engine: 'postgres' })
 
     try {
       const result = await inspector.inspect([sql])

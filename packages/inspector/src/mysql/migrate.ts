@@ -328,6 +328,11 @@ export class MysqlPlan implements PlanDriver {
         case 'auto_increment':
           b.P('AUTO_INCREMENT')
           break
+        case 'comment': {
+          const c = a as { kind: 'comment'; text: string }
+          b.P('COMMENT', quote(c.text))
+          break
+        }
       }
     }
   }

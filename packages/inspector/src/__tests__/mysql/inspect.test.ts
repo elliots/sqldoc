@@ -17,22 +17,22 @@ if (!optIn) {
 } else {
   // Dynamic imports only when actually running MySQL tests
   const { createInspector } = await import('../../inspector.ts')
-  const { createMysqlDockerAdapter } = await import('@sqldoc/db')
-  type DatabaseAdapter = import('@sqldoc/db').DatabaseAdapter
+  const { createContainerDbSource } = await import('@sqldoc/db')
   type InspectorRunner = import('../../inspector.ts').InspectorRunner
 
   describe('MySQL Inspector', () => {
-    let db: DatabaseAdapter
     let inspector: InspectorRunner
 
     before(async () => {
-      db = await createMysqlDockerAdapter('docker://mysql:8')
-      inspector = await createInspector({ db, engine: 'mysql' })
+      const source = await createContainerDbSource({
+        devUrl: 'docker://mysql:8',
+        context: { dialect: 'mysql', extensions: [] },
+      })
+      inspector = await createInspector({ source, engine: 'mysql' })
     })
 
     after(async () => {
       if (inspector) await inspector.close()
-      if (db) await db.close()
     })
 
     it('inspects a basic table with columns, PK, and AUTO_INCREMENT', async () => {

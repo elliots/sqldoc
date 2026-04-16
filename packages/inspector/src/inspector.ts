@@ -2,25 +2,31 @@
 // Source: original Go runtime entrypoint
 
 import { type DatabaseEngine, type Dialect, defaultSchemaForDialect, quoteIdentifier } from '@sqldoc/core'
-import type { DatabaseAdapter } from './adapter.ts'
+import type { DatabaseAdapter, DbSource } from './adapter.ts'
 import {
   filterSystemSchemas,
   getInspectorRuntime,
   resolveInspectorEngine,
   stripDefaultSchemaQualifier,
 } from './dialects.ts'
-import { createRestoreFunc, snapshot } from './internal/dev.ts'
+import { executeFiles } from './internal/dev.ts'
 import { realmDiff } from './internal/diff.ts'
 import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
 import { scanStmts } from './migrate/lex.ts'
 import { extractTagsFromStmts } from './migrate/tag.ts'
-import type { ExecQuerier, ExecResult, Inspector, QueryResult } from './schema/inspect.ts'
+import type { ExecQuerier, ExecResult, QueryResult } from './schema/inspect.ts'
 import type { Change } from './schema/migrate.ts'
 import type { Column, Realm, Rename, RenameCandidate, Schema, Table } from './schema/schema.ts'
 // -- Types --
 
 export interface InspectorOptions {
-  db: DatabaseAdapter
+  /**
+   * Source of fresh empty databases. Every inspect() or diff() operation that
+   * needs a working DB calls source.open() for a new one and disposes it when
+   * done. Drift-style diffs pass a live DatabaseAdapter as a DiffSource — the
+   * live side is inspected in place, no shadow involved.
+   */
+  source: DbSource
   engine: DatabaseEngine
 }
 
@@ -327,129 +333,64 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
  * With direct async TypeScript calls to DatabaseAdapter.
  */
 export async function createInspector(options: InspectorOptions): Promise<InspectorRunner> {
-  const { db } = options
+  const { source } = options
   const engine = resolveInspectorEngine(options)
   const runtime = getInspectorRuntime(engine)
   const { dialect } = runtime
-  const eq = new ExecQuerierAdapter(db)
-  const { inspector, differ, planner } = runtime.createComponents(db, eq)
+  // Differ and planner are pure dialect logic — they don't touch a db. They're
+  // built once at runner creation; inspectors are built per-acquired-db below.
+  const { differ, planner } = runtime.createComponents(noDbSentinel(), noExecSentinel())
 
-  function createInspectorForDb(sourceDb: DatabaseAdapter): Inspector {
-    const sourceEq = new ExecQuerierAdapter(sourceDb)
-    return runtime.createComponents(sourceDb, sourceEq).inspector
-  }
-
-  // Diff two realms and apply changes. Used by restore and other internal paths.
-  // transformChanges allows dialect-specific change annotation (e.g. Postgres withCascade).
-  async function diffAndApply(
-    current: Realm,
-    desired: Realm,
-    transformChanges?: (changes: Change[]) => Change[],
-  ): Promise<void> {
-    let changes = realmDiff(differ, current, desired, { matchDefaultSchemas: false })
-    if (changes.length === 0) return
-    changes = detachCycles(changes)
-    changes = sortChanges(changes)
-    if (transformChanges) changes = transformChanges(changes)
-    for (const change of changes) {
-      const stmts = changeToSQL(planner, change)
-      for (const stmt of stmts) {
-        await eq.exec(stmt)
-      }
+  async function inspectSide(side: DiffSource, schema: string | undefined): Promise<Realm> {
+    if (!Array.isArray(side)) {
+      const liveEq = new ExecQuerierAdapter(side)
+      const liveInspector = runtime.createComponents(side, liveEq).inspector
+      const realm = await liveInspector.inspectRealm(schema ? { schemas: [schema] } : undefined)
+      return filterSystemSchemas(realm, engine)
+    }
+    const db = await source.open()
+    try {
+      const eq = new ExecQuerierAdapter(db)
+      const inspector = runtime.createComponents(db, eq).inspector
+      if (side.length > 0) await executeFiles(eq, side, engine)
+      const realm = await inspector.inspectRealm(schema ? { schemas: [schema] } : undefined)
+      return filterSystemSchemas(realm, engine)
+    } finally {
+      await db.close()
     }
   }
 
-  // Capture initial dev DB state for the snapshot/restore pattern used by the original runtime.
-  const initialRealm = await inspector.inspectRealm()
-  // Postgres-family runtimes add IF EXISTS + CASCADE to drops, matching the original runtime.
-  const restoreTransform = runtime.restoreTransform
-  const restore = createRestoreFunc(inspector, initialRealm, diffAndApply, restoreTransform)
-
   return {
     async inspect(files, opts) {
-      if (files.length === 0) {
-        // No files -- inspect existing database state
-        let realm = await inspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
-        realm = filterSystemSchemas(realm, engine)
-        return { schema: realm }
-      }
-
-      // Execute SQL files against dev DB and inspect (with restore after)
-      const realm = await snapshot(eq, inspector, files, {
-        schema: opts?.schema,
-        engine,
-        restore,
-      })
-      const filtered = filterSystemSchemas(realm, engine)
-
-      // Extract and apply tags from original SQL comments
-      applyTags(filtered, files, opts?.fileNames)
-
-      return { schema: filtered }
+      const realm = await inspectSide(files, opts?.schema)
+      if (files.length > 0) applyTags(realm, files, opts?.fileNames)
+      return { schema: realm }
     },
 
     async diff(from, to, opts) {
-      let fromRealm: Realm
-      let toRealm: Realm
       const resolvedFromSchema = opts?.fromSchema ?? opts?.schema
       const resolvedToSchema = opts?.toSchema ?? opts?.schema
       const resolvedDefaultSchema = opts?.defaultSchema ?? opts?.schema
 
-      // Inspect "from" side
-      if (Array.isArray(from)) {
-        if (from.length === 0) {
-          // Empty from: inspect the dev DB's existing state (e.g. public schema exists)
-          fromRealm = await inspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
-          fromRealm = filterSystemSchemas(fromRealm, engine)
-        } else {
-          fromRealm = await snapshot(eq, inspector, from, {
-            schema: resolvedFromSchema,
-            engine,
-            restore,
-          })
-          fromRealm = filterSystemSchemas(fromRealm, engine)
-        }
-      } else {
-        // Live database connection
-        const fromInspector = createInspectorForDb(from)
-        fromRealm = await fromInspector.inspectRealm(resolvedFromSchema ? { schemas: [resolvedFromSchema] } : undefined)
-        fromRealm = filterSystemSchemas(fromRealm, engine)
-      }
-
-      // Inspect "to" side
-      if (Array.isArray(to)) {
-        if (to.length === 0) {
-          toRealm = await inspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
-          toRealm = filterSystemSchemas(toRealm, engine)
-        } else {
-          toRealm = await snapshot(eq, inspector, to, {
-            schema: resolvedToSchema,
-            engine,
-            restore,
-          })
-          toRealm = filterSystemSchemas(toRealm, engine)
-        }
-      } else {
-        const toInspector = createInspectorForDb(to)
-        toRealm = await toInspector.inspectRealm(resolvedToSchema ? { schemas: [resolvedToSchema] } : undefined)
-        toRealm = filterSystemSchemas(toRealm, engine)
-      }
+      // Parallel: each side opens its own DB from the source (or reads a live
+      // adapter). Independent sandboxes means no synchronization needed.
+      let [fromRealm, toRealm] = await Promise.all([
+        inspectSide(from, resolvedFromSchema),
+        inspectSide(to, resolvedToSchema),
+      ])
 
       if (resolvedDefaultSchema) {
         fromRealm = { ...fromRealm, defaultSchema: resolvedDefaultSchema }
         toRealm = { ...toRealm, defaultSchema: resolvedDefaultSchema }
       }
 
-      // Apply known renames
       let renameStmts: string[] = []
       if (opts?.renames && opts.renames.length > 0) {
         renameStmts = applyKnownRenames(fromRealm, opts.renames, dialect)
       }
 
-      // Detect rename candidates before diffing
       const renameCandidates = detectRenameCandidates(fromRealm, toRealm, opts?.renames)
 
-      // Compute diff
       const diffOpts = opts ? { matchDefaultSchemas: opts.matchDefaultSchemas } : undefined
       let changes = realmDiff(differ, fromRealm, toRealm, diffOpts)
 
@@ -457,18 +398,15 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         return { renameCandidates, changes }
       }
 
-      // Sort changes by dependency (schemas first, then topological sort)
       changes = detachCycles(changes)
       changes = sortChanges(changes)
 
-      // Generate SQL statements from changes
       const diffStmts: string[] = []
       for (const change of changes) {
         const sql = changeToSQL(planner, change)
         diffStmts.push(...sql)
       }
 
-      // Strip default schema qualifier from output SQL
       let statements = [...renameStmts, ...diffStmts]
       const defSchema = opts?.stripDefaultSchema
         ? (resolvedDefaultSchema ?? fromRealm.defaultSchema)
@@ -481,7 +419,38 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
     },
 
     async close() {
-      await db.close()
+      await source.close()
+    },
+  }
+}
+
+// -- Sentinels --
+//
+// runtime.createComponents(db, eq) produces { inspector, differ, planner }.
+// The inspector needs db/eq; the differ and planner are pure and don't touch
+// them. When the runner only wants differ+planner (built once, reused), we
+// pass throwaway stand-ins. Inspectors are built again per-acquisition with
+// the real adapter.
+function noDbSentinel(): DatabaseAdapter {
+  return {
+    currentSchema: '',
+    async query() {
+      return { columns: [], rows: [] }
+    },
+    async exec() {
+      return { rowsAffected: 0 }
+    },
+    async close() {},
+  }
+}
+function noExecSentinel(): ExecQuerier {
+  return {
+    currentSchema: '',
+    async query() {
+      return { rows: [] }
+    },
+    async exec() {
+      return { rowsAffected: 0 }
     },
   }
 }

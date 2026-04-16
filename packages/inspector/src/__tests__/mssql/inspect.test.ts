@@ -3,22 +3,22 @@
 
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
-import type { DatabaseAdapter } from '@sqldoc/db'
-import { createMssqlDockerAdapter } from '@sqldoc/db'
+import { createContainerDbSource } from '@sqldoc/db'
 import mssqlPlugin from '@sqldoc/db-mssql'
 import type { InspectorRunner } from '../../inspector.ts'
 import { createInspector } from '../../inspector.ts'
 
 describe('MSSQL Inspector', () => {
-  let db: DatabaseAdapter
   let inspector: InspectorRunner
 
   before(async () => {
-    db = await createMssqlDockerAdapter('docker://mcr.microsoft.com/mssql/server:2022-latest', {
+    const source = await createContainerDbSource({
+      devUrl: 'docker://mcr.microsoft.com/mssql/server:2022-latest',
+      context: { dialect: 'mssql', extensions: [] },
       adapterPlugin: mssqlPlugin,
       reuseContainer: true,
     })
-    inspector = await createInspector({ db, engine: 'mssql' })
+    inspector = await createInspector({ source, engine: 'mssql' })
   })
 
   after(async () => {

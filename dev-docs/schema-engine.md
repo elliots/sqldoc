@@ -22,13 +22,27 @@ flowchart LR
 
 | File | Role |
 | --- | --- |
-| [`packages/db/src/index.ts`](../packages/db/src/index.ts) | Public facade. Re-exports inspector types, chooses default dev URLs, creates adapters/runners. |
+| [`packages/db/src/index.ts`](../packages/db/src/index.ts) | Public facade. Exports `createAdapter`, `createDbSource`, and `createRunner`. Chooses the right DbSource flavour based on devUrl scheme. |
 | [`packages/db/src/db/plugin-resolver.ts`](../packages/db/src/db/plugin-resolver.ts) | Resolves built-in or external adapter plugins by URL scheme, with optional automatic installation. |
-| [`packages/db/src/db/postgres-docker.ts`](../packages/db/src/db/postgres-docker.ts), [`mysql-docker.ts`](../packages/db/src/db/mysql-docker.ts), [`mssql-docker.ts`](../packages/db/src/db/mssql-docker.ts) | Starts disposable Docker-backed dev DBs, then delegates to a normal adapter plugin. |
-| [`packages/db/src/db/sqlite.ts`](../packages/db/src/db/sqlite.ts) | Built-in SQLite adapter path. |
+| [`packages/db/src/db/dbsource-memory.ts`](../packages/db/src/db/dbsource-memory.ts) | In-memory DbSource (pglite, sqlite). Each `open()` calls the plugin resolver for a fresh adapter. |
+| [`packages/db/src/db/dbsource-server.ts`](../packages/db/src/db/dbsource-server.ts) | Server DbSource for `postgres://` / `mysql://` / `mssql://` URLs. Opens an admin connection and creates/drops a shadow database per `open()`. Rejects URLs that include a database path — we never touch a real DB. |
+| [`packages/db/src/db/dbsource-container.ts`](../packages/db/src/db/dbsource-container.ts) | Container DbSource for `docker://` / `dockerfile://` URLs. Starts the container once (reused across invocations by default), then creates shadow DBs inside it. |
+| [`packages/db/src/db/shadow-sql.ts`](../packages/db/src/db/shadow-sql.ts) | Per-dialect helpers: `CREATE/DROP DATABASE`, URL rewriting, stale-shadow cleanup (`sqldoc_shadow_*` databases older than 10 s with no active connections). |
+| [`packages/db/src/db/docker.ts`](../packages/db/src/db/docker.ts) | Low-level Docker CLI wrappers (start container, build from Dockerfile, stale container cleanup). |
+| [`packages/db/src/db/sqlite.ts`](../packages/db/src/db/sqlite.ts) | Built-in SQLite adapter. |
 | [`packages/db/src/extensions.ts`](../packages/db/src/extensions.ts) | Extracts and validates PostgreSQL extension requirements against the dev DB. |
 
-The important design choice is that all non-Docker adapters go through the same plugin contract. This is why `schema.ts`, `migrate.ts`, and the compile pipeline can treat `devUrl` uniformly.
+### DbSource Model
+
+The inspector consumes a `DbSource` — a factory that hands out fresh, isolated `DatabaseAdapter` instances on demand (`open()` returns a new one; closing the adapter disposes it; `source.close()` tears down long-lived resources like an admin connection or container). The three concrete flavours match the three ways a project supplies a dev DB:
+
+- **Memory** (pglite / sqlite) — each `open()` spins up a new in-memory instance. No container, no network.
+- **Server** (user-provided URL) — we open an admin connection to the server's maintenance DB (`postgres` / `mysql` / `master`) and `CREATE DATABASE sqldoc_shadow_*` per `open()`. The credentials must have CREATE DATABASE permission (Postgres `CREATEDB`, MySQL `CREATE/DROP on *.*`, MSSQL `dbcreator`). The URL must *not* include a database path, enforcing that we never CREATE/DROP inside an existing application DB.
+- **Container** (`docker://` / `dockerfile://`) — we start a container once, connect an admin, and then behave like the server flavour inside the container. Reuse defaults to true, so subsequent sqldoc runs reconnect to the same container (no ~30 s cold start).
+
+Each operation gets its own shadow database, so `diff()` runs the two introspections in parallel (`Promise.all`) with no cross-contamination. When a source starts up it also drops any `sqldoc_shadow_*` databases on the server that are idle *and* older than the 10 s stale threshold — this cleans up crashed processes without touching active parallel work.
+
+The important design choice: every adapter, regardless of flavour, goes through the same plugin contract. `schema.ts`, `migrate.ts`, and the compile pipeline don't need to know whether the dev DB came from pglite, a container, or a remote server.
 
 ## Adapter Packages
 
@@ -54,7 +68,7 @@ Best tests:
 
 | Area | Key files | Notes |
 | --- | --- | --- |
-| Public runner | [`packages/inspector/src/inspector.ts`](../packages/inspector/src/inspector.ts) | Wraps a `DatabaseAdapter`, filters system schemas, applies extracted tags, and exposes `inspect()` / `diff()` / `close()`. |
+| Public runner | [`packages/inspector/src/inspector.ts`](../packages/inspector/src/inspector.ts) | Takes a `DbSource`, opens fresh adapters per operation, filters system schemas, applies extracted tags, and exposes `inspect()` / `diff()` / `close()`. `diff()` opens the two sides in parallel. |
 | Internal diff/plan | [`packages/inspector/src/internal/diff.ts`](../packages/inspector/src/internal/diff.ts), [`packages/inspector/src/internal/plan.ts`](../packages/inspector/src/internal/plan.ts), [`packages/inspector/src/internal/sqlx.ts`](../packages/inspector/src/internal/sqlx.ts) | Normalizes realms, sorts changes, detaches cycles, and turns them into SQL. |
 | Dialect-specific inspection | [`packages/inspector/src/postgres`](../packages/inspector/src/postgres), [`../packages/inspector/src/mysql`](../packages/inspector/src/mysql), [`../packages/inspector/src/sqlite`](../packages/inspector/src/sqlite), [`../packages/inspector/src/mssql`](../packages/inspector/src/mssql) | Each folder has `inspect.ts`, `diff.ts`, `driver.ts`, `migrate.ts`, plus variants such as Cockroach, TiDB, Azure SQL. |
 | Migration helpers | [`packages/inspector/src/migrate`](../packages/inspector/src/migrate) | Statement scanning, tag extraction, migration dir abstractions. |
