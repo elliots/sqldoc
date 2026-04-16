@@ -1,18 +1,24 @@
 import * as path from 'node:path'
-import type { NamespacePlugin, ProjectContext, ProjectOutput, Realm } from '@sqldoc/core'
-import { findSqldocDir, tsImport, unwrapDefault } from '@sqldoc/core'
+import {
+  defineNamespace,
+  findSqldocDir,
+  type ProjectContext,
+  type ProjectOutput,
+  type Realm,
+  tsImport,
+  unwrapDefault,
+} from '@sqldoc/core'
 import type { CodegenConfig, TemplateContext } from './types.ts'
 
-/** Extract template name from import path: '@sqldoc/templates/typescript' -> 'typescript', './my.ts' -> 'my' */
 function extractTemplateName(importPath: string): string {
   const parts = importPath.split('/')
   const last = parts[parts.length - 1]
   return last.replace(/\.[^.]+$/, '')
 }
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'codegen',
+  description: 'Project-level template execution for generated code and typed artifacts',
   tags: {
     rename: {
       description: 'Rename table/column in generated code (optional second arg scopes to a specific template)',
@@ -30,7 +36,19 @@ const plugin: NamespacePlugin = {
       args: [{ type: 'string' }, { type: 'string' }],
     },
   },
-
+  examples: [
+    {
+      title: 'Shape generated code',
+      description: 'These tags affect template output rather than emitted SQL.',
+      input: `-- @codegen.rename('ProductItem')
+CREATE TABLE products (
+  -- @codegen.type('Money')
+  price NUMERIC(10,2),
+  -- @codegen.skip
+  internal_notes TEXT
+);`,
+    },
+  ],
   async afterCompile(ctx: ProjectContext): Promise<ProjectOutput> {
     const config = ctx.config as CodegenConfig
     if (!config.templates || config.templates.length === 0) {
@@ -48,10 +66,8 @@ const plugin: NamespacePlugin = {
       let template: any
 
       if (typeof entry.template === 'function' && typeof entry.template.generate === 'function') {
-        // Template object passed directly (typed config path)
         template = entry.template
       } else if (typeof entry.template === 'string') {
-        // Import path — resolve and load
         const isAbsolute = path.isAbsolute(entry.template) || entry.template.startsWith('.')
         let mod: any
         if (isAbsolute) {
@@ -80,7 +96,6 @@ const plugin: NamespacePlugin = {
 
       const templateName =
         typeof entry.template === 'string' ? extractTemplateName(entry.template) : (template.name ?? 'unknown')
-      // Default schema is set by the inspector on the realm
       const defaultSchema = realm.defaultSchema
 
       const templateCtx: TemplateContext = {
@@ -114,7 +129,7 @@ const plugin: NamespacePlugin = {
 
     return { files: allFiles }
   },
-}
+})
 
 export default plugin
 export type {

@@ -6,8 +6,19 @@
  * SQLite: ALTER TABLE + CREATE VIEW + per-event AFTER UPDATE cascade trigger.
  */
 
-import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
-import { type Dialect, getForeignKeys, getSchemaTable, quoteIdentifier, timestampType } from '@sqldoc/core'
+import {
+  createRequireTableTagLintRule,
+  type Dialect,
+  defineNamespace,
+  getForeignKeys,
+  getSchemaTable,
+  quoteIdentifier,
+  requireNamespaceOnSameTable,
+  type SqlOutput,
+  type TagContext,
+  type TagOutput,
+  timestampType,
+} from '@sqldoc/core'
 
 // -- Helper functions --
 
@@ -96,9 +107,10 @@ END;`,
 
 // -- Plugin definition --
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'softdelete',
+  description: 'Soft-delete columns, active views, and optional cascade triggers',
+  engines: ['postgres', 'mysql', 'sqlite', 'mssql', 'azuresql'],
   tags: {
     $self: {
       description: 'Enable soft-delete on this table (adds deleted_at column and active view)',
@@ -112,22 +124,21 @@ const plugin: NamespacePlugin = {
       description: 'Cascade soft-delete to this FK column when the parent is soft-deleted',
       targets: ['column'],
       args: {},
-      validate: (ctx) => {
-        // The column must be on a table that references a parent with @softdelete
-        // Basic validation: ensure this table itself has @softdelete
-        const objName = ctx.objectName?.toLowerCase()
-        const hasSoftDelete = ctx.fileTags.some(
-          (ft) =>
-            ft.objectName.toLowerCase() === objName &&
-            ft.target === 'table' &&
-            ft.tags.some((t) => t.namespace === 'softdelete' && (t.tag === null || t.tag === '$self')),
-        )
-        if (!hasSoftDelete) {
-          return '@softdelete.cascade requires @softdelete on the same table'
-        }
-      },
+      validate: requireNamespaceOnSameTable('softdelete', '@softdelete.cascade requires @softdelete on the same table'),
     },
   },
+  examples: [
+    {
+      title: 'Add soft delete behavior',
+      description: 'Adds a deleted timestamp, an active view, and optional FK cascades.',
+      engine: 'postgres',
+      input: `-- @softdelete(view: 'users_active')
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL
+);`,
+    },
+  ],
 
   onTag(ctx: TagContext): TagOutput | undefined {
     const { tag, objectName } = ctx
@@ -170,34 +181,11 @@ const plugin: NamespacePlugin = {
   },
 
   lintRules: [
-    {
-      name: 'softdelete.require-softdelete',
+    createRequireTableTagLintRule('softdelete', {
       description: 'Tables should have a @softdelete tag',
-      default: 'warn',
-
-      check(ctx) {
-        const diagnostics = []
-        for (const output of ctx.outputs) {
-          const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
-
-          for (const obj of tableObjects) {
-            const hasSoftDelete = obj.tags.some(
-              (t) => t.namespace === 'softdelete' && (t.tag === null || t.tag === '$self'),
-            )
-            if (!hasSoftDelete) {
-              diagnostics.push({
-                objectName: obj.objectName,
-                sourceFile: output.sourceFile,
-                message: `Table '${obj.objectName}' has no @softdelete tag`,
-              })
-            }
-          }
-        }
-        return diagnostics
-      },
-    },
+    }),
   ],
-}
+})
 
 function handleCascade(ctx: TagContext): TagOutput | undefined {
   const { objectName, columnName } = ctx

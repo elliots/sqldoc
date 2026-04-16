@@ -11,15 +11,19 @@
  * MySQL: Limited support — DDL + view + INSERT trigger only (self-referential triggers not supported).
  */
 
-import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
   type Column,
+  createRequireTableTagLintRule,
   currentTimestamp,
   type Dialect,
+  defineNamespace,
   getPrimaryKeyColumns,
   getSchemaColumns,
   getSchemaTable,
   quoteIdentifier,
+  type SqlOutput,
+  type TagContext,
+  type TagOutput,
   timestampType,
 } from '@sqldoc/core'
 
@@ -147,10 +151,10 @@ END;`
 
 // -- Plugin definition --
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'temporal',
-  databases: ['postgres', 'mysql'],
+  description: 'Temporal tables with current-row views and versioning triggers',
+  engines: ['postgres', 'mysql'],
   tags: {
     $self: {
       description: 'Make this table temporal with valid_from/valid_to versioning (SCD Type 2)',
@@ -160,6 +164,18 @@ const plugin: NamespacePlugin = {
       },
     },
   },
+  examples: [
+    {
+      title: 'Version rows over time',
+      description: 'Adds validity columns, a current-row view, and trigger-based versioning.',
+      engine: 'postgres',
+      input: `-- @temporal(view: 'accounts_current')
+CREATE TABLE accounts (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL
+);`,
+    },
+  ],
 
   onTag(ctx: TagContext): TagOutput | undefined {
     const { tag, objectName } = ctx
@@ -234,33 +250,10 @@ const plugin: NamespacePlugin = {
   },
 
   lintRules: [
-    {
-      name: 'temporal.require-temporal',
+    createRequireTableTagLintRule('temporal', {
       description: 'Tables should have a @temporal tag',
-      default: 'warn',
-
-      check(ctx) {
-        const diagnostics = []
-        for (const output of ctx.outputs) {
-          const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
-
-          for (const obj of tableObjects) {
-            const hasTemporal = obj.tags.some(
-              (t) => t.namespace === 'temporal' && (t.tag === null || t.tag === '$self'),
-            )
-            if (!hasTemporal) {
-              diagnostics.push({
-                objectName: obj.objectName,
-                sourceFile: output.sourceFile,
-                message: `Table '${obj.objectName}' has no @temporal tag`,
-              })
-            }
-          }
-        }
-        return diagnostics
-      },
-    },
+    }),
   ],
-}
+})
 
 export default plugin

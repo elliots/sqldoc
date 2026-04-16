@@ -1,10 +1,28 @@
-import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
+import { defineNamespace, type TagContext, type TagOutput } from '@sqldoc/core'
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
-  databases: ['postgres'],
-  description: 'PostgreSQL Anonymizer security labels',
+function handleAnonColumn(mode: 'Masked' | 'Fake', ctx: TagContext): TagOutput | undefined {
+  const { tag, objectName, columnName } = ctx
+  if (!columnName) return undefined
+
+  const fnExpr = Array.isArray(tag.args) ? tag.args[0] : undefined
+  if (!fnExpr) return undefined
+
+  return {
+    sql: [
+      {
+        sql: `SECURITY LABEL FOR anon ON COLUMN "${objectName}"."${columnName}" IS 'MASKED WITH FUNCTION ${fnExpr}';`,
+      },
+    ],
+    docs: {
+      columns: [{ header: 'Anonymization', object: objectName, column: columnName, value: `${mode}: ${fnExpr}` }],
+    },
+  }
+}
+
+const plugin = defineNamespace({
   name: 'anon',
+  engines: ['postgres'],
+  description: 'PostgreSQL Anonymizer security labels',
   tags: {
     mask: {
       description: 'Mask this column using a PostgreSQL Anonymizer function',
@@ -21,45 +39,27 @@ const plugin: NamespacePlugin = {
       targets: ['table'],
     },
   },
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName, columnName } = ctx
-
-    switch (tag.name) {
-      case 'mask': {
-        if (!columnName) return undefined
-        const fnExpr = Array.isArray(tag.args) ? tag.args[0] : undefined
-        if (!fnExpr) return undefined
-        return {
-          sql: [
-            {
-              sql: `SECURITY LABEL FOR anon ON COLUMN "${objectName}"."${columnName}" IS 'MASKED WITH FUNCTION ${fnExpr}';`,
-            },
-          ],
-          docs: {
-            columns: [{ header: 'Anonymization', object: objectName, column: columnName, value: `Masked: ${fnExpr}` }],
-          },
-        }
-      }
-      case 'fake': {
-        if (!columnName) return undefined
-        const fnExpr = Array.isArray(tag.args) ? tag.args[0] : undefined
-        if (!fnExpr) return undefined
-        return {
-          sql: [
-            {
-              sql: `SECURITY LABEL FOR anon ON COLUMN "${objectName}"."${columnName}" IS 'MASKED WITH FUNCTION ${fnExpr}';`,
-            },
-          ],
-          docs: {
-            columns: [{ header: 'Anonymization', object: objectName, column: columnName, value: `Fake: ${fnExpr}` }],
-          },
-        }
-      }
-      default:
-        return undefined
-    }
+  handlers: {
+    mask: (ctx) => handleAnonColumn('Masked', ctx),
+    fake: (ctx) => handleAnonColumn('Fake', ctx),
   },
-}
+  examples: [
+    {
+      title: 'Mask personally identifiable information',
+      description: 'Adds PostgreSQL Anonymizer security labels to sensitive columns.',
+      engine: 'postgres',
+      input: `-- @anon
+CREATE TABLE patients (
+  id SERIAL PRIMARY KEY,
+  -- @anon.mask('anon.partial(email, 2, $$***$$, 2)')
+  email TEXT NOT NULL,
+  -- @anon.fake('anon.fake_last_name()')
+  last_name TEXT NOT NULL
+);`,
+      output: `SECURITY LABEL FOR anon ON COLUMN "patients"."email" IS 'MASKED WITH FUNCTION anon.partial(email, 2, $$***$$, 2)';
+SECURITY LABEL FOR anon ON COLUMN "patients"."last_name" IS 'MASKED WITH FUNCTION anon.fake_last_name()';`,
+    },
+  ],
+})
 
 export default plugin

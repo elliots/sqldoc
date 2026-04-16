@@ -1,88 +1,47 @@
 /**
  * Dynamic route paths loader -- generates one documentation page per namespace plugin.
- * Reads plugin metadata via extractAllPlugins() and example SQL files from disk.
+ * Reads namespace metadata directly from the runtime plugin objects.
  */
 
-import fs from 'node:fs'
-import path from 'node:path'
 import { extractAllPlugins, type PluginMeta, type TagMeta } from '../data/extract-plugins.ts'
-
-const examplesDir = path.resolve(import.meta.dirname!, 'examples')
-
-// -- Helpers --
-
-function readExample(name: string): string | undefined {
-  const filePath = path.join(examplesDir, name)
-  if (fs.existsSync(filePath)) {
-    return fs.readFileSync(filePath, 'utf-8').trim()
-  }
-  return undefined
-}
 
 function generateDialectBadges(databases: string[]): string {
   const badges: string[] = []
-  if (databases.includes('postgres')) {
-    badges.push('<DialectBadge dialect="postgres" />')
-  }
-  if (databases.includes('mysql')) {
-    badges.push('<DialectBadge dialect="mysql" />')
-  }
-  if (databases.includes('sqlite')) {
-    badges.push('<DialectBadge dialect="sqlite" />')
-  }
+  if (databases.includes('postgres')) badges.push('<DialectBadge dialect="postgres" />')
+  if (databases.includes('mysql')) badges.push('<DialectBadge dialect="mysql" />')
+  if (databases.includes('sqlite')) badges.push('<DialectBadge dialect="sqlite" />')
+  if (databases.includes('mssql')) badges.push('<DialectBadge dialect="mssql" />')
   return badges.join(' ')
 }
 
 function generateArgsTable(args: TagMeta['args']): string {
-  if (args === 'none') {
-    return 'No arguments.'
-  }
+  if (args === 'none') return 'No arguments.'
 
-  // Check if positional (auto-generated arg names like arg0, arg1)
-  const isPositional = args.every((a) => /^arg\d+$/.test(a.name))
+  const isPositional = args.every((arg) => /^arg\d+$/.test(arg.name))
   if (isPositional) {
-    const types = args.map((a) => `\`${a.type}\``).join(', ')
+    const types = args.map((arg) => `\`${arg.type}\``).join(', ')
     return `**Positional:** ${types}`
   }
 
-  // Named args table
-  const rows = args.map((a) => {
-    const values = a.values?.join(', ') || '\u2014'
-    const required = a.required ? 'Yes' : 'No'
-    return `| ${a.name} | \`${a.type}\` | ${required} | ${values} |`
+  const rows = args.map((arg) => {
+    const values = arg.values?.join(', ') || '\u2014'
+    const required = arg.required ? 'Yes' : 'No'
+    return `| ${arg.name} | \`${arg.type}\` | ${required} | ${values} |`
   })
 
-  return [
-    '| Name | Type | Required | Values |',
-    '|------|------|----------|--------|',
-    ...rows,
-  ].join('\n')
+  return ['| Name | Type | Required | Values |', '|------|------|----------|--------|', ...rows].join('\n')
 }
 
 function generateTagSection(plugin: PluginMeta): string {
   if (plugin.tags.length === 0) return ''
 
   const sections: string[] = ['## Tags', '']
-
   for (const tag of plugin.tags) {
-    // Display $self as @pluginName (standalone form)
-    const displayName = tag.name === '$self'
-      ? `\`@${plugin.name}\``
-      : `\`@${plugin.name}.${tag.name}\``
-
-    sections.push(`### ${displayName}`)
-    sections.push('')
-    if (tag.description) {
-      sections.push(tag.description)
-      sections.push('')
-    }
-    if (tag.targets.length > 0) {
-      sections.push(`**Targets:** ${tag.targets.join(', ')}`)
-      sections.push('')
-    }
-    sections.push('**Arguments:**')
-    sections.push(generateArgsTable(tag.args))
-    sections.push('')
+    const displayName = tag.name === '$self' ? `\`@${plugin.name}\`` : `\`@${plugin.name}.${tag.name}\``
+    sections.push(`### ${displayName}`, '')
+    if (tag.description) sections.push(tag.description, '')
+    if (tag.targets.length > 0) sections.push(`**Targets:** ${tag.targets.join(', ')}`, '')
+    sections.push('**Arguments:**', generateArgsTable(tag.args), '')
   }
 
   return sections.join('\n')
@@ -92,50 +51,52 @@ function generateLintSection(plugin: PluginMeta): string {
   if (plugin.lintRules.length === 0) return ''
 
   const sections: string[] = ['## Lint Rules', '']
-
   for (const rule of plugin.lintRules) {
-    sections.push(`### \`${rule.name}\``)
-    sections.push('')
-    sections.push(rule.description)
-    sections.push('')
-    sections.push(`**Default severity:** \`${rule.default}\``)
-    sections.push('')
+    sections.push(`### \`${rule.name}\``, '', rule.description, '', `**Default severity:** \`${rule.default}\``, '')
   }
-
   return sections.join('\n')
 }
 
+function renderSqlTransform(input: string, output: string): string[] {
+  return [
+    '<SqlTransform>',
+    '<template #input>',
+    '',
+    '```sql',
+    input,
+    '```',
+    '',
+    '</template>',
+    '<template #output>',
+    '',
+    '```sql',
+    output,
+    '```',
+    '',
+    '</template>',
+    '</SqlTransform>',
+  ]
+}
+
 function generateExampleSection(plugin: PluginMeta): string {
-  const inputSql = readExample(`${plugin.dirName}-input.sql`)
-  const outputSql = readExample(`${plugin.dirName}-output.sql`)
+  if (plugin.examples.length === 0) return ''
 
-  if (!inputSql) return ''
+  const sections: string[] = [plugin.examples.length > 1 ? '## Examples' : '## Example', '']
+  for (const [index, example] of plugin.examples.entries()) {
+    if (plugin.examples.length > 1 || example.title) {
+      sections.push(`### ${example.title}`, '')
+    }
+    if (example.description) {
+      sections.push(example.description, '')
+    }
 
-  const sections: string[] = ['## Example', '']
+    if (example.output) {
+      sections.push(...renderSqlTransform(example.input, example.output))
+    } else {
+      sections.push('```sql', example.input, '```')
+    }
 
-  if (outputSql) {
-    // Both input and output -- use SqlTransform component
-    sections.push('<SqlTransform>')
-    sections.push('<template #input>')
-    sections.push('')
-    sections.push('```sql')
-    sections.push(inputSql)
-    sections.push('```')
-    sections.push('')
-    sections.push('</template>')
-    sections.push('<template #output>')
-    sections.push('')
-    sections.push('```sql')
-    sections.push(outputSql)
-    sections.push('```')
-    sections.push('')
-    sections.push('</template>')
-    sections.push('</SqlTransform>')
-  } else {
-    // Input only (codegen, lint, docs -- output is not SQL)
-    sections.push('```sql')
-    sections.push(inputSql)
-    sections.push('```')
+    if (index < plugin.examples.length - 1) sections.push('')
   }
 
   sections.push('')
@@ -154,37 +115,15 @@ The @docs namespace generates HTML documentation and Mermaid ER diagrams rather 
 
 function generateNamespaceDoc(plugin: PluginMeta): string {
   const parts: string[] = []
-
-  // Title
-  parts.push(`<div class="doc-title"><h1>@${plugin.name}</h1></div>`)
-  parts.push('')
-
-  // Description
-  if (plugin.description) {
-    parts.push(plugin.description)
-    parts.push('')
-  }
-
-  // Dialect badges
-  parts.push(generateDialectBadges(plugin.databases))
-  parts.push('')
-
-  // Special note for @docs
+  parts.push(`<div class="doc-title"><h1>@${plugin.name}</h1></div>`, '')
+  if (plugin.description) parts.push(plugin.description, '')
+  parts.push(generateDialectBadges(plugin.databases), '')
   parts.push(generateDocsNote(plugin))
-
-  // Example section
   parts.push(generateExampleSection(plugin))
-
-  // Tags section
   parts.push(generateTagSection(plugin))
-
-  // Lint rules section
   parts.push(generateLintSection(plugin))
-
   return parts.join('\n')
 }
-
-// -- Export --
 
 export default {
   paths() {

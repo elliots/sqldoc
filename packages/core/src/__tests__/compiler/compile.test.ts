@@ -114,6 +114,35 @@ describe('compile()', () => {
     expect(result.codeOutputs[0].content).toBe('export type orders = {}')
   })
 
+  it('skips plugins that do not support the configured engine', () => {
+    const plugin = makePlugin({
+      name: 'pg',
+      engines: ['postgres'],
+      tags: { mark: {} },
+      generateSQL: () => [{ sql: '-- postgres only' }],
+    })
+
+    const source = ['-- @pg.mark', 'CREATE TABLE docs (', '  id INT', ');'].join('\n')
+
+    const result = compile({
+      source,
+      filePath: 'docs.sql',
+      plugins: new Map([['pg', plugin]]),
+      statements: makeStatements([{ kind: 'table', name: 'docs', line: lineOf(source, 'CREATE') }]),
+      adapter: stubAdapter,
+      config: { dialect: 'postgres', engine: 'crdb' },
+    })
+
+    expect(result.sqlOutputs).toHaveLength(0)
+    expect(result.errors).toEqual([
+      {
+        namespace: 'pg',
+        message: "Skipped: plugin 'pg' does not support engine 'crdb' (supports: postgres)",
+        severity: 'info',
+      },
+    ])
+  })
+
   it('populates CompilerContext.siblingTags with tags from other namespaces on same object', () => {
     let capturedCtx: any = null
 

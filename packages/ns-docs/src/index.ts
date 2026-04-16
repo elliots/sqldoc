@@ -1,13 +1,13 @@
-import type { NamespacePlugin, ProjectContext, ProjectOutput, Realm } from '@sqldoc/core'
+import { defineNamespace, type ProjectContext, type ProjectOutput, type Realm } from '@sqldoc/core'
 import { mergeSchemaWithTags } from './merge.ts'
 import { generateMermaidERD } from './mermaid.ts'
 import { renderHtml } from './renderers/html.ts'
 import { renderMarkdown } from './renderers/markdown.ts'
 import type { DocsConfig } from './types.ts'
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'docs',
+  description: 'Schema documentation metadata plus project-level HTML/Markdown rendering',
   tags: {
     emit: {
       description: 'Include or exclude this object from documentation',
@@ -25,40 +25,43 @@ const plugin: NamespacePlugin = {
       args: [{ type: 'string' }],
     },
   },
-
+  examples: [
+    {
+      title: 'Generate schema docs',
+      description: 'The namespace contributes metadata in SQL and renders files at project compile time.',
+      input: `-- @docs.description('Central inventory of all products')
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);`,
+    },
+  ],
   async afterCompile(ctx: ProjectContext): Promise<ProjectOutput> {
     const config = ctx.config as Partial<DocsConfig> | undefined
-    if (!config) {
-      return { files: [] }
-    }
+    if (!config) return { files: [] }
     if (!config.output) {
       throw new Error('ns-docs config requires "output" (file path, e.g. "docs/schema.html")')
     }
     if (!config.format) {
       throw new Error('ns-docs config requires "format" ("markdown" or "html")')
     }
+
     const { format, output: outputPath } = config
     const title = config.title ?? 'Schema Documentation'
-
-    // The inspected schema realm is provided by CLI compile
     const realm: Realm | undefined = ctx.schemaRealm
     if (!realm) {
       throw new Error('ns-docs requires inspected schema. Run with a database connection (devUrl in config).')
     }
 
     const mermaid = generateMermaidERD(realm)
-
-    // Merge schema with sqldoc tags
     const merged = mergeSchemaWithTags(realm, mermaid, ctx.allFileTags, ctx.outputs, title, ctx.docsMeta)
-
-    // Render to chosen format
     const content = format === 'html' ? renderHtml(merged) : renderMarkdown(merged)
 
     return {
       files: [{ filePath: outputPath, content }],
     }
   },
-}
+})
 
 export default plugin
 export type { DocsConfig }

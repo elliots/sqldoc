@@ -6,17 +6,22 @@
  * SQLite: Separate per-event triggers with inline bodies using json_object and explicit columns.
  */
 
-import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
   autoIncrementType,
   type Column,
+  createRequireTableTagLintRule,
   currentTimestamp,
   type Dialect,
+  defineNamespace,
   getSchemaColumns,
   getSchemaTable,
   jsonObjectFunction,
   jsonType,
   quoteIdentifier,
+  requireNamespaceOnSameTable,
+  type SqlOutput,
+  type TagContext,
+  type TagOutput,
   timestampType,
 } from '@sqldoc/core'
 
@@ -124,9 +129,10 @@ $$ LANGUAGE plpgsql;`
 
 // -- Plugin definition --
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'audit',
+  description: 'Audit log tables and row-change triggers across supported database engines',
+  engines: ['postgres', 'mysql', 'sqlite', 'mssql', 'azuresql'],
   tags: {
     $self: {
       description: 'Enable audit logging on this table',
@@ -142,20 +148,22 @@ const plugin: NamespacePlugin = {
       args: {
         strategy: { type: 'enum', values: ['hash', 'mask', 'omit'], required: true },
       },
-      validate: (ctx) => {
-        const objName = ctx.objectName?.toLowerCase()
-        const hasAudit = ctx.fileTags.some(
-          (ft) =>
-            ft.objectName.toLowerCase() === objName &&
-            ft.target === 'table' &&
-            ft.tags.some((t) => t.namespace === 'audit' && (t.tag === null || t.tag === '$self')),
-        )
-        if (!hasAudit) {
-          return '@audit.redact requires @audit on the same table'
-        }
-      },
+      validate: requireNamespaceOnSameTable('audit', '@audit.redact requires @audit on the same table'),
     },
   },
+  examples: [
+    {
+      title: 'Audit inserts, updates, and deletes',
+      description: 'Creates an audit table plus triggers that capture row changes.',
+      engine: 'postgres',
+      input: `-- @audit(on: [insert, update, delete])
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER NOT NULL,
+  total NUMERIC(10,2) NOT NULL
+);`,
+    },
+  ],
 
   onTag(ctx: TagContext): TagOutput | undefined {
     const { tag, objectName } = ctx
@@ -227,31 +235,10 @@ const plugin: NamespacePlugin = {
   },
 
   lintRules: [
-    {
-      name: 'audit.require-audit',
+    createRequireTableTagLintRule('audit', {
       description: 'Tables should have an @audit tag',
-      default: 'warn',
-
-      check(ctx) {
-        const diagnostics = []
-        for (const output of ctx.outputs) {
-          const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
-
-          for (const obj of tableObjects) {
-            const hasAudit = obj.tags.some((t) => t.namespace === 'audit' && (t.tag === null || t.tag === '$self'))
-            if (!hasAudit) {
-              diagnostics.push({
-                objectName: obj.objectName,
-                sourceFile: output.sourceFile,
-                message: `Table '${obj.objectName}' has no @audit tag`,
-              })
-            }
-          }
-        }
-        return diagnostics
-      },
-    },
+    }),
   ],
-}
+})
 
 export default plugin

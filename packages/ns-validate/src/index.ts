@@ -1,5 +1,12 @@
-import type { LintDiagnostic, NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
-import { getPrimaryKeyColumns, getSchemaRealm, quoteIdentifier } from '@sqldoc/core'
+import {
+  defineNamespace,
+  getPrimaryKeyColumns,
+  getSchemaRealm,
+  type LintDiagnostic,
+  quoteIdentifier,
+  type TagContext,
+  type TagOutput,
+} from '@sqldoc/core'
 
 function isTextType(type: string | undefined): boolean {
   if (!type) return false
@@ -16,10 +23,10 @@ function isTextType(type: string | undefined): boolean {
   )
 }
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'validate',
-  databases: ['postgres', 'mysql', 'mssql'],
+  description: 'Column-level validation constraints plus documentation and schema linting',
+  engines: ['postgres', 'mysql', 'mssql', 'azuresql'],
   tags: {
     check: {
       description: 'Add a CHECK constraint with a custom expression',
@@ -79,6 +86,23 @@ const plugin: NamespacePlugin = {
       args: [{ type: 'string' }],
     },
   },
+  examples: [
+    {
+      title: 'Add validation constraints',
+      description:
+        'Validation tags emit check constraints when the engine supports them and always enrich docs metadata.',
+      engine: 'postgres',
+      input: `CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  -- @validate.notEmpty
+  name TEXT NOT NULL,
+  -- @validate.range(min: 0, max: 99999)
+  price NUMERIC(10,2) NOT NULL
+);`,
+      output: `ALTER TABLE "products" ADD CONSTRAINT "products_name_not_empty" CHECK (length(trim("name")) > 0);
+ALTER TABLE "products" ADD CONSTRAINT "products_price_range" CHECK ("price" >= 0 AND "price" <= 99999);`,
+    },
+  ],
 
   onTag(ctx: TagContext): TagOutput | undefined {
     const { tag, objectName, columnName, dialect } = ctx
@@ -250,6 +274,6 @@ const plugin: NamespacePlugin = {
       },
     },
   ],
-}
+})
 
 export default plugin

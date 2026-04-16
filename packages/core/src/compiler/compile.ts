@@ -14,6 +14,7 @@ import type { SqlCommentOn, SqlStatement } from '../ast/types.ts'
 import type { TagBlock } from '../blocks.ts'
 import { buildBlocks } from '../blocks.ts'
 import { debug } from '../debug.ts'
+import type { DatabaseEngine } from '../dialects.ts'
 import { parse, parseArgs } from '../parser.ts'
 import type { Attr, Realm, Table, Tag, View } from '../schema.ts'
 import type { Dialect } from '../sql-emitter.ts'
@@ -34,12 +35,21 @@ import type {
 // ── Plugin compatibility ─────────────────────────────────────────────
 
 /**
- * Check if a plugin supports the current dialect.
- * Plugins without a databases field are compatible with all dialects.
+ * Check if a plugin supports the current engine/dialect.
+ * Plugins without engines/databases fields are compatible with all targets.
  */
-function isPluginCompatible(plugin: NamespacePlugin, dialect: Dialect): boolean {
-  if (!plugin.databases) return true
-  return plugin.databases.includes(dialect)
+function getPluginCompatibilityError(
+  plugin: NamespacePlugin,
+  engine: DatabaseEngine,
+  dialect: Dialect,
+): string | undefined {
+  if (plugin.engines && !plugin.engines.includes(engine)) {
+    return `engine '${engine}' (supports: ${plugin.engines.join(', ')})`
+  }
+  if (plugin.databases && !plugin.databases.includes(dialect)) {
+    return `dialect '${dialect}' (supports: ${plugin.databases.join(', ')})`
+  }
+  return undefined
 }
 
 // ── Public API ───────────────────────────────────────────────────────
@@ -65,7 +75,7 @@ export function compile(options: CompileOptions): CompilerOutput {
   const { source, filePath, plugins, statements, config, adapter, schemaRealm } = options
   debug(
     'compile',
-    `file=${filePath}, tier=${schemaRealm ? 2 : 1}, plugins=[${[...plugins.keys()].join(', ')}], dialect=${config.dialect}`,
+    `file=${filePath}, tier=${schemaRealm ? 2 : 1}, plugins=[${[...plugins.keys()].join(', ')}], engine=${config.engine}, dialect=${config.dialect}`,
   )
 
   // Tier 2: inspected schema realm provided — use schema tag-to-object matching
@@ -100,7 +110,7 @@ function compileTier1(
   const sqlOutputs: SqlOutput[] = []
   const codeOutputs: CodeOutput[] = []
   const docsMeta: DocsMeta[] = []
-  const errors: Array<{ namespace: string; message: string }> = []
+  const errors: Array<{ namespace: string; message: string; severity?: 'error' | 'info' }> = []
 
   // 1. Parse source to extract tags
   const { tags } = parse(source)
@@ -137,14 +147,15 @@ function compileTier1(
         continue
       }
 
-      // Check plugin compatibility with target dialect
-      const dialect = config.dialect
-      if (!isPluginCompatible(plugin, dialect)) {
+      // Check plugin compatibility with target engine/dialect
+      const incompatibility = getPluginCompatibilityError(plugin, config.engine, config.dialect)
+      if (incompatibility) {
         if (!skippedPlugins.has(plugin.name)) {
           skippedPlugins.add(plugin.name)
           errors.push({
             namespace: plugin.name,
-            message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
+            message: `Skipped: plugin '${plugin.name}' does not support ${incompatibility}`,
+            severity: 'info',
           })
         }
         continue
@@ -216,7 +227,7 @@ function compileWithRealm(
   const sqlOutputs: SqlOutput[] = []
   const codeOutputs: CodeOutput[] = []
   const docsMeta: DocsMeta[] = []
-  const errors: Array<{ namespace: string; message: string }> = []
+  const errors: Array<{ namespace: string; message: string; severity?: 'error' | 'info' }> = []
 
   const tableCount = realm.schemas.reduce((n, s) => n + (s.tables?.length ?? 0), 0)
   const viewCount = realm.schemas.reduce((n, s) => n + (s.views?.length ?? 0), 0)
@@ -287,7 +298,7 @@ interface RealmObjectContext {
   sqlOutputs: SqlOutput[]
   codeOutputs: CodeOutput[]
   docsMeta: DocsMeta[]
-  errors: Array<{ namespace: string; message: string }>
+  errors: Array<{ namespace: string; message: string; severity?: 'error' | 'info' }>
   fileTags: TagContext['fileTags']
   skippedPlugins: Set<string>
   missingNamespaces: Set<string>
@@ -450,13 +461,14 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
     return
   }
 
-  const dialect = config.dialect
-  if (!isPluginCompatible(plugin, dialect)) {
+  const incompatibility = getPluginCompatibilityError(plugin, config.engine, config.dialect)
+  if (incompatibility) {
     if (!skippedPlugins.has(plugin.name)) {
       skippedPlugins.add(plugin.name)
       errors.push({
         namespace: plugin.name,
-        message: `Skipped: plugin '${plugin.name}' does not support dialect '${dialect}' (supports: ${plugin.databases!.join(', ')})`,
+        message: `Skipped: plugin '${plugin.name}' does not support ${incompatibility}`,
+        severity: 'info',
       })
     }
     return
@@ -469,7 +481,7 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
 
   const ctx: TagContext = {
     engine: config.engine,
-    dialect,
+    dialect: config.dialect,
     target,
     objectName,
     columnName,
@@ -500,7 +512,7 @@ function invokePlugin(
   sqlOutputs: SqlOutput[],
   codeOutputs: CodeOutput[],
   docsMeta: DocsMeta[],
-  errors: Array<{ namespace: string; message: string }>,
+  errors: Array<{ namespace: string; message: string; severity?: 'error' | 'info' }>,
 ): void {
   const tagLabel = tag.tag
     ? `@${tag.namespace}.${tag.tag}${tag.rawArgs ? `(${tag.rawArgs})` : ''}`

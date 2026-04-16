@@ -22,7 +22,10 @@ export type {
   MigrationFormat,
   MigrationNaming,
   NamespaceConfig,
+  NamespaceExample,
   NamespacePlugin,
+  NamespaceTagHandler,
+  NamespaceTagHandlers,
   ProjectCompilerContext, // ProjectCompilerContext is deprecated alias
   ProjectConfig,
   ProjectContext,
@@ -62,7 +65,14 @@ export { EXTERNAL_RE, INCLUDE_RE, parseDirectives } from './directives.ts'
 export { lint } from './lint.ts'
 export type { ImportError, LoadResult } from './loader.ts'
 // Loader
-export { loadImports, setImportLogger } from './loader.ts'
+export { clearLocalPluginCache, loadImports, loadLocalPlugins, setImportLogger } from './loader.ts'
+// Namespace authoring helpers
+export {
+  createRequireTableTagLintRule,
+  defineNamespace,
+  requireNamespaceOnSameObject,
+  requireNamespaceOnSameTable,
+} from './namespace.ts'
 // Package installer hook
 export type { PackageInstaller } from './packages.ts'
 export { installPackages, setPackageInstaller } from './packages.ts'

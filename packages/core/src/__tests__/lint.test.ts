@@ -57,6 +57,21 @@ describe('lint engine', () => {
     })
   })
 
+  it('skips lint rules from plugins that do not support the configured engine', () => {
+    const rule: LintRule = {
+      name: 'pg.only',
+      description: 'Postgres only',
+      default: 'warn',
+      check: () => [{ objectName: 'users', sourceFile: 'test.sql', message: 'Should not run' }],
+    }
+
+    const plugins = new Map<string, NamespacePlugin>()
+    plugins.set('pg', { ...makePlugin('pg', [rule]), engines: ['postgres'] })
+
+    const results = lint([makeOutput()], plugins, { dialect: 'postgres', engine: 'crdb' })
+    expect(results).toEqual([])
+  })
+
   it('applies severity override from config', () => {
     const rule: LintRule = {
       name: 'test.check',

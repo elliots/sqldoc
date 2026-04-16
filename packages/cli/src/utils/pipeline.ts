@@ -267,9 +267,10 @@ export async function runCompilePipeline(
 
       if (output.errors.length > 0) {
         for (const err of output.errors) {
-          console.error(pc.red(`[${err.namespace}] ${err.message}`))
+          const color = err.severity === 'info' ? pc.dim : pc.red
+          console.error(color(`[${err.namespace}] ${err.message}`))
+          if (err.severity !== 'info') totalErrors++
         }
-        totalErrors += output.errors.length
       }
 
       // Write code outputs if any

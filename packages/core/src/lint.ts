@@ -37,7 +37,7 @@ export function lint(
   const ruleOverrides = lintConfig.rules ?? {}
 
   // 1. Collect all lint rules from plugins
-  const allRules = collectRules(plugins)
+  const allRules = collectRules(plugins, config)
 
   // 2. Collect all @lint.ignore tags from outputs
   const ignores = collectIgnores(outputs)
@@ -85,10 +85,16 @@ export function lint(
 }
 
 /** Collect all lint rules from all plugins */
-function collectRules(plugins: Map<string, NamespacePlugin>) {
+function isPluginCompatible(plugin: NamespacePlugin, config: ResolvedConfig): boolean {
+  if (plugin.engines && !plugin.engines.includes(config.engine)) return false
+  if (plugin.databases && !plugin.databases.includes(config.dialect)) return false
+  return true
+}
+
+function collectRules(plugins: Map<string, NamespacePlugin>, config: ResolvedConfig) {
   const rules = []
   for (const plugin of plugins.values()) {
-    if (plugin.lintRules) {
+    if (plugin.lintRules && isPluginCompatible(plugin, config)) {
       rules.push(...plugin.lintRules)
     }
   }

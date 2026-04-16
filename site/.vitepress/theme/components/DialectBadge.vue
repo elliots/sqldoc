@@ -33,4 +33,8 @@ const displayName = isBeta
   background: rgba(139, 92, 246, 0.12);
   color: #8b5cf6;
 }
+.dialect-badge.mssql {
+  background: rgba(14, 116, 144, 0.12);
+  color: #0e7490;
+}
 </style>

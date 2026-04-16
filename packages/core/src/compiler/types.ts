@@ -247,8 +247,8 @@ export interface CompilerOutput {
   sqlOutputs: SqlOutput[]
   /** Code files to write */
   codeOutputs: CodeOutput[]
-  /** Errors encountered during compilation */
-  errors: Array<{ namespace: string; message: string }>
+  /** Errors encountered during compilation. Entries with severity 'info' are non-fatal. */
+  errors: Array<{ namespace: string; message: string; severity?: 'error' | 'info' }>
   /** Documentation metadata collected from all plugins */
   docsMeta: DocsMeta[]
   /** Per-file tag summary for project-level aggregation */
@@ -323,13 +323,37 @@ export interface LintConfig {
   rules?: Record<string, LintSeverity>
 }
 
+/** Structured example used for namespace docs/site generation. */
+export interface NamespaceExample {
+  /** Short example title shown in docs. */
+  title: string
+  /** Optional explanatory text shown before the example. */
+  description?: string
+  /** Engine variant this example targets. Defaults to the dialect family when omitted. */
+  engine?: DatabaseEngine
+  /** Dialect family this example targets. Derived from engine when omitted. */
+  dialect?: Dialect
+  /** Example tagged SQL input. */
+  input: string
+  /** Optional compiled output to display alongside the input. */
+  output?: string
+}
+
+/** Per-tag runtime handler used by defineNamespace helper. */
+export type NamespaceTagHandler = (ctx: TagContext) => SqlOutput[] | TagOutput | undefined
+
+/** Map of tag names to runtime handlers. Use `$self` for standalone namespace tags. */
+export type NamespaceTagHandlers = Partial<Record<string, NamespaceTagHandler>>
+
 // ── Namespace plugin contract ───────────────────────────────────────
 
 /** Stable type contract for namespace packages. Extends TagNamespace with compiler hooks. */
 export interface NamespacePlugin extends TagNamespace {
   /** API version for forward compatibility. Must be 1 for v1. */
   apiVersion: 1
-  /** Which databases this plugin supports. Omit = all databases. */
+  /** Which engine variants this plugin supports. Omit = all engines. */
+  engines?: Array<DatabaseEngine>
+  /** Which dialect families this plugin supports. Omit = all dialect families. */
   databases?: Array<Dialect>
   /** Human-readable description of the plugin */
   description?: string
@@ -337,6 +361,10 @@ export interface NamespacePlugin extends TagNamespace {
   keywords?: string[]
   /** JSON Schema or Zod-like descriptor for namespace config (optional). Reserved for future validation. */
   configSchema?: unknown
+  /** Structured examples for docs/site generation. */
+  examples?: NamespaceExample[]
+  /** Optional per-tag handler map used by defineNamespace helper. */
+  handlers?: NamespaceTagHandlers
   /** Called for each tag occurrence — returns SQL statements and/or docs metadata */
   onTag?: (ctx: TagContext) => SqlOutput[] | TagOutput | undefined
   /** Generate non-SQL code artifacts for a tag occurrence */

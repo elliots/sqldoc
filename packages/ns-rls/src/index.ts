@@ -1,10 +1,45 @@
-import type { NamespacePlugin, TagContext, TagOutput } from '@sqldoc/core'
+import {
+  createRequireTableTagLintRule,
+  defineNamespace,
+  requireNamespaceOnSameObject,
+  type TagContext,
+  type TagOutput,
+} from '@sqldoc/core'
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
-  databases: ['postgres'],
-  description: 'Row-Level Security policies for PostgreSQL',
+function handleEnableRls(ctx: TagContext): TagOutput {
+  return {
+    sql: [{ sql: `ALTER TABLE "${ctx.objectName}" ENABLE ROW LEVEL SECURITY;` }],
+    docs: {
+      annotations: [
+        {
+          object: ctx.objectName,
+          text: 'RLS enabled',
+        },
+      ],
+    },
+  }
+}
+
+function handlePolicy(ctx: TagContext): TagOutput {
+  const args = ctx.tag.args as Record<string, unknown>
+  const forCmd = (args.for as string) || 'ALL'
+  const toRole = (args.to as string) || 'PUBLIC'
+  const using = args.using as string | undefined
+  const check = args.check as string | undefined
+  const policyName = `${ctx.objectName}_${toRole.toLowerCase().replace(/\s+/g, '_')}_${forCmd.toLowerCase()}`
+
+  let policySql = `CREATE POLICY "${policyName}" ON "${ctx.objectName}"\n  FOR ${forCmd.toUpperCase()}\n  TO ${toRole}`
+  if (using) policySql += `\n  USING (${using})`
+  if (check) policySql += `\n  WITH CHECK (${check})`
+  policySql += ';'
+
+  return { sql: [{ sql: policySql }] }
+}
+
+const plugin = defineNamespace({
   name: 'rls',
+  engines: ['postgres'],
+  description: 'Row-level security policies for PostgreSQL tables',
   tags: {
     policy: {
       description: 'Create a row-level security policy (requires @rls on the table)',
@@ -15,88 +50,44 @@ const plugin: NamespacePlugin = {
         using: { type: 'string', required: false },
         check: { type: 'string', required: false },
       },
-      validate: (ctx) => {
-        const hasRlsSelf = ctx.siblingTags.some((t) => t.namespace === 'rls' && (t.tag === null || t.tag === '$self'))
-        if (!hasRlsSelf) {
-          return '@rls.policy requires @rls on the same table'
-        }
-      },
+      validate: requireNamespaceOnSameObject('rls', '@rls.policy requires @rls on the same table'),
     },
     $self: {
       description: 'Enable row-level security on this table',
       targets: ['table'],
     },
   },
-
-  onTag(ctx: TagContext): TagOutput | undefined {
-    const { tag, objectName } = ctx
-
-    switch (tag.name) {
-      case '$self':
-      case null: {
-        return {
-          sql: [{ sql: `ALTER TABLE "${objectName}" ENABLE ROW LEVEL SECURITY;` }],
-          docs: {
-            annotations: [
-              {
-                object: objectName,
-                text: 'RLS enabled',
-              },
-            ],
-          },
-        }
-      }
-      case 'policy': {
-        const args = tag.args as Record<string, unknown>
-        const forCmd = (args.for as string) || 'ALL'
-        const toRole = (args.to as string) || 'PUBLIC'
-        const using = args.using as string | undefined
-        const check = args.check as string | undefined
-
-        const policyName = `${objectName}_${toRole.toLowerCase().replace(/\s+/g, '_')}_${forCmd.toLowerCase()}`
-
-        let policySql = `CREATE POLICY "${policyName}" ON "${objectName}"\n  FOR ${forCmd.toUpperCase()}\n  TO ${toRole}`
-        if (using) {
-          policySql += `\n  USING (${using})`
-        }
-        if (check) {
-          policySql += `\n  WITH CHECK (${check})`
-        }
-        policySql += ';'
-
-        return { sql: [{ sql: policySql }] }
-      }
-      default:
-        return undefined
-    }
+  handlers: {
+    $self: handleEnableRls,
+    policy: handlePolicy,
   },
-
   lintRules: [
-    {
-      name: 'rls.require-policy',
+    createRequireTableTagLintRule('rls', {
+      ruleName: 'rls.require-policy',
       description: 'Public tables should have RLS enabled',
-      default: 'warn',
-      check(ctx) {
-        const diagnostics = []
-        for (const output of ctx.outputs) {
-          // Collect all table-level objects
-          const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
-
-          for (const obj of tableObjects) {
-            const hasRls = obj.tags.some((t) => t.namespace === 'rls' && (t.tag === null || t.tag === '$self'))
-            if (!hasRls) {
-              diagnostics.push({
-                objectName: obj.objectName,
-                sourceFile: output.sourceFile,
-                message: `Table '${obj.objectName}' has no RLS policy`,
-              })
-            }
-          }
-        }
-        return diagnostics
-      },
+      message: (objectName) => `Table '${objectName}' has no RLS policy`,
+      supportedEngines: ['postgres'],
+    }),
+  ],
+  examples: [
+    {
+      title: 'Enable RLS and add a policy',
+      description: 'Use `@rls` plus one or more `@rls.policy` tags on the table.',
+      engine: 'postgres',
+      input: `-- @rls
+-- @rls.policy(for: SELECT, to: authenticated, using: 'user_id = current_user_id()')
+CREATE TABLE documents (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  title TEXT NOT NULL
+);`,
+      output: `ALTER TABLE "documents" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "documents_authenticated_select" ON "documents"
+  FOR SELECT
+  TO authenticated
+  USING (user_id = current_user_id());`,
     },
   ],
-}
+})
 
 export default plugin

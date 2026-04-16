@@ -10,15 +10,19 @@
  * SQLite: Separate per-event BEFORE triggers with explicit column enumeration.
  */
 
-import type { NamespacePlugin, SqlOutput, TagContext, TagOutput } from '@sqldoc/core'
 import {
   autoIncrementType,
   type Column,
+  createRequireTableTagLintRule,
   currentTimestamp,
   type Dialect,
+  defineNamespace,
   getSchemaColumns,
   getSchemaTable,
   quoteIdentifier,
+  type SqlOutput,
+  type TagContext,
+  type TagOutput,
   timestampType,
 } from '@sqldoc/core'
 
@@ -117,9 +121,10 @@ END;`,
 
 // -- Plugin definition --
 
-const plugin: NamespacePlugin = {
-  apiVersion: 1,
+const plugin = defineNamespace({
   name: 'history',
+  description: 'History tables and change-tracking triggers for update/delete workflows',
+  engines: ['postgres', 'mysql', 'sqlite', 'mssql', 'azuresql'],
   tags: {
     $self: {
       description: 'Enable history tracking on this table (creates history table + triggers)',
@@ -130,6 +135,19 @@ const plugin: NamespacePlugin = {
       },
     },
   },
+  examples: [
+    {
+      title: 'Track row history',
+      description: 'Creates a mirrored history table and before triggers for updates and deletes.',
+      engine: 'postgres',
+      input: `-- @history
+CREATE TABLE accounts (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL,
+  status TEXT NOT NULL
+);`,
+    },
+  ],
 
   onTag(ctx: TagContext): TagOutput | undefined {
     const { tag, objectName } = ctx
@@ -207,31 +225,10 @@ const plugin: NamespacePlugin = {
   },
 
   lintRules: [
-    {
-      name: 'history.require-history',
+    createRequireTableTagLintRule('history', {
       description: 'Tables should have a @history tag',
-      default: 'warn',
-
-      check(ctx) {
-        const diagnostics = []
-        for (const output of ctx.outputs) {
-          const tableObjects = output.fileTags.filter((obj) => obj.target === 'table' && !obj.objectName.includes('.'))
-
-          for (const obj of tableObjects) {
-            const hasHistory = obj.tags.some((t) => t.namespace === 'history' && (t.tag === null || t.tag === '$self'))
-            if (!hasHistory) {
-              diagnostics.push({
-                objectName: obj.objectName,
-                sourceFile: output.sourceFile,
-                message: `Table '${obj.objectName}' has no @history tag`,
-              })
-            }
-          }
-        }
-        return diagnostics
-      },
-    },
+    }),
   ],
-}
+})
 
 export default plugin

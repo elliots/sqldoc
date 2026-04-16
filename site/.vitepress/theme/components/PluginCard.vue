@@ -21,7 +21,7 @@ const props = defineProps<{
   tagCount: number
 }>()
 
-const dialects = props.databases ?? ['postgres', 'mysql', 'sqlite']
+const dialects = props.databases ?? ['postgres', 'mysql', 'sqlite', 'mssql']
 </script>
 
 <style>
