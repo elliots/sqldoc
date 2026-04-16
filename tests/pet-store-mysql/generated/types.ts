@@ -10,7 +10,7 @@ export interface Adoption {
   id: number
   petId: number
   ownerId: number
-  adoptedAt?: Date
+  adoptedAt: Date
   adoptionFee: string
   updatedBy?: string
 }
@@ -26,7 +26,7 @@ export interface AdoptionsAuditLog {
 
 export interface Category {
   id: number
-  name?: string
+  name: string
   description?: string
 }
 

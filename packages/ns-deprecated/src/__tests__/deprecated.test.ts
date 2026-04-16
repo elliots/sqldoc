@@ -135,7 +135,9 @@ describe('ns-deprecated plugin', () => {
       expect(result.docs).not.toBe(undefined)
     })
 
-    it('@deprecated on a column generates ALTER TABLE MODIFY COLUMN', () => {
+    it('@deprecated on a MySQL column returns docs-only (no sql)', () => {
+      // MySQL's ALTER TABLE MODIFY COLUMN would strip NOT NULL / DEFAULT / etc.
+      // attributes of the column, so we only emit docs output for MySQL columns.
       const ctx = makeTagCtx({
         dialect: 'mysql',
         target: 'column',
@@ -145,9 +147,8 @@ describe('ns-deprecated plugin', () => {
         tag: { name: '$self', args: {} },
       })
       const result = plugin.onTag!(ctx) as any
-      expect(result.sql).toEqual([
-        { sql: "ALTER TABLE `users` MODIFY COLUMN `email` VARCHAR(255) COMMENT 'DEPRECATED';" },
-      ])
+      expect(result.sql).toEqual([])
+      expect(result.docs).not.toBe(undefined)
     })
 
     it('@deprecated.replace on a MySQL table includes replacement text', () => {

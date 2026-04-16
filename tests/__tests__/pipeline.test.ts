@@ -191,25 +191,6 @@ describe('mergedSql format', () => {
 // -- MySQL dialect E2E tests --
 
 describe('MySQL dialect', () => {
-  describe('ns-comment: mysql-comment-test.sql', () => {
-    it('produces ALTER TABLE COMMENT for table', async () => {
-      const result = await compileFixture('mysql-comment-test.sql', 'mysql')
-      expect(result.mergedSql).toContain('ALTER TABLE')
-      expect(result.mergedSql).toContain('COMMENT')
-      expect(result.mergedSql).not.toContain('COMMENT ON')
-    })
-
-    it('uses backtick quoting for identifiers', async () => {
-      const result = await compileFixture('mysql-comment-test.sql', 'mysql')
-      expect(result.mergedSql).toContain('`products`')
-    })
-
-    it('produces no errors', async () => {
-      const result = await compileFixture('mysql-comment-test.sql', 'mysql')
-      expect(result.errors).toHaveLength(0)
-    })
-  })
-
   describe('ns-validate: mysql-validate-test.sql', () => {
     it('produces CHECK constraints with backtick quoting', async () => {
       const result = await compileFixture('mysql-validate-test.sql', 'mysql')
@@ -226,28 +207,6 @@ describe('MySQL dialect', () => {
 
     it('produces no errors', async () => {
       const result = await compileFixture('mysql-validate-test.sql', 'mysql')
-      expect(result.errors).toHaveLength(0)
-    })
-  })
-})
-
-// -- SQLite dialect E2E tests --
-
-describe('SQLite dialect', () => {
-  describe('ns-comment: sqlite-comment-test.sql', () => {
-    it('produces no COMMENT ON statements (SQLite has no comments)', async () => {
-      const result = await compileFixture('sqlite-comment-test.sql', 'sqlite')
-      expect(result.mergedSql).not.toContain('COMMENT ON')
-      expect(result.mergedSql).not.toContain('ALTER TABLE')
-    })
-
-    it('preserves original CREATE TABLE in output', async () => {
-      const result = await compileFixture('sqlite-comment-test.sql', 'sqlite')
-      expect(result.mergedSql).toContain('CREATE TABLE products')
-    })
-
-    it('produces no errors', async () => {
-      const result = await compileFixture('sqlite-comment-test.sql', 'sqlite')
       expect(result.errors).toHaveLength(0)
     })
   })

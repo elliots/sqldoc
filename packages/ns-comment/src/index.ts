@@ -9,46 +9,34 @@ function handleComment(ctx: TagContext): SqlOutput[] | undefined {
   const q = (name: string) => quoteIdentifier(name, dialect)
   const esc = (s: string) => escapeString(s, dialect)
 
-  switch (dialect) {
-    case 'postgres': {
-      switch (target) {
-        case 'column':
-          if (!columnName) return undefined
-          return [{ sql: `COMMENT ON COLUMN ${q(objectName)}.${q(columnName)} IS ${esc(description)};` }]
-        case 'table':
-          return [{ sql: `COMMENT ON TABLE ${q(objectName)} IS ${esc(description)};` }]
-        case 'view':
-          return [{ sql: `COMMENT ON VIEW ${q(objectName)} IS ${esc(description)};` }]
-        case 'function':
-          return [{ sql: `COMMENT ON FUNCTION ${q(objectName)} IS ${esc(description)};` }]
-        case 'type':
-          return [{ sql: `COMMENT ON TYPE ${q(objectName)} IS ${esc(description)};` }]
-        case 'index':
-          return [{ sql: `COMMENT ON INDEX ${q(objectName)} IS ${esc(description)};` }]
-        default:
-          return undefined
-      }
-    }
-    case 'mysql':
-      if (target === 'table') {
-        return [{ sql: `ALTER TABLE ${q(objectName)} COMMENT = ${esc(description)};` }]
-      }
-      if (target === 'column') {
-        // MySQL requires the full column spec in MODIFY COLUMN.
-        // Without access to complete metadata, we cannot emit safe SQL.
-        // Return undefined to skip SQL emission (docs-only mode).
-        return undefined
-      }
-      return undefined
-    case 'sqlite':
+  switch (target) {
+    case 'column':
+      if (!columnName) return undefined
+      return [{ sql: `COMMENT ON COLUMN ${q(objectName)}.${q(columnName)} IS ${esc(description)};` }]
+    case 'table':
+      return [{ sql: `COMMENT ON TABLE ${q(objectName)} IS ${esc(description)};` }]
+    case 'view':
+      return [{ sql: `COMMENT ON VIEW ${q(objectName)} IS ${esc(description)};` }]
+    case 'function':
+      return [{ sql: `COMMENT ON FUNCTION ${q(objectName)} IS ${esc(description)};` }]
+    case 'type':
+      return [{ sql: `COMMENT ON TYPE ${q(objectName)} IS ${esc(description)};` }]
+    case 'index':
+      return [{ sql: `COMMENT ON INDEX ${q(objectName)} IS ${esc(description)};` }]
+    default:
       return undefined
   }
 }
 
+// Postgres only. MySQL has no non-destructive way to attach a column comment:
+// ALTER TABLE MODIFY COLUMN requires the full definition and silently strips
+// any attribute you leave off (NOT NULL, DEFAULT, etc.). SQLite has no COMMENT
+// syntax at all. The namespace system only lets us declare dialect support at
+// the plugin level, not per-tag, so we expose @comment as a Postgres-only tag.
 const plugin = defineNamespace({
   name: 'comment',
-  databases: ['postgres', 'mysql', 'sqlite'],
-  description: 'Dialect-aware SQL comments for tables, columns, and other schema objects',
+  databases: ['postgres'],
+  description: 'SQL comments for Postgres tables, columns, and other schema objects',
   tags: {
     $self: {
       description: 'Add a COMMENT ON statement to a table, column, view, function, type, or index',

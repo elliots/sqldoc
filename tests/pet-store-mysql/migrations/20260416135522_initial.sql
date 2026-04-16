@@ -1,10 +1,10 @@
 CREATE TABLE `categories` (
   `id` int NOT NULL AUTO_INCREMENT ,
-  `name` varchar(100) CHARSET utf8mb4 NULL COMMENT 'Category display name' COLLATE utf8mb4_0900_ai_ci ,
+  `name` varchar(100) CHARSET utf8mb4 NOT NULL COLLATE utf8mb4_0900_ai_ci ,
   `description` text CHARSET utf8mb4 NULL COLLATE utf8mb4_0900_ai_ci ,
   PRIMARY KEY (`id` ),
   CONSTRAINT `categories_name_not_empty` CHECK (length(trim(`name`)) > 0) 
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Pet categories lookup table';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TABLE `pets` (
   `id` int NOT NULL AUTO_INCREMENT ,
@@ -22,7 +22,7 @@ CREATE TABLE `pets` (
   CONSTRAINT `pets_name_not_empty` CHECK (length(trim(`name`)) > 0) ,
   CONSTRAINT `pets_price_range` CHECK ((`price` >= 0) and (`price` <= 99999)) ,
   CONSTRAINT `pets_sku_pattern` CHECK (regexp_like(`sku`,_utf8mb4'^[A-Z]{3}-[0-9]{4}$')) 
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Core pet inventory table';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TABLE `owners` (
   `id` int NOT NULL AUTO_INCREMENT ,
@@ -35,13 +35,13 @@ CREATE TABLE `owners` (
   CONSTRAINT `owners_email_pattern` CHECK (regexp_like(`email`,_utf8mb4'^[^@]+@[^@]+\\.[^@]+$')) ,
   CONSTRAINT `owners_name_not_empty` CHECK (length(trim(`name`)) > 0) ,
   CONSTRAINT `owners_phone_length` CHECK ((length(`phone`) >= 7) and (length(`phone`) <= 20)) 
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Pet owners and customers';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TABLE `adoptions` (
   `id` int NOT NULL AUTO_INCREMENT ,
   `pet_id` int NOT NULL ,
   `owner_id` int NOT NULL ,
-  `adopted_at` timestamp NULL COMMENT 'Timestamp when the adoption was finalized' ,
+  `adopted_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ,
   `adoption_fee` decimal(10,2) NOT NULL DEFAULT 0.00 ,
   `updated_by` text CHARSET utf8mb4 NULL COLLATE utf8mb4_0900_ai_ci ,
   PRIMARY KEY (`id` ),
@@ -49,7 +49,7 @@ CREATE TABLE `adoptions` (
   INDEX `pet_id` (`pet_id` ),
   CONSTRAINT `adoptions_ibfk_1` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ,
   CONSTRAINT `adoptions_ibfk_2` FOREIGN KEY (`owner_id`) REFERENCES `owners` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION 
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Adoption records linking pets to owners';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TRIGGER `adoptions_audit_after_delete` AFTER DELETE ON `adoptions` FOR EACH ROW BEGIN
   INSERT INTO `adoptions_audit_log` (table_name, operation, old_data, new_data, changed_at)
@@ -72,7 +72,7 @@ CREATE TABLE `staff` (
   `role` varchar(50) CHARSET utf8mb4 NOT NULL DEFAULT '"associate"' COLLATE utf8mb4_0900_ai_ci ,
   `hired_at` date NOT NULL DEFAULT (curdate()) ,
   PRIMARY KEY (`id` )
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Internal staff members';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TRIGGER `staff_audit_after_delete` AFTER DELETE ON `staff` FOR EACH ROW BEGIN
   INSERT INTO `staff_audit_log` (table_name, operation, old_data, new_data, changed_at)
@@ -102,7 +102,7 @@ CREATE TABLE `adoptions_audit_log` (
 CREATE TABLE `legacy_inventory` (
   `id` int NOT NULL AUTO_INCREMENT ,
   `item_name` varchar(200) CHARSET utf8mb4 NULL COLLATE utf8mb4_0900_ai_ci ,
-  `old_sku` varchar(50) CHARSET utf8mb4 NULL COMMENT 'DEPRECATED: scheduled for removal after 2025-12-01' COLLATE utf8mb4_0900_ai_ci ,
+  `old_sku` varchar(50) CHARSET utf8mb4 NULL COLLATE utf8mb4_0900_ai_ci ,
   `quantity` int NULL DEFAULT 0 ,
   PRIMARY KEY (`id` )
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'DEPRECATED: use pets instead';
@@ -117,7 +117,7 @@ CREATE TABLE `medical_records` (
   PRIMARY KEY (`id` ),
   INDEX `pet_id` (`pet_id` ),
   CONSTRAINT `medical_records_ibfk_1` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION 
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Veterinary medical records for pets';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TABLE `reviews` (
   `id` int NOT NULL AUTO_INCREMENT ,
@@ -135,7 +135,7 @@ CREATE TABLE `reviews` (
   CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`owner_id`) REFERENCES `owners` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ,
   CONSTRAINT `reviews_ibfk_3` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ,
   CONSTRAINT `reviews_rating_range` CHECK ((`rating` >= 1) and (`rating` <= 5)) 
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci COMMENT 'Customer reviews for pets';
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE TABLE `staff_audit_log` (
   `id` bigint NOT NULL AUTO_INCREMENT ,
