@@ -141,7 +141,9 @@ describe('ns-postgraphile plugin', () => {
           namespaceTags,
         })
         const result1 = plugin.onTag!(ctx1) as any
-        expect(result1.sql).toEqual([{ sql: `COMMENT ON TABLE "users" IS E'@omit create,delete\\n@name Person';` }])
+        // E-string: backslashes are doubled so the stored comment has a literal
+        // backslash-n (PostGraphile smart-comment separator), not a newline.
+        expect(result1.sql).toEqual([{ sql: `COMMENT ON TABLE "users" IS E'@omit create,delete\\\\n@name Person';` }])
 
         // Second tag is skipped (returns undefined)
         const ctx2 = makeTagCtx({
@@ -165,7 +167,7 @@ describe('ns-postgraphile plugin', () => {
         const result = plugin.onTag!(ctx) as any
         expect(result.sql).toEqual([
           {
-            sql: `COMMENT ON TABLE "users" IS E'@omit\\n@deprecated Will be removed in v2\\n@simpleCollections only';`,
+            sql: `COMMENT ON TABLE "users" IS E'@omit\\\\n@deprecated Will be removed in v2\\\\n@simpleCollections only';`,
           },
         ])
       })
