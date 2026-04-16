@@ -218,15 +218,6 @@ function compileWithRealm(
   const docsMeta: DocsMeta[] = []
   const errors: Array<{ namespace: string; message: string }> = []
 
-  // Collect all tag occurrences across the realm for fileTags building
-  const allTagOccurrences: Array<{
-    objectName: string
-    target: SqlTarget
-    namespace: string
-    tag: string | null
-    args: Record<string, unknown> | unknown[]
-  }> = []
-
   const tableCount = realm.schemas.reduce((n, s) => n + (s.tables?.length ?? 0), 0)
   const viewCount = realm.schemas.reduce((n, s) => n + (s.views?.length ?? 0), 0)
   debug('compile', `tier2: ${realm.schemas.length} schema(s), ${tableCount} table(s), ${viewCount} view(s)`)
@@ -234,6 +225,10 @@ function compileWithRealm(
   // Parse source to find which namespaces THIS file uses (not other files in the realm)
   const fileNamespaces = new Set(parse(source).tags.map((t) => t.namespace))
   const fileObjectKeys = collectFileObjectKeys(statements, realm.defaultSchema)
+  const defaultSchema = realm.defaultSchema ?? ''
+
+  // Pre-compute fileTags so plugins receive the full per-file summary on every dispatch.
+  const fileTags = buildFileTags2(collectRealmOccurrences(realm, fileObjectKeys, defaultSchema))
 
   const skippedPlugins = new Set<string>()
   const missingNamespaces = new Set<string>()
@@ -247,14 +242,12 @@ function compileWithRealm(
     codeOutputs,
     docsMeta,
     errors,
-    allTagOccurrences,
+    fileTags,
     skippedPlugins,
     missingNamespaces,
     fileNamespaces,
     fileObjectKeys,
   }
-  // Default schema is set by the inspector on the realm
-  const defaultSchema = realm.defaultSchema ?? ''
 
   for (const schema of realm.schemas) {
     const qualify = (name: string) => (schema.name && schema.name !== defaultSchema ? `${schema.name}.${name}` : name)
@@ -278,9 +271,6 @@ function compileWithRealm(
     }
   }
 
-  // Build fileTags from collected tag occurrences
-  const fileTags = buildFileTags2(allTagOccurrences)
-
   // Build merged SQL output
   const mergedSql = buildMergedOutput(source, sqlOutputs, adapter, config.dialect)
 
@@ -298,13 +288,7 @@ interface RealmObjectContext {
   codeOutputs: CodeOutput[]
   docsMeta: DocsMeta[]
   errors: Array<{ namespace: string; message: string }>
-  allTagOccurrences: Array<{
-    objectName: string
-    target: SqlTarget
-    namespace: string
-    tag: string | null
-    args: Record<string, unknown> | unknown[]
-  }>
+  fileTags: TagContext['fileTags']
   skippedPlugins: Set<string>
   missingNamespaces: Set<string>
   fileNamespaces: Set<string>
@@ -396,7 +380,6 @@ function processRealmObject(obj: Table | View, target: SqlTarget, objectName: st
           rawArgs: atag.args,
           target: 'column',
           objectName,
-          fileTagObjectName: `${objectName}.${col.name}`,
           columnName: col.name,
           columnType,
           namespaceTags,
@@ -416,7 +399,6 @@ interface DispatchTagParams {
   rawArgs: string
   target: SqlTarget
   objectName: string
-  fileTagObjectName?: string
   columnName?: string
   columnType?: string
   namespaceTags: TagContext['namespaceTags']
@@ -436,7 +418,7 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
     codeOutputs,
     docsMeta,
     errors,
-    allTagOccurrences,
+    fileTags,
     skippedPlugins,
     missingNamespaces,
     fileNamespaces,
@@ -447,7 +429,6 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
     rawArgs,
     target,
     objectName,
-    fileTagObjectName = objectName,
     columnName,
     columnType,
     namespaceTags,
@@ -485,7 +466,6 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
   if (!tagHandler && !plugin.generateCode) return
 
   const args = parseTagArgs(rawArgs)
-  allTagOccurrences.push({ objectName: fileTagObjectName, target, namespace, tag: tagName, args })
 
   const ctx: TagContext = {
     engine: config.engine,
@@ -497,7 +477,7 @@ function dispatchTag(actx: RealmObjectContext, params: DispatchTagParams): void 
     tag: { name: tagName, args },
     namespaceTags,
     siblingTags,
-    fileTags: [],
+    fileTags,
     astNode: null,
     fileStatements: statements,
     config: (config.namespaces?.[namespace] ?? {}) as NamespaceConfig,
@@ -705,6 +685,72 @@ function findTags(attrs?: Attr[]): Tag[] {
 function parseTagArgs(argsStr: string): Record<string, unknown> | unknown[] {
   if (!argsStr) return {}
   return parseArgs(argsStr).values
+}
+
+/**
+ * Walk an inspected realm and emit one occurrence per tag attached to a
+ * processed table/view/column. Used to precompute fileTags so dispatched
+ * plugin contexts see the full per-file summary on every call.
+ */
+function collectRealmOccurrences(
+  realm: Realm,
+  fileObjectKeys: Set<string>,
+  defaultSchema: string,
+): Array<{
+  objectName: string
+  target: SqlTarget
+  namespace: string
+  tag: string | null
+  args: Record<string, unknown> | unknown[]
+}> {
+  const out: Array<{
+    objectName: string
+    target: SqlTarget
+    namespace: string
+    tag: string | null
+    args: Record<string, unknown> | unknown[]
+  }> = []
+
+  const emit = (obj: Table | View, target: 'table' | 'view', objectName: string): void => {
+    for (const t of findTags(obj.attrs)) {
+      const { namespace, tag } = splitTagName(t.name)
+      out.push({ objectName, target, namespace, tag, args: parseTagArgs(t.args) })
+    }
+    if (obj.columns) {
+      for (const col of obj.columns) {
+        for (const t of findTags(col.attrs)) {
+          const { namespace, tag } = splitTagName(t.name)
+          out.push({
+            objectName: `${objectName}.${col.name}`,
+            target: 'column',
+            namespace,
+            tag,
+            args: parseTagArgs(t.args),
+          })
+        }
+      }
+    }
+  }
+
+  for (const schema of realm.schemas) {
+    const qualify = (name: string) => (schema.name && schema.name !== defaultSchema ? `${schema.name}.${name}` : name)
+    if (schema.tables) {
+      for (const table of schema.tables) {
+        if (shouldProcessRealmObject('table', table.name, schema.name, fileObjectKeys, defaultSchema)) {
+          emit(table, 'table', qualify(table.name))
+        }
+      }
+    }
+    if (schema.views) {
+      for (const view of schema.views) {
+        if (shouldProcessRealmObject('view', view.name, schema.name, fileObjectKeys, defaultSchema)) {
+          emit(view, 'view', qualify(view.name))
+        }
+      }
+    }
+  }
+
+  return out
 }
 
 /** Build fileTags from collected inspected tag occurrences */

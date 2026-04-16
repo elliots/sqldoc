@@ -65,7 +65,7 @@ export async function snapshot(
 ): Promise<Realm> {
   try {
     // Execute each SQL file's statements against the dev database.
-    // Uses dialect-specific scanner (matches Go Driver.ScanStmts per dialect).
+    // Uses engine-specific scanner (matches Go Driver.ScanStmts per engine).
     // Batches up to 50 statements per exec call, falls back to one-by-one on failure.
     const statementBatchSize = getEngineStatementBatchSize(opts.engine)
     for (const sql of files) {

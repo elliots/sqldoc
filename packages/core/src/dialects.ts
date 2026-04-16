@@ -86,15 +86,28 @@ export function resolveDatabaseEngine(
   consumer = 'Database configuration',
 ): DatabaseEngine {
   if (options.engine) {
-    if (options.dialect && getEngineSpec(options.engine).dialect !== options.dialect) {
+    const spec = ENGINE_SPECS[options.engine as DatabaseEngine]
+    if (!spec) {
       throw new Error(
-        `engine "${options.engine}" belongs to dialect "${getEngineSpec(options.engine).dialect}", got "${options.dialect}"`,
+        `${consumer}: unknown engine "${options.engine}". Known engines: ${Object.keys(ENGINE_SPECS).join(', ')}`,
+      )
+    }
+    if (options.dialect && spec.dialect !== options.dialect) {
+      throw new Error(
+        `${consumer}: engine "${options.engine}" belongs to dialect "${spec.dialect}", got "${options.dialect}"`,
       )
     }
     return options.engine
   }
 
-  if (options.dialect) return options.dialect
+  if (options.dialect) {
+    if (!DIALECT_SPECS[options.dialect as Dialect]) {
+      throw new Error(
+        `${consumer}: unknown dialect "${options.dialect}". Known dialects: ${Object.keys(DIALECT_SPECS).join(', ')}`,
+      )
+    }
+    return options.dialect
+  }
   throw new Error(`${consumer} requires either a dialect or an engine`)
 }
 

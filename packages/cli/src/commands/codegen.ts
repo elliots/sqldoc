@@ -106,14 +106,16 @@ export async function codegenCommand(
           extensions: extractExtensions([mergedSql]).extensions,
           sqldocDir: findSqldocDir(configRoot) ?? undefined,
         })
-        const postCompileResult = await freshRunner.inspect([mergedSql])
-        await freshRunner.close()
-
-        if (postCompileResult.error) {
-          throw new CliError(`Post-compile schema inspect failed: ${postCompileResult.error}`)
-        }
-        if (postCompileResult.schema) {
-          postCompileRealm = postCompileResult.schema
+        try {
+          const postCompileResult = await freshRunner.inspect([mergedSql])
+          if (postCompileResult.error) {
+            throw new CliError(`Post-compile schema inspect failed: ${postCompileResult.error}`)
+          }
+          if (postCompileResult.schema) {
+            postCompileRealm = postCompileResult.schema
+          }
+        } finally {
+          await freshRunner.close()
         }
       }
 

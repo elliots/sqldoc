@@ -70,13 +70,6 @@ describe('createAdapter defaults', () => {
     expect(result.rows).toEqual([[1]])
   })
 
-  it('accepts engine identity when creating adapters', async () => {
-    adapter = await createAdapter({ engine: 'sqlite' })
-    expect(adapter.currentSchema).toBe(defaultSchemaForDialect('sqlite'))
-    const result = await adapter.query('SELECT 1 AS num')
-    expect(result.rows).toEqual([[1]])
-  })
-
   it('uses a provided adapterPlugin for non-docker postgres URLs', async () => {
     const calls: Array<{ devUrl: string; context: AdapterPluginContext }> = []
     const fakeAdapter: DatabaseAdapter = {

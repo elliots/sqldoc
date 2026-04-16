@@ -3,10 +3,10 @@
  * Generates sqldoc.config.ts and example.sql based on user choices.
  */
 
-type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
+type Engine = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
 
 interface ScaffoldOptions {
-  dialect: Dialect
+  engine: Engine
   namespaces: string[]
   templates: string[]
 }
@@ -25,10 +25,10 @@ export function scaffoldConfig(opts: ScaffoldOptions): string {
   lines.push('const config: SqldocConfig = {')
 
   // Engine (mandatory)
-  lines.push(`  engine: '${opts.dialect}',`)
+  lines.push(`  engine: '${opts.engine}',`)
 
   // Dev URL hint
-  const devUrlHint = devUrlForDialect(opts.dialect)
+  const devUrlHint = devUrlForEngine(opts.engine)
   lines.push(`  // devUrl: '${devUrlHint}',`)
 
   // Namespaces
@@ -55,8 +55,8 @@ export function scaffoldConfig(opts: ScaffoldOptions): string {
   return lines.join('\n')
 }
 
-function devUrlForDialect(dialect: Dialect): string {
-  switch (dialect) {
+function devUrlForEngine(engine: Engine): string {
+  switch (engine) {
     case 'postgres':
       return 'postgres://localhost:5432/mydb?sslmode=disable'
     case 'mysql':
@@ -173,20 +173,20 @@ function tableExample(opts: ScaffoldOptions): string {
   }
 
   const idType =
-    opts.dialect === 'mysql'
+    opts.engine === 'mysql'
       ? 'INT AUTO_INCREMENT'
-      : opts.dialect === 'sqlite'
+      : opts.engine === 'sqlite'
         ? 'INTEGER'
-        : opts.dialect === 'mssql'
+        : opts.engine === 'mssql'
           ? 'INT IDENTITY(1,1)'
           : 'SERIAL'
-  const textType = opts.dialect === 'mysql' ? 'VARCHAR(255)' : opts.dialect === 'mssql' ? 'NVARCHAR(255)' : 'TEXT'
+  const textType = opts.engine === 'mysql' ? 'VARCHAR(255)' : opts.engine === 'mssql' ? 'NVARCHAR(255)' : 'TEXT'
   const timestampType =
-    opts.dialect === 'mysql'
+    opts.engine === 'mysql'
       ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-      : opts.dialect === 'sqlite'
+      : opts.engine === 'sqlite'
         ? 'TEXT DEFAULT CURRENT_TIMESTAMP'
-        : opts.dialect === 'mssql'
+        : opts.engine === 'mssql'
           ? 'DATETIME2 DEFAULT GETDATE()'
           : 'TIMESTAMPTZ DEFAULT now()'
 
@@ -216,7 +216,7 @@ function tableExample(opts: ScaffoldOptions): string {
   lines.push('')
 
   // RLS policy example
-  if (hasNs('rls') && opts.dialect === 'postgres') {
+  if (hasNs('rls') && opts.engine === 'postgres') {
     lines.push('-- @rls.policy(name: "users_own_data", for: "all", using: "auth.uid() = id")')
     lines.push('')
   }
