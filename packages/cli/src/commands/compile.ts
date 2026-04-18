@@ -10,7 +10,7 @@ import { runCompilePipeline } from '../utils/pipeline.ts'
  */
 export async function compileCommand(
   inputPath: string | undefined,
-  options: { config?: string; output?: string; project?: string },
+  options: { config?: string; output?: string; project?: string; includeExternal?: boolean },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
@@ -29,12 +29,23 @@ export async function compileCommand(
       throw formatPipelineError(err, config)
     }
 
+    // By default, exclude @external file outputs from compiled SQL
+    let sql: string
+    if (options.includeExternal) {
+      sql = result.mergedSql
+    } else {
+      sql = result.outputs
+        .filter((o) => o.provenance !== 'external')
+        .map((o) => o.mergedSql)
+        .join('\n')
+    }
+
     if (options.output) {
       const outPath = path.resolve(configRoot, options.output)
       fs.mkdirSync(path.dirname(outPath), { recursive: true })
-      fs.writeFileSync(outPath, result.mergedSql, 'utf-8')
+      fs.writeFileSync(outPath, sql, 'utf-8')
     } else {
-      process.stdout.write(result.mergedSql)
+      process.stdout.write(sql)
     }
   }
 }

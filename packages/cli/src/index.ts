@@ -46,6 +46,7 @@ program
   .argument('[path]', 'Path to SQL files or directory (defaults to config schema)')
   .option('-c, --config <path>', 'Path to sqldoc.config.ts')
   .option('-o, --output <path>', 'Write to file instead of stdout')
+  .option('--include-external', 'Include @external files in compiled output')
   .option('--project <name>', 'Select a named project from multi-project config')
   .option('--all', 'Run across all config files in the workspace')
   .action(withAll(compileCommand))
