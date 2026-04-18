@@ -143,6 +143,12 @@ function mapStatement(rawStmt: PgRawStmt, lineLookup: LineLookup): SqlStatement 
   }
 }
 
+/** Build a schema-qualified quoted reference from names, e.g. ["core","users"] -> "core"."users" */
+function qualifiedRef(names: string[]): string {
+  if (names.length >= 2) return `"${names[names.length - 2]}"."${names[names.length - 1]}"`
+  return `"${names[names.length - 1] ?? ''}"`
+}
+
 function mapComment(rawStmt: PgRawStmt, lineLookup: LineLookup): SqlCommentOn | null {
   const stmt = rawStmt.stmt?.CommentStmt
   if (!stmt) return null
@@ -154,23 +160,24 @@ function mapComment(rawStmt: PgRawStmt, lineLookup: LineLookup): SqlCommentOn | 
   switch (stmt.objtype) {
     case 'OBJECT_COLUMN':
       if (names.length >= 2) {
-        return {
-          targetKey: `COLUMN "${names[names.length - 2]}"."${names[names.length - 1]}"`,
-          text,
-          line,
-        }
+        // names may be [schema, table, column] or [table, column]
+        const colRef =
+          names.length >= 3
+            ? `"${names[names.length - 3]}"."${names[names.length - 2]}"."${names[names.length - 1]}"`
+            : `"${names[names.length - 2]}"."${names[names.length - 1]}"`
+        return { targetKey: `COLUMN ${colRef}`, text, line }
       }
       return null
     case 'OBJECT_TABLE':
-      return { targetKey: `TABLE "${names[names.length - 1] ?? ''}"`, text, line }
+      return { targetKey: `TABLE ${qualifiedRef(names)}`, text, line }
     case 'OBJECT_VIEW':
-      return { targetKey: `VIEW "${names[names.length - 1] ?? ''}"`, text, line }
+      return { targetKey: `VIEW ${qualifiedRef(names)}`, text, line }
     case 'OBJECT_INDEX':
-      return { targetKey: `INDEX "${names[names.length - 1] ?? ''}"`, text, line }
+      return { targetKey: `INDEX ${qualifiedRef(names)}`, text, line }
     case 'OBJECT_TRIGGER':
-      return { targetKey: `TRIGGER "${names[names.length - 1] ?? ''}"`, text, line }
+      return { targetKey: `TRIGGER ${qualifiedRef(names)}`, text, line }
     case 'OBJECT_FUNCTION':
-      return { targetKey: `FUNCTION "${names[names.length - 1] ?? ''}"`, text, line }
+      return { targetKey: `FUNCTION ${qualifiedRef(names)}`, text, line }
     default:
       return null
   }

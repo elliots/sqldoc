@@ -183,7 +183,15 @@ export class SqlparserTsAdapter implements SqlAstAdapter {
 
       let targetKey: string
       if (objectType === 'Column' && names.length >= 2) {
-        targetKey = `COLUMN "${names[names.length - 2]}"."${names[names.length - 1]}"`
+        // names may be [schema, table, column] or [table, column]
+        const colRef =
+          names.length >= 3
+            ? `"${names[names.length - 3]}"."${names[names.length - 2]}"."${names[names.length - 1]}"`
+            : `"${names[names.length - 2]}"."${names[names.length - 1]}"`
+        targetKey = `COLUMN ${colRef}`
+      } else if (names.length >= 2) {
+        // Schema-qualified: e.g. COMMENT ON TABLE "core"."tenants"
+        targetKey = `${objectType.toUpperCase()} "${names[names.length - 2]}"."${names[names.length - 1]}"`
       } else {
         targetKey = `${objectType.toUpperCase()} "${names[names.length - 1] ?? ''}"`
       }

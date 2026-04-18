@@ -612,9 +612,10 @@ function buildMergedSql(
   dialect: Dialect,
 ): string {
   // 1. Build comment merge map: target -> content[]
+  // Skip source comments with empty text (COMMENT ON ... IS NULL removes the comment)
   const commentMap = new Map<string, string[]>()
   for (const c of sourceComments) {
-    commentMap.set(c.targetKey, [c.text])
+    if (c.text) commentMap.set(c.targetKey, [c.text])
   }
   for (const c of generatedComments) {
     const existing = commentMap.get(c.targetKey) ?? []
