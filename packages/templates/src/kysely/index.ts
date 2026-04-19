@@ -170,7 +170,7 @@ export default defineTemplate({
 
         fnDefs.push(`export async function ${fnName}(db: Kysely<Database>, ${paramStr}): Promise<${retType}> {`)
         fnDefs.push(
-          `  const { val } = await sql<{ val: ${retType} }>\`SELECT ${fn.name}(${sqlArgs}) AS val\`.execute(db).then(r => r.rows[0])`,
+          `  const { val } = await sql<{ val: ${retType} }>\`SELECT ${fn.name}(${sqlArgs}) AS val\`.execute(db).then(r => r.rows[0]!)`,
         )
         fnDefs.push('  return val')
         fnDefs.push('}')
