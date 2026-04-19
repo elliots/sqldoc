@@ -40,7 +40,7 @@ The inspector consumes a `DbSource` — a factory that hands out fresh, isolated
 - **Server** (user-provided URL) — we open an admin connection to the server's maintenance DB (`postgres` / `mysql` / `master`) and `CREATE DATABASE sqldoc_shadow_*` per `open()`. The credentials must have CREATE DATABASE permission (Postgres `CREATEDB`, MySQL `CREATE/DROP on *.*`, MSSQL `dbcreator`). The URL must *not* include a database path, enforcing that we never CREATE/DROP inside an existing application DB.
 - **Container** (`docker://` / `dockerfile://`) — we start a container once, connect an admin, and then behave like the server flavour inside the container. Reuse defaults to true, so subsequent sqldoc runs reconnect to the same container (no ~30 s cold start).
 
-Each operation gets its own shadow database, so `diff()` runs the two introspections in parallel (`Promise.all`) with no cross-contamination. When a source starts up it also drops any `sqldoc_shadow_*` databases on the server that are idle *and* older than the 10 s stale threshold — this cleans up crashed processes without touching active parallel work.
+Each operation gets its own shadow database, so `diff()` runs the two introspections in parallel (`Promise.all`) with no cross-contamination. When a source starts up, it also drops any `sqldoc_shadow_*` databases on the server that are idle *and* older than the 10 s stale threshold — this cleans up crashed processes without touching active parallel work.
 
 The important design choice: every adapter, regardless of flavour, goes through the same plugin contract. `schema.ts`, `migrate.ts`, and the compile pipeline don't need to know whether the dev DB came from pglite, a container, or a remote server.
 

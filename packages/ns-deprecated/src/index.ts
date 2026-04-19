@@ -64,7 +64,7 @@ function emitDeprecated(kind: '$self' | 'replace' | 'remove', ctx: TagContext): 
 
 const plugin = defineNamespace({
   name: 'deprecated',
-  databases: ['postgres', 'mysql', 'sqlite'],
+  engines: ['postgres', 'mysql', 'sqlite'],
   description: 'Marks schema objects as deprecated in SQL comments and generated docs',
   tags: {
     $self: {

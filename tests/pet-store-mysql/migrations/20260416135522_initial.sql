@@ -13,7 +13,7 @@ CREATE TABLE `pets` (
   `sku` varchar(20) CHARSET utf8mb4 NOT NULL COLLATE utf8mb4_0900_ai_ci ,
   `price` decimal(10,2) NOT NULL DEFAULT 0.00 ,
   `internal_notes` text CHARSET utf8mb4 NULL COLLATE utf8mb4_0900_ai_ci ,
-  `status` varchar(20) CHARSET utf8mb4 NOT NULL DEFAULT '"available"' COLLATE utf8mb4_0900_ai_ci ,
+  `status` varchar(20) CHARSET utf8mb4 NOT NULL DEFAULT 'available' COLLATE utf8mb4_0900_ai_ci ,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ,
   PRIMARY KEY (`id` ),
   INDEX `category_id` (`category_id` ),
@@ -69,7 +69,7 @@ END;
 CREATE TABLE `staff` (
   `id` int NOT NULL AUTO_INCREMENT ,
   `name` varchar(150) CHARSET utf8mb4 NOT NULL COLLATE utf8mb4_0900_ai_ci ,
-  `role` varchar(50) CHARSET utf8mb4 NOT NULL DEFAULT '"associate"' COLLATE utf8mb4_0900_ai_ci ,
+  `role` varchar(50) CHARSET utf8mb4 NOT NULL DEFAULT 'associate' COLLATE utf8mb4_0900_ai_ci ,
   `hired_at` date NOT NULL DEFAULT (curdate()) ,
   PRIMARY KEY (`id` )
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

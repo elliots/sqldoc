@@ -33,6 +33,8 @@ function handleCheck(ctx: TagContext): TagOutput | undefined {
   if (dialect === 'sqlite') return { docs: undefined }
 
   const q = (name: string) => quoteIdentifier(name, dialect)
+  // Trust boundary: expression is authored by the developer in their own schema
+  // annotations and interpolated as raw SQL. Callers control the input.
   const expression = Array.isArray(tag.args)
     ? (tag.args[0] as string)
     : ((tag.args as Record<string, unknown>).positional as string)
@@ -73,6 +75,11 @@ function handleRange(ctx: TagContext): TagOutput {
   const args = tag.args as Record<string, unknown>
   const min = args.min as number
   const max = args.max as number
+  const docs = {
+    columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}\u2013${max}` }],
+  }
+
+  if (dialect === 'sqlite') return { docs }
 
   return {
     sql: [
@@ -80,9 +87,7 @@ function handleRange(ctx: TagContext): TagOutput {
         sql: `ALTER TABLE ${q(objectName)} ADD CONSTRAINT ${q(constraintName(objectName, columnName!, 'range'))} CHECK (${q(columnName!)} >= ${min} AND ${q(columnName!)} <= ${max});`,
       },
     ],
-    docs: {
-      columns: [{ header: 'Validation', object: objectName, column: columnName, value: `Range: ${min}\u2013${max}` }],
-    },
+    docs,
   }
 }
 
@@ -147,7 +152,7 @@ function handlePattern(ctx: TagContext): TagOutput {
 const plugin = defineNamespace({
   name: 'validate',
   description: 'Column-level validation constraints plus documentation and schema linting',
-  engines: ['postgres', 'mysql', 'mssql', 'azuresql'],
+  engines: ['postgres', 'mysql', 'mssql', 'azuresql', 'sqlite'],
   tags: {
     check: {
       description: 'Add a CHECK constraint with a custom expression',

@@ -1034,10 +1034,10 @@ function isHex(x: string): boolean {
   return x.length > 2 && x.slice(0, 2).toLowerCase() === '0x'
 }
 
-/** Quote a default value string (matches Go strconv.Quote — double-quote wrapping). */
+/** Quote a default value string with single quotes (SQL convention). */
 function quoteDefault(s: string): string {
   if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
     return s
   }
-  return JSON.stringify(s)
+  return `'${s.replaceAll("'", "''")}'`
 }
