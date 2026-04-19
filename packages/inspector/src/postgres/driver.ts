@@ -508,7 +508,7 @@ ORDER BY
 	n.nspname, p.proname
 `
 
-/** Query to list triggers using pg_get_triggerdef for full DDL. */
+/** Query to list triggers with structured parts for DDL reconstruction. */
 export const triggersQuery = `
 SELECT
 	n.nspname AS schema_name,
@@ -526,11 +526,15 @@ SELECT
 		CASE WHEN t.tgtype::int & 32 != 0 THEN 'TRUNCATE' END
 	], ' OR ') AS event_manipulation,
 	CASE WHEN t.tgtype::int & 1 != 0 THEN 'ROW' ELSE 'STATEMENT' END AS orientation,
-	pg_get_triggerdef(t.oid) AS definition
+	pg_get_triggerdef(t.oid) AS definition,
+	p.proname AS func_name,
+	pn.nspname AS func_schema
 FROM
 	pg_catalog.pg_trigger t
 	JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
 	JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+	JOIN pg_catalog.pg_proc p ON p.oid = t.tgfoid
+	JOIN pg_catalog.pg_namespace pn ON pn.oid = p.pronamespace
 WHERE
 	NOT t.tgisinternal
 	AND n.nspname IN (%s)

@@ -30,6 +30,8 @@ import type { ForeignKey, Func, ObjectRef, Proc, Schema, Sequence, Table, Trigge
  * Each dialect (postgres, mysql, sqlite) implements this interface.
  */
 export interface PlanDriver {
+  /** Default schema to strip from qualified names in generated SQL. */
+  defaultSchema?: string
   /** Generate SQL for creating a schema. */
   addSchema?(schema: Schema): string[]
   /** Generate SQL for dropping a schema. Extra clauses may include IF EXISTS, CASCADE. */

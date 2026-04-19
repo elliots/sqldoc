@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import {
-  filterSystemSchemas,
-  getInspectorRuntime,
-  resolveInspectorEngine,
-  stripDefaultSchemaQualifier,
-} from '../../dialects.ts'
+import { filterSystemSchemas, getInspectorRuntime, resolveInspectorEngine } from '../../dialects.ts'
 import type { Realm } from '../../schema/schema.ts'
 
 function makeRealm(schemaNames: string[]): Realm {
@@ -68,20 +63,5 @@ describe('getInspectorRuntime', () => {
     assert.equal(tidb.dialect, 'mysql')
     assert.equal(tidb.statementBatchSize, 50)
     assert.equal(typeof tidb.isSystemSchema, 'function')
-  })
-})
-
-describe('stripDefaultSchemaQualifier', () => {
-  it('strips quoted default schema prefixes for each supported family', () => {
-    assert.deepEqual(
-      stripDefaultSchemaQualifier(['ALTER TABLE "public"."users" ADD COLUMN "x" INT'], 'postgres', 'public'),
-      ['ALTER TABLE "users" ADD COLUMN "x" INT'],
-    )
-    assert.deepEqual(stripDefaultSchemaQualifier(['ALTER TABLE `app`.`users` ADD COLUMN `x` INT'], 'mysql', 'app'), [
-      'ALTER TABLE `users` ADD COLUMN `x` INT',
-    ])
-    assert.deepEqual(stripDefaultSchemaQualifier(['ALTER TABLE [dbo].[users] ADD [x] INT'], 'azuresql', 'dbo'), [
-      'ALTER TABLE [users] ADD [x] INT',
-    ])
   })
 })

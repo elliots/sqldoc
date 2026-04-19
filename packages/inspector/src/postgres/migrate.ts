@@ -35,12 +35,6 @@ function _hasAttr(attrs: Attr[] | undefined, kind: string): boolean {
   return findAttr(attrs, kind) !== undefined
 }
 
-// -- PostgreSQL Builder Factory --
-
-function pgBuilder(stripSchema?: string): Builder {
-  return new Builder({ quoteOpening: '"', quoteClosing: '"', schema: stripSchema, indent: '  ' })
-}
-
 // -- PostgresPlan --
 
 /**
@@ -48,10 +42,30 @@ function pgBuilder(stripSchema?: string): Builder {
  * Implements PlanDriver for use with the generic plan engine.
  */
 export class PostgresPlan implements PlanDriver {
+  defaultSchema?: string
+
+  private b(stripSchema?: string): Builder {
+    return new Builder({
+      quoteOpening: '"',
+      quoteClosing: '"',
+      schema: stripSchema ?? this.defaultSchema,
+      indent: '  ',
+    })
+  }
+
+  /** Strip default schema qualifier from a raw DDL statement header (e.g. CREATE FUNCTION public.name). */
+  private stripDefaultSchemaFromDDL(ddl: string): string {
+    if (!this.defaultSchema) return ddl
+    return ddl.replace(
+      new RegExp(`(CREATE\\s+(?:OR\\s+REPLACE\\s+)?(?:FUNCTION|PROCEDURE)\\s+)${this.defaultSchema}\\.`, 'i'),
+      '$1',
+    )
+  }
+
   /** Generate SQL for creating a schema. */
   addSchema(schema: Schema): string[] {
     const stmts: string[] = []
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE SCHEMA')
     // public schema gets IF NOT EXISTS since it's auto-created
     if (schema.name === 'public') {
@@ -71,7 +85,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a schema. Checks extra clauses for IF EXISTS. Always emits CASCADE. */
   dropSchema(schema: Schema, extra?: Clause[]): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP SCHEMA')
     if (hasClause(extra, 'if_exists')) {
       b.P('IF EXISTS')
@@ -200,7 +214,7 @@ export class PostgresPlan implements PlanDriver {
       throw new Error(`table "${table.name}" has no columns`)
     }
     const stmts: string[] = []
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE TABLE').Table(table)
     b.WrapIndent((b) => {
       // Columns
@@ -236,14 +250,14 @@ export class PostgresPlan implements PlanDriver {
     // Table comment
     const tableComment = findAttr<{ kind: 'comment'; text: string }>(table.attrs, 'comment')
     if (tableComment?.text) {
-      stmts.push(commentOnTable(table, tableComment.text))
+      stmts.push(commentOnTable(table, tableComment.text, this.defaultSchema))
     }
 
     // Column comments
     for (const col of table.columns) {
       const cc = findAttr<{ kind: 'comment'; text: string }>(col.attrs, 'comment')
       if (cc?.text) {
-        stmts.push(commentOnColumn(table, col, cc.text))
+        stmts.push(commentOnColumn(table, col, cc.text, this.defaultSchema))
       }
     }
 
@@ -251,13 +265,13 @@ export class PostgresPlan implements PlanDriver {
     for (const idx of table.indexes ?? []) {
       const ic = findAttr<{ kind: 'comment'; text: string }>(idx.attrs, 'comment')
       if (ic?.text) {
-        stmts.push(commentOnIndex(table, idx, ic.text))
+        stmts.push(commentOnIndex(table, idx, ic.text, this.defaultSchema))
       }
     }
 
     // RLS policies
     if ((table.policies?.length ?? 0) > 0) {
-      stmts.push(enableRLS(table))
+      stmts.push(enableRLS(table, this.defaultSchema))
       for (const policy of table.policies ?? []) {
         stmts.push(...this.createPolicy(table, policy))
       }
@@ -269,7 +283,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a table. Checks extra clauses for IF EXISTS and CASCADE. */
   dropTable(table: Table, extra?: Clause[]): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP TABLE')
     if (hasClause(extra, 'if_exists')) {
       b.P('IF EXISTS')
@@ -289,14 +303,14 @@ export class PostgresPlan implements PlanDriver {
     for (const change of changes) {
       switch (change.type) {
         case 'add_column': {
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD COLUMN')
           columnDef(b, change.C)
           alterParts.push(b.toString())
           // Column comment
           const cc = findAttr<{ kind: 'comment'; text: string }>(change.C.attrs, 'comment')
           if (cc?.text) {
-            stmts.push(commentOnColumn(to, change.C, cc.text))
+            stmts.push(commentOnColumn(to, change.C, cc.text, this.defaultSchema))
           }
           break
         }
@@ -312,7 +326,7 @@ export class PostgresPlan implements PlanDriver {
           // Comment change
           if (change.change & ChangeKind.ChangeComment) {
             const cc = findAttr<{ kind: 'comment'; text: string }>(change.to.attrs, 'comment')
-            stmts.push(commentOnColumn(to, change.to, cc?.text ?? ''))
+            stmts.push(commentOnColumn(to, change.to, cc?.text ?? '', this.defaultSchema))
           }
           break
         }
@@ -335,7 +349,7 @@ export class PostgresPlan implements PlanDriver {
         }
 
         case 'add_primary_key': {
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD PRIMARY KEY')
           indexParts(b, change.P)
           alterParts.push(b.toString())
@@ -351,7 +365,7 @@ export class PostgresPlan implements PlanDriver {
         case 'modify_primary_key': {
           const pkName = change.from.name || `${to.name}_pkey`
           alterParts.push(`DROP CONSTRAINT "${pkName}"`)
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD PRIMARY KEY')
           indexParts(b, change.to)
           alterParts.push(b.toString())
@@ -359,7 +373,7 @@ export class PostgresPlan implements PlanDriver {
         }
 
         case 'add_foreign_key': {
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD')
           fkDef(b, change.F)
           alterParts.push(b.toString())
@@ -373,7 +387,7 @@ export class PostgresPlan implements PlanDriver {
 
         case 'modify_foreign_key': {
           alterParts.push(`DROP CONSTRAINT "${change.from.symbol}"`)
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD')
           fkDef(b, change.to)
           alterParts.push(b.toString())
@@ -381,7 +395,7 @@ export class PostgresPlan implements PlanDriver {
         }
 
         case 'add_check': {
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD')
           checkDef(b, change.C)
           alterParts.push(b.toString())
@@ -399,7 +413,7 @@ export class PostgresPlan implements PlanDriver {
           if (change.from.name) {
             alterParts.push(`DROP CONSTRAINT "${change.from.name}"`)
           }
-          const b = pgBuilder()
+          const b = this.b()
           b.P('ADD')
           checkDef(b, change.to)
           alterParts.push(b.toString())
@@ -407,18 +421,18 @@ export class PostgresPlan implements PlanDriver {
         }
 
         case 'add_policy': {
-          stmts.push(enableRLS(to))
+          stmts.push(enableRLS(to, this.defaultSchema))
           stmts.push(...this.createPolicy(to, change.P))
           break
         }
 
         case 'drop_policy': {
-          stmts.push(dropPolicy(to, change.P))
+          stmts.push(dropPolicy(to, change.P, this.defaultSchema))
           break
         }
 
         case 'modify_policy': {
-          stmts.push(dropPolicy(to, change.from))
+          stmts.push(dropPolicy(to, change.from, this.defaultSchema))
           stmts.push(...this.createPolicy(to, change.to))
           break
         }
@@ -442,7 +456,7 @@ export class PostgresPlan implements PlanDriver {
         case 'modify_attr': {
           const toAttr = change.to as any
           if (toAttr?.kind === 'comment') {
-            stmts.push(commentOnTable(to, toAttr.text))
+            stmts.push(commentOnTable(to, toAttr.text, this.defaultSchema))
           }
           break
         }
@@ -450,13 +464,15 @@ export class PostgresPlan implements PlanDriver {
         case 'add_attr': {
           const attr = change.A as any
           if (attr?.kind === 'comment') {
-            stmts.push(commentOnTable(to, attr.text))
+            stmts.push(commentOnTable(to, attr.text, this.defaultSchema))
           }
           break
         }
 
         case 'rename_column': {
-          stmts.push(`ALTER TABLE ${tableRef(to)} RENAME COLUMN "${change.from.name}" TO "${change.to.name}"`)
+          stmts.push(
+            `ALTER TABLE ${tableRef(to, this.defaultSchema)} RENAME COLUMN "${change.from.name}" TO "${change.to.name}"`,
+          )
           break
         }
 
@@ -474,7 +490,7 @@ export class PostgresPlan implements PlanDriver {
 
     // Emit ALTER TABLE with all accumulated parts
     if (alterParts.length > 0) {
-      const ref = tableRef(to)
+      const ref = tableRef(to, this.defaultSchema)
       const stmt = `ALTER TABLE ${ref} ${alterParts.join(', ')}`
       stmts.unshift(stmt)
     }
@@ -555,7 +571,7 @@ export class PostgresPlan implements PlanDriver {
   /** Generate SQL for adding a view. */
   addView(view: View): string[] {
     const stmts: string[] = []
-    const b = pgBuilder()
+    const b = this.b()
     if (view.materialized) {
       b.P('CREATE MATERIALIZED VIEW').View(view)
     } else {
@@ -577,7 +593,7 @@ export class PostgresPlan implements PlanDriver {
     // Materialized view indexes
     if (view.materialized && view.indexes) {
       for (const idx of view.indexes) {
-        const ib = pgBuilder()
+        const ib = this.b()
         ib.P('CREATE')
         if (idx.unique) ib.P('UNIQUE')
         ib.P('INDEX')
@@ -593,7 +609,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a view. Checks extra clauses for IF EXISTS and CASCADE. */
   dropView(view: View, extra?: Clause[]): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     if (view.materialized) {
       b.P('DROP MATERIALIZED VIEW')
     } else {
@@ -613,7 +629,7 @@ export class PostgresPlan implements PlanDriver {
   modifyView(from: View, to: View): string[] {
     // For regular views, CREATE OR REPLACE is used
     if (!to.materialized) {
-      const b = pgBuilder(to.schema)
+      const b = this.b(to.schema)
       b.P('CREATE OR REPLACE VIEW').View(to)
       if (to.def) {
         b.P('AS').P(to.def)
@@ -627,13 +643,10 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a function. */
   addFunc(func: Func): string[] {
-    // Body contains the full CREATE [OR REPLACE] FUNCTION statement
-    // from pg_get_functiondef — use it directly (matches the original Go behavior).
     if (func.body) {
-      return [func.body]
+      return [this.stripDefaultSchemaFromDDL(func.body)]
     }
-    // Fallback: build CREATE FUNCTION from parts
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE FUNCTION').Func(func)
     b.raw('(')
     if (func.args) {
@@ -660,7 +673,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a function. Checks extra clauses for IF EXISTS and CASCADE. */
   dropFunc(func: Func, extra?: Clause[]): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP FUNCTION')
     if (hasClause(extra, 'if_exists')) {
       b.P('IF EXISTS')
@@ -683,7 +696,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a procedure. */
   addProc(proc: Proc): string[] {
-    const b = pgBuilder(proc.schema)
+    const b = this.b(proc.schema)
     b.P('CREATE PROCEDURE').Func(proc)
     b.raw('(')
     if (proc.args) {
@@ -705,7 +718,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a procedure. Checks extra clauses for IF EXISTS and CASCADE. */
   dropProc(proc: Proc, extra?: Clause[]): string[] {
-    const b = pgBuilder(proc.schema)
+    const b = this.b(proc.schema)
     b.P('DROP PROCEDURE')
     if (hasClause(extra, 'if_exists')) {
       b.P('IF EXISTS')
@@ -727,29 +740,32 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a trigger. */
   addTrigger(trigger: Trigger): string[] {
-    // Trigger body from Postgres is the full CREATE TRIGGER DDL
-    if (trigger.body) {
-      return [trigger.body]
-    }
-    // Fallback: reconstruct from parts
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE TRIGGER').Ident(trigger.name)
     if (trigger.timing) b.P(trigger.timing)
     if (trigger.events && trigger.events.length > 0) {
       b.P(trigger.events.join(' OR '))
     }
     if (trigger.table) {
-      b.P('ON').Ident(trigger.table)
+      b.P('ON').SchemaResource(trigger.schema, trigger.table)
     }
     if (trigger.forEach) {
       b.P('FOR EACH').P(trigger.forEach)
+    }
+    if (trigger.actionCondition) {
+      b.P('WHEN').raw(`(${trigger.actionCondition})`)
+    }
+    if (trigger.funcName) {
+      b.P('EXECUTE FUNCTION')
+      b.Func({ schema: trigger.funcSchema, name: trigger.funcName })
+      b.raw('()')
     }
     return [b.toString()]
   }
 
   /** Generate SQL for dropping a trigger. Checks extra clauses for IF EXISTS and CASCADE. */
   dropTrigger(trigger: Trigger, extra?: Clause[]): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP TRIGGER')
     if (hasClause(extra, 'if_exists')) {
       b.P('IF EXISTS')
@@ -766,7 +782,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for adding a sequence. */
   addSequence(seq: Sequence): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE SEQUENCE')
     if (seq.schema) {
       b.SchemaResource(seq.schema, seq.name)
@@ -785,7 +801,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping a sequence. Checks extra clauses for IF EXISTS and CASCADE. */
   dropSequence(seq: Sequence, extra?: Clause[]): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP SEQUENCE')
     if (hasClause(extra, 'if_exists')) {
       b.P('IF EXISTS')
@@ -803,7 +819,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for modifying a sequence. */
   modifySequence(from: Sequence, to: Sequence): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('ALTER SEQUENCE')
     if (to.schema) {
       b.SchemaResource(to.schema, to.name)
@@ -835,7 +851,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for creating an enum type. */
   addEnum(name: string, values: string[], schema?: string): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE TYPE')
     if (schema) {
       b.SchemaResource(schema, name)
@@ -853,7 +869,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for dropping an enum type. */
   dropEnum(name: string, schema?: string, ifExistsSuffix?: string, cascadeSuffix?: string): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP TYPE')
     if (ifExistsSuffix) {
       b.P('IF EXISTS')
@@ -895,7 +911,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate CREATE INDEX statement. */
   private createIndex(table: Table | View, idx: Index): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('CREATE')
     if (idx.unique) b.P('UNIQUE')
     b.P('INDEX')
@@ -921,7 +937,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate DROP INDEX statement. */
   private dropIndex(table: Table | View, idx: Index): string[] {
-    const b = pgBuilder()
+    const b = this.b()
     b.P('DROP INDEX')
     if (table.schema) {
       b.SchemaResource(table.schema, idx.name ?? '')
@@ -935,7 +951,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate CREATE POLICY statement. */
   private createPolicy(table: Table, policy: Policy): string[] {
-    const ref = tableRef(table)
+    const ref = tableRef(table, this.defaultSchema)
     let stmt = `CREATE POLICY "${policy.name}" ON ${ref}`
 
     if (policy.permissive === false) {
@@ -1056,11 +1072,7 @@ function fkDef(b: Builder, fk: ForeignKey): void {
     })
   })
   b.P('REFERENCES')
-  if (fk.refSchema) {
-    b.Ident(fk.refSchema)
-    b.raw('.')
-  }
-  b.Ident(fk.refTable)
+  b.SchemaResource(fk.refSchema, fk.refTable)
   b.Wrap((b) => {
     b.MapComma(fk.refColumns, (col, _i, b) => {
       b.Ident(col)
@@ -1083,37 +1095,37 @@ function checkDef(b: Builder, chk: Check): void {
 }
 
 /** Get a schema-qualified table reference. */
-function tableRef(table: Table): string {
-  if (table.schema) {
+function tableRef(table: Table, defaultSchema?: string): string {
+  if (table.schema && table.schema !== defaultSchema) {
     return `"${table.schema}"."${table.name}"`
   }
   return `"${table.name}"`
 }
 
 /** Generate COMMENT ON TABLE statement. */
-function commentOnTable(table: Table, text: string): string {
-  return `COMMENT ON TABLE ${tableRef(table)} IS ${quote(text)}`
+function commentOnTable(table: Table, text: string, defaultSchema?: string): string {
+  return `COMMENT ON TABLE ${tableRef(table, defaultSchema)} IS ${quote(text)}`
 }
 
 /** Generate COMMENT ON COLUMN statement. */
-function commentOnColumn(table: Table, col: Column, text: string): string {
-  return `COMMENT ON COLUMN ${tableRef(table)}."${col.name}" IS ${quote(text)}`
+function commentOnColumn(table: Table, col: Column, text: string, defaultSchema?: string): string {
+  return `COMMENT ON COLUMN ${tableRef(table, defaultSchema)}."${col.name}" IS ${quote(text)}`
 }
 
 /** Generate COMMENT ON INDEX statement. */
-function commentOnIndex(table: Table, idx: Index, text: string): string {
-  const prefix = table.schema ? `"${table.schema}".` : ''
+function commentOnIndex(table: Table, idx: Index, text: string, defaultSchema?: string): string {
+  const prefix = table.schema && table.schema !== defaultSchema ? `"${table.schema}".` : ''
   return `COMMENT ON INDEX ${prefix}"${idx.name}" IS ${quote(text)}`
 }
 
 /** Generate ALTER TABLE ENABLE ROW LEVEL SECURITY statement. */
-function enableRLS(table: Table): string {
-  return `ALTER TABLE ${tableRef(table)} ENABLE ROW LEVEL SECURITY`
+function enableRLS(table: Table, defaultSchema?: string): string {
+  return `ALTER TABLE ${tableRef(table, defaultSchema)} ENABLE ROW LEVEL SECURITY`
 }
 
 /** Generate DROP POLICY statement. */
-function dropPolicy(table: Table, policy: Policy): string {
-  return `DROP POLICY "${policy.name}" ON ${tableRef(table)}`
+function dropPolicy(table: Table, policy: Policy, defaultSchema?: string): string {
+  return `DROP POLICY "${policy.name}" ON ${tableRef(table, defaultSchema)}`
 }
 
 /** Format a type reference, quoting schema-qualified names (e.g., b.color → "b"."color"). */

@@ -349,6 +349,12 @@ export interface Trigger {
   timing?: string
   forEach?: string
   body?: string
+  /** WHEN condition (from pg_get_expr of tgqual) */
+  actionCondition?: string
+  /** Name of the executed function */
+  funcName?: string
+  /** Schema of the executed function */
+  funcSchema?: string
   attrs?: Attr[]
   deps?: ObjectRef[]
   refs?: ObjectRef[]

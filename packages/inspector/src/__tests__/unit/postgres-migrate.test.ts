@@ -340,3 +340,121 @@ describe('PostgresPlan.dropSequence', () => {
     assert.equal(stmts[0], 'DROP SEQUENCE IF EXISTS "public"."my_seq" CASCADE')
   })
 })
+
+describe('PostgresPlan default schema stripping', () => {
+  const plan = new PostgresPlan()
+  plan.defaultSchema = 'app'
+
+  it('strips default schema from FK references in addTable', () => {
+    const table = {
+      name: 'orders',
+      schema: 'app',
+      columns: [{ name: 'id', type: { kind: 'integer' as const, type: { kind: 'integer' as const, T: 'integer' } } }],
+      foreignKeys: [
+        {
+          symbol: 'orders_user_fkey',
+          columns: ['user_id'],
+          refSchema: 'app',
+          refTable: 'users',
+          refColumns: ['id'],
+          onUpdate: 'CASCADE',
+          onDelete: 'RESTRICT',
+        },
+      ],
+    }
+    const stmts = plan.addTable(table as any)
+    const createStmt = stmts[0]
+    assert.ok(!createStmt.includes('"app"'), `should not contain default schema qualifier: ${createStmt}`)
+    assert.ok(createStmt.includes('REFERENCES "users"'), `should reference unqualified table: ${createStmt}`)
+  })
+
+  it('keeps non-default schema in FK references', () => {
+    const table = {
+      name: 'orders',
+      schema: 'app',
+      columns: [{ name: 'id', type: { kind: 'integer' as const, type: { kind: 'integer' as const, T: 'integer' } } }],
+      foreignKeys: [
+        {
+          symbol: 'orders_account_fkey',
+          columns: ['account_id'],
+          refSchema: 'billing',
+          refTable: 'accounts',
+          refColumns: ['id'],
+        },
+      ],
+    }
+    const stmts = plan.addTable(table as any)
+    const createStmt = stmts[0]
+    assert.ok(createStmt.includes('"billing"."accounts"'), `should keep non-default schema: ${createStmt}`)
+  })
+
+  it('strips default schema from table comment', () => {
+    const table = {
+      name: 'users',
+      schema: 'app',
+      columns: [{ name: 'id', type: { kind: 'integer' as const, type: { kind: 'integer' as const, T: 'integer' } } }],
+      attrs: [{ kind: 'comment', text: 'User accounts' }],
+    }
+    const stmts = plan.addTable(table as any)
+    const commentStmt = stmts.find((s) => s.startsWith('COMMENT ON TABLE'))
+    assert.ok(commentStmt, 'should have a COMMENT statement')
+    assert.ok(!commentStmt!.includes('"app"'), `should not contain default schema: ${commentStmt}`)
+    assert.ok(commentStmt!.includes('"users"'), `should reference unqualified table: ${commentStmt}`)
+  })
+
+  it('strips default schema from CREATE TABLE name', () => {
+    const table = {
+      name: 'users',
+      schema: 'app',
+      columns: [{ name: 'id', type: { kind: 'integer' as const, type: { kind: 'integer' as const, T: 'integer' } } }],
+    }
+    const stmts = plan.addTable(table as any)
+    assert.ok(stmts[0].startsWith('CREATE TABLE "users"'), `should strip schema: ${stmts[0]}`)
+  })
+
+  it('strips default schema from trigger DDL', () => {
+    const trigger = {
+      name: 'trg_audit',
+      schema: 'app',
+      table: 'jobs',
+      timing: 'AFTER',
+      events: ['UPDATE'],
+      forEach: 'ROW',
+      actionCondition: '(old.status IS DISTINCT FROM new.status)',
+      funcName: 'audit_fn',
+      funcSchema: 'app',
+    }
+    const stmts = plan.addTrigger!(trigger as any)
+    assert.equal(stmts.length, 1)
+    assert.ok(!stmts[0].includes('"app"'), `should not contain default schema qualifier: ${stmts[0]}`)
+    assert.ok(stmts[0].includes('ON "jobs"'), `should have unqualified table: ${stmts[0]}`)
+    assert.ok(stmts[0].includes('EXECUTE FUNCTION "audit_fn"'), `should have unqualified func: ${stmts[0]}`)
+    assert.ok(stmts[0].includes('WHEN'), `should include WHEN clause: ${stmts[0]}`)
+  })
+
+  it('keeps non-default schema in trigger func reference', () => {
+    const trigger = {
+      name: 'trg_audit',
+      schema: 'app',
+      table: 'jobs',
+      timing: 'AFTER',
+      events: ['INSERT'],
+      forEach: 'ROW',
+      funcName: 'log_change',
+      funcSchema: 'audit',
+    }
+    const stmts = plan.addTrigger!(trigger as any)
+    assert.ok(stmts[0].includes('"audit"."log_change"'), `should keep non-default func schema: ${stmts[0]}`)
+  })
+
+  it('strips default schema from function DDL header', () => {
+    const func = {
+      name: 'my_func',
+      schema: 'app',
+      body: `CREATE OR REPLACE FUNCTION app.my_func()\n RETURNS void\n LANGUAGE sql\nAS $function$SELECT 1$function$`,
+    }
+    const stmts = plan.addFunc!(func as any)
+    assert.ok(stmts[0].includes('FUNCTION my_func'), `should strip schema from func name: ${stmts[0]}`)
+    assert.ok(!stmts[0].includes('app.my_func'), `should not contain app.my_func: ${stmts[0]}`)
+  })
+})

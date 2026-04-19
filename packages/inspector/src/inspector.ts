@@ -3,12 +3,7 @@
 
 import { type DatabaseEngine, type Dialect, defaultSchemaForDialect, quoteIdentifier } from '@sqldoc/core'
 import type { DatabaseAdapter, DbSource } from './adapter.ts'
-import {
-  filterSystemSchemas,
-  getInspectorRuntime,
-  resolveInspectorEngine,
-  stripDefaultSchemaQualifier,
-} from './dialects.ts'
+import { filterSystemSchemas, getInspectorRuntime, resolveInspectorEngine } from './dialects.ts'
 import { executeFiles } from './internal/dev.ts'
 import { realmDiff } from './internal/diff.ts'
 import { changeToSQL, detachCycles, sortChanges } from './internal/plan.ts'
@@ -401,19 +396,21 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
       changes = detachCycles(changes)
       changes = sortChanges(changes)
 
+      if (opts?.stripDefaultSchema) {
+        planner.defaultSchema = resolvedDefaultSchema ?? fromRealm.defaultSchema
+      } else {
+        planner.defaultSchema = resolvedDefaultSchema
+      }
+
       const diffStmts: string[] = []
       for (const change of changes) {
         const sql = changeToSQL(planner, change)
         diffStmts.push(...sql)
       }
 
-      let statements = [...renameStmts, ...diffStmts]
-      const defSchema = opts?.stripDefaultSchema
-        ? (resolvedDefaultSchema ?? fromRealm.defaultSchema)
-        : resolvedDefaultSchema
-      if (defSchema) {
-        statements = stripDefaultSchemaQualifier(statements, engine, defSchema)
-      }
+      planner.defaultSchema = undefined
+
+      const statements = [...renameStmts, ...diffStmts]
 
       return { statements, changes, renameCandidates }
     },

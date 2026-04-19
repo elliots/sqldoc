@@ -1,4 +1,4 @@
-import { type DatabaseEngine, type Dialect, getEngineSpec, quoteIdentifier, resolveDatabaseEngine } from '@sqldoc/core'
+import { type DatabaseEngine, type Dialect, getEngineSpec, resolveDatabaseEngine } from '@sqldoc/core'
 import type { DatabaseAdapter } from './adapter.ts'
 import type { PlanDriver } from './internal/plan.ts'
 import type { DiffDriver } from './internal/sqlx.ts'
@@ -172,15 +172,4 @@ export function scanEngineStatements(input: string, engine: DatabaseEngine = 'po
 
 export function getEngineStatementBatchSize(engine: DatabaseEngine = 'postgres'): number {
   return getInspectorRuntime(engine).statementBatchSize
-}
-
-export function stripDefaultSchemaQualifier(
-  statements: string[],
-  engine: DatabaseEngine,
-  defaultSchema?: string,
-): string[] {
-  if (!defaultSchema) return statements
-  const { dialect } = getInspectorRuntime(engine)
-  const prefix = `${quoteIdentifier(defaultSchema, dialect)}.`
-  return statements.map((statement) => statement.split(prefix).join(''))
 }

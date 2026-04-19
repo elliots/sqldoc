@@ -25,12 +25,6 @@ function findAttr<T>(attrs: Attr[] | undefined, kind: string): T | undefined {
   return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
-// -- MSSQL Builder Factory --
-
-function mssqlBuilder(schema?: string): Builder {
-  return new Builder({ quoteOpening: '[', quoteClosing: ']', schema, indent: '  ' })
-}
-
 // -- Helper: bracket-quoted table reference --
 
 /** Bracket-quote an identifier for MSSQL, escaping any ] inside. */
@@ -69,6 +63,17 @@ function formatDefault(col: Column): string {
  * CREATE OR REPLACE for views/functions/procedures.
  */
 export class MssqlPlan implements PlanDriver {
+  defaultSchema?: string
+
+  private b(stripSchema?: string): Builder {
+    return new Builder({
+      quoteOpening: '[',
+      quoteClosing: ']',
+      schema: stripSchema ?? this.defaultSchema,
+      indent: '  ',
+    })
+  }
+
   // -- Schema Operations --
 
   /** Generate SQL for creating a schema. */
@@ -89,7 +94,7 @@ export class MssqlPlan implements PlanDriver {
       throw new Error(`table "${table.name}" has no columns`)
     }
     const stmts: string[] = []
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE TABLE').Table(table)
     b.WrapIndent((b) => {
       // Columns
@@ -176,7 +181,7 @@ export class MssqlPlan implements PlanDriver {
         // -- Column Changes --
 
         case 'add_column': {
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD')
           this.columnDef(b, change.C)
           stmts.push(b.toString())
@@ -254,7 +259,7 @@ export class MssqlPlan implements PlanDriver {
 
         case 'add_primary_key': {
           const pkName = change.P.name || `PK_${to.name}`
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD CONSTRAINT').Ident(pkName).P('PRIMARY KEY')
           this.indexTypeParts(b, change.P)
           stmts.push(b.toString())
@@ -272,7 +277,7 @@ export class MssqlPlan implements PlanDriver {
           const oldPkName = change.from.name || `PK_${to.name}`
           stmts.push(`ALTER TABLE ${tableRef(to)} DROP CONSTRAINT [${oldPkName}]`)
           const newPkName = change.to.name || `PK_${to.name}`
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD CONSTRAINT').Ident(newPkName).P('PRIMARY KEY')
           this.indexTypeParts(b, change.to)
           stmts.push(b.toString())
@@ -282,7 +287,7 @@ export class MssqlPlan implements PlanDriver {
         // -- Foreign Key Changes --
 
         case 'add_foreign_key': {
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD')
           this.fkDef(b, change.F)
           stmts.push(b.toString())
@@ -296,7 +301,7 @@ export class MssqlPlan implements PlanDriver {
 
         case 'modify_foreign_key': {
           stmts.push(`ALTER TABLE ${tableRef(to)} DROP CONSTRAINT [${change.from.symbol}]`)
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD')
           this.fkDef(b, change.to)
           stmts.push(b.toString())
@@ -306,7 +311,7 @@ export class MssqlPlan implements PlanDriver {
         // -- Check Constraint Changes --
 
         case 'add_check': {
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD')
           this.checkDef(b, change.C)
           stmts.push(b.toString())
@@ -324,7 +329,7 @@ export class MssqlPlan implements PlanDriver {
           if (change.from.name) {
             stmts.push(`ALTER TABLE ${tableRef(to)} DROP CONSTRAINT [${change.from.name}]`)
           }
-          const b = mssqlBuilder()
+          const b = this.b()
           b.P('ALTER TABLE').Table(to).P('ADD')
           this.checkDef(b, change.to)
           stmts.push(b.toString())
@@ -527,7 +532,7 @@ export class MssqlPlan implements PlanDriver {
    * MSSQL: CREATE [UNIQUE] [NONCLUSTERED] INDEX [name] ON [schema].[table] ([cols]) [INCLUDE (...)] [WHERE ...]
    */
   private createIndex(table: Table, idx: Index): string {
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE')
     if (idx.unique) b.P('UNIQUE')
 
@@ -601,11 +606,7 @@ export class MssqlPlan implements PlanDriver {
       })
     })
     b.P('REFERENCES')
-    if (fk.refSchema) {
-      b.Ident(fk.refSchema)
-      b.raw('.')
-    }
-    b.Ident(fk.refTable)
+    b.SchemaResource(fk.refSchema, fk.refTable)
     b.Wrap((b) => {
       b.MapComma(fk.refColumns, (col, _i, b) => {
         b.Ident(col)
@@ -633,7 +634,7 @@ export class MssqlPlan implements PlanDriver {
 
   /** Generate SQL for adding a view. MSSQL does not support CREATE OR REPLACE. */
   addView(view: View): string[] {
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE VIEW').View(view).P('AS')
     b.P(view.def ?? '')
     return [b.toString()]
@@ -658,7 +659,7 @@ export class MssqlPlan implements PlanDriver {
     if (func.body) {
       return [func.body]
     }
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE FUNCTION').Func(func)
     b.raw('(')
     if (func.args) {
@@ -688,7 +689,7 @@ export class MssqlPlan implements PlanDriver {
     if (proc.body) {
       return [proc.body]
     }
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE PROCEDURE').Func(proc)
     if (proc.args && proc.args.length > 0) {
       b.raw('\n')
@@ -718,7 +719,7 @@ export class MssqlPlan implements PlanDriver {
       return [trigger.body]
     }
     // Fallback: reconstruct from parts
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE TRIGGER')
     if (trigger.table) {
       const schemaName = (trigger as any).schema
@@ -752,7 +753,7 @@ export class MssqlPlan implements PlanDriver {
 
   /** Generate SQL for adding a sequence. */
   addSequence(seq: Sequence): string[] {
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('CREATE SEQUENCE')
     if (seq.schema) {
       b.SchemaResource(seq.schema, seq.name)
@@ -771,7 +772,7 @@ export class MssqlPlan implements PlanDriver {
 
   /** Generate SQL for dropping a sequence. */
   dropSequence(seq: Sequence, _extra?: Clause[]): string[] {
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('DROP SEQUENCE')
     if (seq.schema) {
       b.SchemaResource(seq.schema, seq.name)
@@ -783,7 +784,7 @@ export class MssqlPlan implements PlanDriver {
 
   /** Generate SQL for modifying a sequence. */
   modifySequence(from: Sequence, to: Sequence): string[] {
-    const b = mssqlBuilder()
+    const b = this.b()
     b.P('ALTER SEQUENCE')
     if (to.schema) {
       b.SchemaResource(to.schema, to.name)

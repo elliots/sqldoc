@@ -16,12 +16,6 @@ function findAttr<T>(attrs: Attr[] | undefined, kind: string): T | undefined {
   return attrs.find((a) => 'kind' in a && (a as any).kind === kind) as T | undefined
 }
 
-// -- MySQL Builder Factory --
-
-function mysqlBuilder(schema?: string): Builder {
-  return new Builder({ quoteOpening: '`', quoteClosing: '`', schema })
-}
-
 // -- MysqlPlan --
 
 /**
@@ -29,12 +23,17 @@ function mysqlBuilder(schema?: string): Builder {
  * Implements PlanDriver for use with the generic plan engine.
  */
 export class MysqlPlan implements PlanDriver {
+  defaultSchema?: string
+
+  private b(stripSchema?: string): Builder {
+    return new Builder({ quoteOpening: '`', quoteClosing: '`', schema: stripSchema ?? this.defaultSchema })
+  }
   /** Generate SQL for adding a table. */
   addTable(table: Table): string[] {
     if (table.columns.length === 0) {
       throw new Error(`table "${table.name}" has no columns`)
     }
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('CREATE TABLE').Table(table).raw('(')
 
     // Columns
@@ -78,7 +77,7 @@ export class MysqlPlan implements PlanDriver {
 
   /** Generate SQL for dropping a table. */
   dropTable(table: Table, _extra?: Clause[]): string[] {
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('DROP TABLE').Table(table)
     return [b.toString()]
   }
@@ -113,7 +112,7 @@ export class MysqlPlan implements PlanDriver {
 
     for (const batch of [phase1, phase2]) {
       if (batch.length === 0) continue
-      const b = mysqlBuilder()
+      const b = this.b()
       b.P('ALTER TABLE').Table(to)
 
       let first = true
@@ -134,21 +133,21 @@ export class MysqlPlan implements PlanDriver {
   addView(view: View): string[] {
     if (!view.name) throw new Error('addView: view.name is required')
     if (!view.def) throw new Error(`addView: view "${view.name}" is missing a definition`)
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('CREATE VIEW').View(view).P('AS').P(view.def)
     return [b.toString()]
   }
 
   /** Generate SQL for dropping a view. */
   dropView(view: View, _extra?: Clause[]): string[] {
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('DROP VIEW').View(view)
     return [b.toString()]
   }
 
   /** Generate SQL for modifying a view. */
   modifyView(_from: View, to: View): string[] {
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('CREATE OR REPLACE VIEW')
       .View(to)
       .P('AS')
@@ -165,7 +164,7 @@ export class MysqlPlan implements PlanDriver {
 
   /** Generate SQL for dropping a function. */
   dropFunc(func: Func, _extra?: Clause[]): string[] {
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('DROP FUNCTION IF EXISTS').Func(func)
     return [b.toString()]
   }
@@ -183,7 +182,7 @@ export class MysqlPlan implements PlanDriver {
 
   /** Generate SQL for dropping a trigger. */
   dropTrigger(trigger: Trigger, _extra?: Clause[]): string[] {
-    const b = mysqlBuilder()
+    const b = this.b()
     b.P('DROP TRIGGER IF EXISTS').Ident(trigger.name)
     return [b.toString()]
   }

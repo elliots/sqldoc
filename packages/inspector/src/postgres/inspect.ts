@@ -1295,15 +1295,29 @@ export class PostgresInspector implements Inspector {
       const eventManip = scanString(row, 4)
       const orientation = scanString(row, 5)
       const trigDef = scanString(row, 6)
+      const funcName = scanString(row, 7)
+      const funcSchema = scanString(row, 8)
 
       if (!schemaName || !trigName) continue
 
       const s = schemaMap.get(schemaName)
       if (!s) continue
 
+      // Extract WHEN clause from the full trigger definition
+      let actionCondition: string | undefined
+      if (trigDef) {
+        const whenMatch = trigDef.match(/\bWHEN\s+\((.+)\)\s+EXECUTE\b/i)
+        if (whenMatch) {
+          actionCondition = whenMatch[1]
+        }
+      }
+
       const trigger: Trigger = {
         name: trigName,
         body: trigDef || undefined,
+        actionCondition,
+        funcName: funcName || undefined,
+        funcSchema: funcSchema || undefined,
       }
 
       // Timing

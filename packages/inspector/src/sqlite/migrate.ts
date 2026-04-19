@@ -16,10 +16,16 @@ import { type AutoIncrement, hasAttr, type IndexPredicate, type Strict, type Wit
  * Handles SQLite's limited ALTER TABLE support with the 12-step rebuild procedure.
  */
 export class SqlitePlan implements PlanDriver {
+  defaultSchema?: string
+
+  private b(): Builder {
+    return new Builder({ quoteOpening: '`', quoteClosing: '`', schema: this.defaultSchema })
+  }
+
   /** Generate SQL for creating a table. */
   addTable(table: Table): string[] {
     const stmts: string[] = []
-    const b = newBuilder()
+    const b = this.b()
     b.P('CREATE TABLE').Ident(table.name)
 
     const columnDefs: string[] = []
@@ -466,9 +472,4 @@ function quoteIdent(name: string): string {
 function singleQuote(s: string): string {
   if (s.length >= 2 && s[0] === "'" && s[s.length - 1] === "'") return s
   return `'${s.replace(/'/g, "''")}'`
-}
-
-/** Create a new Builder configured for SQLite (backtick quoting). */
-function newBuilder(): Builder {
-  return new Builder({ quoteOpening: '`', quoteClosing: '`' })
 }
