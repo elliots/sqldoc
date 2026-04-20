@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/db-pglite",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "PGlite embedded PostgreSQL adapter for sqldoc (zero-config, in-memory)",
   "exports": {
     ".": {

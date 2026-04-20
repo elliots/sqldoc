@@ -1,5 +1,91 @@
 # Changelog
 
+## v0.2.0 (2026-04-20)
+
+f62f7e29 mssql: initial version
+915caa45 refactor: shadow databases + parallel diff via DbSource
+
+f4db36ad fix: strip default schema qualifier at generation time
+a553fe08 fix: review issues
+ba0f92c6 fix: kysely: function return type
+788a2003 fix: schema in comment parsing
+2a87b6c4 fix: dont emit externals in compile by default
+2f72058c fix: key loadLocalPlugins cache by (loader, sqldocDir)
+becb3e1b test: update ns-postgraphile comment-body escape expectations
+be68a2c1 refactor: drop MySQL/SQLite from ns-comment
+465c307a fix: more auto-fixes
+1c70b0df refactor: migrate audit/history/softdelete/temporal/validate to per-tag handlers
+3a46289d refactor: add defineNamespace helper, local plugin registry, and info-severity errors
+f1e034f0 chore: pr comment fixes
+0d26d15b fix: db: dont swallow validation error on close error
+36e8682d refactor: core: expose engine across plugin contexts
+79130eb0 refactor: api: make engine the public database selector
+8aa19b90 refactor: cli: make project configs engine-aware
+c326c9bd refactor: model database engines explicitly
+e87b48d6 refactor(core): scope schema-aware compile by file
+9042d30f fix: core: make block resolution forward-only
+df18b230 fix: respect object kinds and schema-qualified pk lint
+52944dee fix: tighten tag merging and verification checks
+e7edacdb fix: inspector: preserve delimiter directive positions
+5f731671 refactor: ns-docs: use canonical realm model
+e74ee57d refactor: core: unify schema types and postgres ast
+d18eac92 refactor: centralize db adapter runtime
+acaeac63 refactor: centralize inspector dialect runtime
+c63878be refactor: normalize tier2 schema access
+e6be3f80 inspector: remove file directives
+f0ee67e4 refactor: centralize ast adapter selection
+8af77fea refactor: remove atlas runtime naming
+a971170b refactor: centralize dialect defaults
+3fd8b05b fix: stabilize mssql and inspector checks
+048d3c68 docs: add development workflow guide
+2721e009 chore: add test:node:coverage script
+37e8e37f fix: db: optional mssql docker container reuse
+16b89cd6 fix: fixes from review
+e0cb6f25 feat: add dev-docs
+39ba00fc fix: normalize schema on inspection - strip current schema from objects for portable diffs
+912cc4e7 fix: withCascade for Postgres restore, IF EXISTS on all drops, version checks, reply all PR comments
+7f050aa4 test: add regression tests for all review fixes
+b5056f72 fix: MySQL modify_check, drop_attr clearing, addView guard, test type safety
+6e5ec66c chore: require node 25 in engines
+42e680cc fix: enable TLS encryption by default for MSSQL connections
+31c49b93 fix: MSSQL escaping/injection, aggregate overloads, quote validation, exec args, async docker wait
+93467711 fix: move drop_schema to dependency-ordered drop array instead of prelude
+f4c89130 fix: schema-qualified plan keys, PG identity/collation DDL, cache stmtDecls, remove dead code
+7eb264c6 fix: column rename SQL, readonly File, general restore, MySQL/MSSQL version detection
+b2804a1d fix: detect currentSchema from DB connection, stamp on Realm
+0d94d246 fix: centralize defaultSchema on Realm, remove duplicated dialect logic
+11d3935d fix: revert batch fallback and topComments changes that broke tests
+10d91589 fix: single-schema realms use actual schema name as default
+6266e92a fix: multi-schema object identity in compiler, enricher, and renames
+5ebb209e chore: lint
+3ea20c5f fix: close db adapter in MySQL test after hook
+67a36827 fix: snapshot restore in finally, validate exclude patterns, stop topComments at non-comment
+2f96b0c2 fix: view comment removal, generated column additions, predicate normalization, xml type
+8821029e fix: escape rename identifiers, MySQL boolean/quote correctness
+f62f7e29 mssql: initial version
+e927c26e test: domain migration preserves NOT NULL, type size, and detects changes
+b61aab3f chore: biome formatting
+5acd1e82 fix: domain diff comparison and migration DDL (NOT NULL, type size)
+812579fa fix: strengthen test assertions
+88bc090b fix: improve dev database safety and dependency matching
+c70e6919 fix: scope column-level tags to their own column in compiler
+2f6dce9c fix: complete TiDB priority coverage for all table-level change types
+0db4c5d8 fix: harden external object immutability checks
+fa527253 fix: improve parsing robustness across dialects
+44450268 fix: detect generated column expression changes in postgres diff
+540e4633 fix: improve bitmask type safety for InspectMode and DiffMode
+4a555d85 fix: use TiDB-specific classes when tidb option is set, validate exclude depth
+61cac574 fix: add typecheck script to inspector and fix MySQL test assertions
+c21f34b4 fix: improve type safety for ChangeKind and PipelineResult.atlasRealm
+2386e620 fix: remove dead code and improve readability
+8c955cbc fix: missing destructive/diff detection for drop_schema, op-class, range/aggregate
+f2fd7fc2 fix: escape identifiers and literals in SQL generation
+3e34d406 fix: more inspector fixes, all tests passing again
+0e3348cb inspector: use and fix and test
+5c16989a inspector: port from go
+cf27e52c fix: diffing individual schemas
+
+
 ## v0.1.3 (2026-04-09)
 
 a61b6be fix: handle composite return types from functions
