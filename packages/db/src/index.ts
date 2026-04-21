@@ -49,6 +49,7 @@ export type {
   Differ,
   DiffOptions,
   // Inspector API
+  DiffRealmsOptions,
   DiffSource,
   DomainType,
   EnumType,
@@ -114,6 +115,7 @@ export {
   createInspector,
   // Inspect enums/classes
   DiffMode,
+  diffRealms,
   enumValues,
   // Exclusion filtering
   excludeRealm,
@@ -126,6 +128,7 @@ export {
   findTags,
   hasAttr,
   hasTag,
+  inspectAdapter,
   InspectMode,
   // Type utilities
   isCustomType,

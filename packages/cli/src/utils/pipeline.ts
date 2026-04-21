@@ -68,6 +68,9 @@ export interface PipelineResult {
 export interface PipelineRunOptions {
   /** Skip all caching (read and write) regardless of SQLDOC_NO_CACHE env. */
   noCache?: boolean
+  /** Suppress per-file progress logs (e.g. `── path/to/schema.sql`).
+   *  Intended for programmatic callers that don't want stderr chatter. */
+  quiet?: boolean
 }
 
 export async function runCompilePipeline(
@@ -257,7 +260,7 @@ export async function runCompilePipeline(
 
     for (const filePath of allFiles) {
       const rel = path.relative(process.cwd(), filePath)
-      console.error(pc.cyan(`── ${rel}`))
+      if (!options.quiet) console.error(pc.cyan(`── ${rel}`))
       // Use merged content (includes inlined) for project files, raw content for externals
       const source = mergedProjectContents.get(filePath) ?? fs.readFileSync(filePath, 'utf-8')
 

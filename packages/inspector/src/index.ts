@@ -3,9 +3,9 @@
 // Database adapter interface
 export type { DatabaseAdapter, DbSource, ExecResult, QueryResult } from './adapter.ts'
 export type { DatabaseEngine, Dialect } from './dialects.ts'
-export type { DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
+export type { DiffRealmsOptions, DiffSource, InspectorOptions, InspectorResult, InspectorRunner } from './inspector.ts'
 // Main API
-export { createInspector } from './inspector.ts'
+export { createInspector, diffRealms, inspectAdapter } from './inspector.ts'
 
 // Type utilities
 export { isCustomType, typeCategory } from './marshal.ts'

@@ -313,28 +313,116 @@ function findColumnInRealm(realm: Realm, tableName: string, colName: string): Co
   return result.table.columns.find((c) => c.name === colName)
 }
 
-// -- Main Factory --
+// -- Inspect a live adapter directly --
 
 /**
- * Create an InspectorRunner backed by direct TypeScript database calls.
+ * Inspect a live DatabaseAdapter and return a Realm. Does not own the adapter —
+ * the caller is responsible for closing it.
  *
- * This replaces:
- * - packages/db/src/runner.ts
- * - packages/db/src/worker.ts (WASI worker)
- * - packages/db/src/bridge.ts (SharedArrayBuffer bridge)
- * - packages/db/src/wasi-host.ts (WASI host functions)
- * - the old WASM host path
- *
- * With direct async TypeScript calls to DatabaseAdapter.
+ * Use this for live/prod DB inspection. For SQL files use `runner.inspect(...)`
+ * on an `InspectorRunner` backed by a shadow DbSource.
  */
+export async function inspectAdapter(
+  engine: DatabaseEngine,
+  adapter: DatabaseAdapter,
+  opts?: { schema?: string },
+): Promise<Realm> {
+  const resolvedEngine = resolveInspectorEngine({ engine })
+  const runtime = getInspectorRuntime(resolvedEngine)
+  const liveEq = new ExecQuerierAdapter(adapter)
+  const liveInspector = runtime.createComponents(adapter, liveEq).inspector
+  const realm = await liveInspector.inspectRealm(opts?.schema ? { schemas: [opts.schema] } : undefined)
+  return filterSystemSchemas(realm, resolvedEngine)
+}
+
+// -- Pure-TS diff (no DB) --
+
+export interface DiffRealmsOptions {
+  defaultSchema?: string
+  /** When true, treat default schemas as equivalent even if names differ. */
+  matchDefaultSchemas?: boolean
+  /** When true, strip default schema qualifier from output SQL. */
+  stripDefaultSchema?: boolean
+  renames?: Rename[]
+}
+
+/**
+ * Run the diff + plan pipeline on two already-inspected Realms. No DB calls.
+ *
+ * When both realms are available from cache, this is significantly cheaper than
+ * `runner.diff(sqlFrom, sqlTo, ...)` which would re-inspect both sides via a
+ * live or shadow database.
+ *
+ * Pure with respect to its inputs — fromRealm/toRealm are deep-cloned before any
+ * mutating steps (rename application), so callers can reuse the same Realm
+ * across multiple diff calls without state leaking.
+ */
+export function diffRealms(
+  engine: DatabaseEngine,
+  fromRealmIn: Realm,
+  toRealmIn: Realm,
+  opts?: DiffRealmsOptions,
+): InspectorResult {
+  const resolvedEngine = resolveInspectorEngine({ engine })
+  const runtime = getInspectorRuntime(resolvedEngine)
+  const { dialect } = runtime
+  const { differ, planner } = runtime.createComponents(noDbSentinel(), noExecSentinel())
+
+  // Deep-clone so `applyKnownRenames` and downstream logic can mutate safely.
+  let fromRealm: Realm = structuredClone(fromRealmIn)
+  let toRealm: Realm = structuredClone(toRealmIn)
+
+  const resolvedDefaultSchema = opts?.defaultSchema
+  if (resolvedDefaultSchema) {
+    fromRealm = { ...fromRealm, defaultSchema: resolvedDefaultSchema }
+    toRealm = { ...toRealm, defaultSchema: resolvedDefaultSchema }
+  }
+
+  let renameStmts: string[] = []
+  if (opts?.renames && opts.renames.length > 0) {
+    renameStmts = applyKnownRenames(fromRealm, opts.renames, dialect)
+  }
+
+  const renameCandidates = detectRenameCandidates(fromRealm, toRealm, opts?.renames)
+
+  const diffOpts =
+    opts?.matchDefaultSchemas !== undefined ? { matchDefaultSchemas: opts.matchDefaultSchemas } : undefined
+  let changes = realmDiff(differ, fromRealm, toRealm, diffOpts)
+
+  if (changes.length === 0 && renameStmts.length === 0) {
+    return { renameCandidates, changes }
+  }
+
+  changes = detachCycles(changes)
+  changes = sortChanges(changes)
+
+  if (opts?.stripDefaultSchema) {
+    planner.defaultSchema = resolvedDefaultSchema ?? fromRealm.defaultSchema
+  } else {
+    planner.defaultSchema = resolvedDefaultSchema
+  }
+
+  const diffStmts: string[] = []
+  for (const change of changes) {
+    const sql = changeToSQL(planner, change)
+    diffStmts.push(...sql)
+  }
+
+  planner.defaultSchema = undefined
+
+  const statements = [...renameStmts, ...diffStmts]
+
+  return { statements, changes, renameCandidates }
+}
+
+// -- Main Factory --
+
 export async function createInspector(options: InspectorOptions): Promise<InspectorRunner> {
   const { source } = options
   const engine = resolveInspectorEngine(options)
   const runtime = getInspectorRuntime(engine)
-  const { dialect } = runtime
   // Differ and planner are pure dialect logic — they don't touch a db. They're
   // built once at runner creation; inspectors are built per-acquired-db below.
-  const { differ, planner } = runtime.createComponents(noDbSentinel(), noExecSentinel())
 
   async function inspectSide(side: DiffSource, schema: string | undefined): Promise<Realm> {
     if (!Array.isArray(side)) {
@@ -369,50 +457,17 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
 
       // Parallel: each side opens its own DB from the source (or reads a live
       // adapter). Independent sandboxes means no synchronization needed.
-      let [fromRealm, toRealm] = await Promise.all([
+      const [fromRealm, toRealm] = await Promise.all([
         inspectSide(from, resolvedFromSchema),
         inspectSide(to, resolvedToSchema),
       ])
 
-      if (resolvedDefaultSchema) {
-        fromRealm = { ...fromRealm, defaultSchema: resolvedDefaultSchema }
-        toRealm = { ...toRealm, defaultSchema: resolvedDefaultSchema }
-      }
-
-      let renameStmts: string[] = []
-      if (opts?.renames && opts.renames.length > 0) {
-        renameStmts = applyKnownRenames(fromRealm, opts.renames, dialect)
-      }
-
-      const renameCandidates = detectRenameCandidates(fromRealm, toRealm, opts?.renames)
-
-      const diffOpts = opts ? { matchDefaultSchemas: opts.matchDefaultSchemas } : undefined
-      let changes = realmDiff(differ, fromRealm, toRealm, diffOpts)
-
-      if (changes.length === 0 && renameStmts.length === 0) {
-        return { renameCandidates, changes }
-      }
-
-      changes = detachCycles(changes)
-      changes = sortChanges(changes)
-
-      if (opts?.stripDefaultSchema) {
-        planner.defaultSchema = resolvedDefaultSchema ?? fromRealm.defaultSchema
-      } else {
-        planner.defaultSchema = resolvedDefaultSchema
-      }
-
-      const diffStmts: string[] = []
-      for (const change of changes) {
-        const sql = changeToSQL(planner, change)
-        diffStmts.push(...sql)
-      }
-
-      planner.defaultSchema = undefined
-
-      const statements = [...renameStmts, ...diffStmts]
-
-      return { statements, changes, renameCandidates }
+      return diffRealms(engine, fromRealm, toRealm, {
+        defaultSchema: resolvedDefaultSchema,
+        matchDefaultSchemas: opts?.matchDefaultSchemas,
+        stripDefaultSchema: opts?.stripDefaultSchema,
+        renames: opts?.renames,
+      })
     },
 
     async close() {

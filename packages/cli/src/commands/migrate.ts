@@ -4,15 +4,17 @@ import * as readline from 'node:readline'
 import type { CompilerOutput, ResolvedConfig } from '@sqldoc/core'
 import { findSqldocDir, loadConfig, resolveAllProjects, resolveProject } from '@sqldoc/core'
 import type { Change, Rename, RenameCandidate } from '@sqldoc/db'
-import { createRunner, defaultSchemaForEngine, extractExtensions } from '@sqldoc/db'
+import { defaultSchemaForEngine, diffRealms, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { debug, resolveConfigRoot } from '../debug.ts'
 import { CliError, formatPipelineError } from '../errors.ts'
+import { getCacheDir } from '../utils/cache.ts'
 import { detectDestructiveChanges } from '../utils/destructive.ts'
 import { concatUpScripts, readMigrations, writeMigration } from '../utils/migration-formats.ts'
 import { runCompilePipeline } from '../utils/pipeline.ts'
 import { printChanges } from '../utils/pretty-changes.ts'
 import { prettyStatements } from '../utils/pretty-sql.ts'
+import { inspectRealm } from '../utils/realm-source.ts'
 
 /**
  * migrate command: generate migration files or check for schema drift.
@@ -120,79 +122,83 @@ async function migrateProject(
     }
   }
 
-  // ── Step 4: Diff current -> desired (up migration) ─────────────────
-  // Inspect all schemas (no scope restriction) but strip the default schema from output.
+  // ── Step 4: Inspect both sides into realms (cache-aware) ──────────
+  // External SQL is on both sides so external objects cancel out (D-09).
+  // Include files are only in desiredSql, so they produce migration changes (D-10).
   const defaultSchemaOpt = defaultSchemaForEngine(config.engine)
-
   const allSql = [currentWithExternals, desiredSql].filter(Boolean)
   const { extensions } = extractExtensions(allSql)
-  const runner = await createRunner({
+  const sqldocDir = findSqldocDir(configRoot) ?? undefined
+  const cacheDir = noCache ? undefined : getCacheDir(sqldocDir)
+  const inspectConfig = {
     engine: config.engine,
-    devUrl: config.devUrl,
+    dialect: config.dialect,
     extensions,
-    sqldocDir: findSqldocDir(configRoot) ?? undefined,
+    devUrl: config.devUrl,
+    sqldocDir,
+  }
+
+  const [currentRealm, desiredRealm] = await Promise.all([
+    inspectRealm(
+      {
+        kind: 'sql',
+        contents: currentWithExternals ? [currentWithExternals] : [],
+        relFiles: ['current.sql'],
+        tag: 'migrate-current',
+      },
+      inspectConfig,
+      cacheDir,
+    ),
+    inspectRealm(
+      {
+        kind: 'sql',
+        contents: [desiredSql],
+        relFiles: ['desired.sql'],
+        tag: 'migrate-desired',
+      },
+      inspectConfig,
+      cacheDir,
+    ),
+  ])
+
+  // ── Step 5: Diff realms (pure TS) ──────────────────────────────────
+  const upResult = diffRealms(config.engine, currentRealm, desiredRealm, {
+    defaultSchema: defaultSchemaOpt,
+    matchDefaultSchemas: true,
+    stripDefaultSchema: true,
+    renames: knownRenames.length > 0 ? knownRenames : undefined,
   })
 
-  let upStatements: string[]
-  let upChanges: Change[] | undefined
-  let downStatements: string[]
+  let upStatements: string[] = upResult.statements ?? []
+  let upChanges: Change[] | undefined = upResult.changes
+  const candidates = upResult.renameCandidates ?? []
 
-  try {
-    // First diff: pass known renames, get back SQL + candidates
-    // External SQL is on both sides (currentWithExternals + desiredSql) so external objects cancel out (D-09)
-    // Include files are only in desiredSql, so they produce migration changes (D-10)
-    const upResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
-      defaultSchema: defaultSchemaOpt,
-      matchDefaultSchemas: true,
-      stripDefaultSchema: true,
-      renames: knownRenames.length > 0 ? knownRenames : undefined,
-    })
-
-    if (upResult.error) {
-      throw new CliError(`Schema diff error: ${upResult.error}`)
+  // ── Step 5a: Interactive rename prompting (TTY only) ──────────────
+  if (candidates.length > 0 && process.stdin.isTTY) {
+    const accepted = await promptRenameCandidates(candidates)
+    if (accepted.length > 0) {
+      // Re-diff with the accepted renames added to the known set.
+      // diffRealms deep-clones the fromRealm, so calling again with the same
+      // currentRealm is safe.
+      const allRenames = [...knownRenames, ...accepted]
+      const rediffResult = diffRealms(config.engine, currentRealm, desiredRealm, {
+        defaultSchema: defaultSchemaOpt,
+        matchDefaultSchemas: true,
+        stripDefaultSchema: true,
+        renames: allRenames,
+      })
+      upStatements = rediffResult.statements ?? []
+      upChanges = rediffResult.changes
     }
-
-    upStatements = upResult.statements ?? []
-    upChanges = upResult.changes
-    const candidates = upResult.renameCandidates ?? []
-
-    // ── Step 4a: Interactive rename prompting (TTY only) ──────────────
-    if (candidates.length > 0 && process.stdin.isTTY) {
-      const accepted = await promptRenameCandidates(candidates)
-      if (accepted.length > 0) {
-        // Re-diff with the accepted renames added to the known set
-        const allRenames = [...knownRenames, ...accepted]
-        const rediffResult = await runner.diff(currentWithExternals ? [currentWithExternals] : [], [desiredSql], {
-          defaultSchema: defaultSchemaOpt,
-          matchDefaultSchemas: true,
-          stripDefaultSchema: true,
-          renames: allRenames,
-        })
-
-        if (rediffResult.error) {
-          throw new CliError(`Schema diff (with renames) error: ${rediffResult.error}`)
-        }
-
-        upStatements = rediffResult.statements ?? []
-        upChanges = rediffResult.changes
-      }
-    }
-    // ── Step 5: Diff desired -> current (down migration) ──────────────
-    // Down diff also uses currentWithExternals so external objects cancel out
-    const downResult = await runner.diff([desiredSql], currentWithExternals ? [currentWithExternals] : [], {
-      defaultSchema: defaultSchemaOpt,
-      matchDefaultSchemas: true,
-      stripDefaultSchema: true,
-    })
-
-    if (downResult.error) {
-      throw new CliError(`Schema diff (reverse) error: ${downResult.error}`)
-    }
-
-    downStatements = downResult.statements ?? []
-  } finally {
-    await runner.close()
   }
+
+  // ── Step 6: Diff desired -> current (down migration) ──────────────
+  const downResult = diffRealms(config.engine, desiredRealm, currentRealm, {
+    defaultSchema: defaultSchemaOpt,
+    matchDefaultSchemas: true,
+    stripDefaultSchema: true,
+  })
+  const downStatements: string[] = downResult.statements ?? []
 
   // ── Step 6: Handle --check mode ────────────────────────────────────
   if (options.check) {
