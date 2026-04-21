@@ -5,155 +5,388 @@
   "description": "Code generation templates for sqldoc -- 18 templates across 6 languages plus tagged template syntax helpers",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/types/index.d.ts",
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./src/index.ts",
+        "default": "./src/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./src/index.ts",
+        "default": "./src/index.ts"
+      }
     },
     "./tags": {
-      "types": "./src/tags/index.ts",
-      "import": "./src/tags/index.ts",
-      "default": "./src/tags/index.ts"
+      "types": "./dist/types/tags/index.d.ts",
+      "import": {
+        "types": "./dist/types/tags/index.d.ts",
+        "import": "./src/tags/index.ts",
+        "default": "./src/tags/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/tags/index.d.ts",
+        "import": "./src/tags/index.ts",
+        "default": "./src/tags/index.ts"
+      }
     },
     "./typescript": {
-      "types": "./src/typescript/index.ts",
-      "import": "./src/typescript/index.ts",
-      "default": "./src/typescript/index.ts"
+      "types": "./dist/types/typescript/index.d.ts",
+      "import": {
+        "types": "./dist/types/typescript/index.d.ts",
+        "import": "./src/typescript/index.ts",
+        "default": "./src/typescript/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/typescript/index.d.ts",
+        "import": "./src/typescript/index.ts",
+        "default": "./src/typescript/index.ts"
+      }
     },
     "./zod": {
-      "types": "./src/zod/index.ts",
-      "import": "./src/zod/index.ts",
-      "default": "./src/zod/index.ts"
+      "types": "./dist/types/zod/index.d.ts",
+      "import": {
+        "types": "./dist/types/zod/index.d.ts",
+        "import": "./src/zod/index.ts",
+        "default": "./src/zod/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/zod/index.d.ts",
+        "import": "./src/zod/index.ts",
+        "default": "./src/zod/index.ts"
+      }
     },
     "./drizzle": {
-      "types": "./src/drizzle/index.ts",
-      "import": "./src/drizzle/index.ts",
-      "default": "./src/drizzle/index.ts"
+      "types": "./dist/types/drizzle/index.d.ts",
+      "import": {
+        "types": "./dist/types/drizzle/index.d.ts",
+        "import": "./src/drizzle/index.ts",
+        "default": "./src/drizzle/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/drizzle/index.d.ts",
+        "import": "./src/drizzle/index.ts",
+        "default": "./src/drizzle/index.ts"
+      }
     },
     "./prisma": {
-      "types": "./src/prisma/index.ts",
-      "import": "./src/prisma/index.ts",
-      "default": "./src/prisma/index.ts"
+      "types": "./dist/types/prisma/index.d.ts",
+      "import": {
+        "types": "./dist/types/prisma/index.d.ts",
+        "import": "./src/prisma/index.ts",
+        "default": "./src/prisma/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/prisma/index.d.ts",
+        "import": "./src/prisma/index.ts",
+        "default": "./src/prisma/index.ts"
+      }
     },
     "./kysely": {
-      "types": "./src/kysely/index.ts",
-      "import": "./src/kysely/index.ts",
-      "default": "./src/kysely/index.ts"
+      "types": "./dist/types/kysely/index.d.ts",
+      "import": {
+        "types": "./dist/types/kysely/index.d.ts",
+        "import": "./src/kysely/index.ts",
+        "default": "./src/kysely/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/kysely/index.d.ts",
+        "import": "./src/kysely/index.ts",
+        "default": "./src/kysely/index.ts"
+      }
     },
     "./knex": {
-      "types": "./src/knex/index.ts",
-      "import": "./src/knex/index.ts",
-      "default": "./src/knex/index.ts"
+      "types": "./dist/types/knex/index.d.ts",
+      "import": {
+        "types": "./dist/types/knex/index.d.ts",
+        "import": "./src/knex/index.ts",
+        "default": "./src/knex/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/knex/index.d.ts",
+        "import": "./src/knex/index.ts",
+        "default": "./src/knex/index.ts"
+      }
     },
     "./go-structs": {
-      "types": "./src/go-structs/index.ts",
-      "import": "./src/go-structs/index.ts",
-      "default": "./src/go-structs/index.ts"
+      "types": "./dist/types/go-structs/index.d.ts",
+      "import": {
+        "types": "./dist/types/go-structs/index.d.ts",
+        "import": "./src/go-structs/index.ts",
+        "default": "./src/go-structs/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/go-structs/index.d.ts",
+        "import": "./src/go-structs/index.ts",
+        "default": "./src/go-structs/index.ts"
+      }
     },
     "./gorm": {
-      "types": "./src/gorm/index.ts",
-      "import": "./src/gorm/index.ts",
-      "default": "./src/gorm/index.ts"
+      "types": "./dist/types/gorm/index.d.ts",
+      "import": {
+        "types": "./dist/types/gorm/index.d.ts",
+        "import": "./src/gorm/index.ts",
+        "default": "./src/gorm/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/gorm/index.d.ts",
+        "import": "./src/gorm/index.ts",
+        "default": "./src/gorm/index.ts"
+      }
     },
     "./sqlc": {
-      "types": "./src/sqlc/index.ts",
-      "import": "./src/sqlc/index.ts",
-      "default": "./src/sqlc/index.ts"
+      "types": "./dist/types/sqlc/index.d.ts",
+      "import": {
+        "types": "./dist/types/sqlc/index.d.ts",
+        "import": "./src/sqlc/index.ts",
+        "default": "./src/sqlc/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/sqlc/index.d.ts",
+        "import": "./src/sqlc/index.ts",
+        "default": "./src/sqlc/index.ts"
+      }
     },
     "./python-dataclasses": {
-      "types": "./src/python-dataclasses/index.ts",
-      "import": "./src/python-dataclasses/index.ts",
-      "default": "./src/python-dataclasses/index.ts"
+      "types": "./dist/types/python-dataclasses/index.d.ts",
+      "import": {
+        "types": "./dist/types/python-dataclasses/index.d.ts",
+        "import": "./src/python-dataclasses/index.ts",
+        "default": "./src/python-dataclasses/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/python-dataclasses/index.d.ts",
+        "import": "./src/python-dataclasses/index.ts",
+        "default": "./src/python-dataclasses/index.ts"
+      }
     },
     "./sqlalchemy": {
-      "types": "./src/sqlalchemy/index.ts",
-      "import": "./src/sqlalchemy/index.ts",
-      "default": "./src/sqlalchemy/index.ts"
+      "types": "./dist/types/sqlalchemy/index.d.ts",
+      "import": {
+        "types": "./dist/types/sqlalchemy/index.d.ts",
+        "import": "./src/sqlalchemy/index.ts",
+        "default": "./src/sqlalchemy/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/sqlalchemy/index.d.ts",
+        "import": "./src/sqlalchemy/index.ts",
+        "default": "./src/sqlalchemy/index.ts"
+      }
     },
     "./pydantic": {
-      "types": "./src/pydantic/index.ts",
-      "import": "./src/pydantic/index.ts",
-      "default": "./src/pydantic/index.ts"
+      "types": "./dist/types/pydantic/index.d.ts",
+      "import": {
+        "types": "./dist/types/pydantic/index.d.ts",
+        "import": "./src/pydantic/index.ts",
+        "default": "./src/pydantic/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/pydantic/index.d.ts",
+        "import": "./src/pydantic/index.ts",
+        "default": "./src/pydantic/index.ts"
+      }
     },
     "./java-records": {
-      "types": "./src/java-records/index.ts",
-      "import": "./src/java-records/index.ts",
-      "default": "./src/java-records/index.ts"
+      "types": "./dist/types/java-records/index.d.ts",
+      "import": {
+        "types": "./dist/types/java-records/index.d.ts",
+        "import": "./src/java-records/index.ts",
+        "default": "./src/java-records/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/java-records/index.d.ts",
+        "import": "./src/java-records/index.ts",
+        "default": "./src/java-records/index.ts"
+      }
     },
     "./jpa": {
-      "types": "./src/jpa/index.ts",
-      "import": "./src/jpa/index.ts",
-      "default": "./src/jpa/index.ts"
+      "types": "./dist/types/jpa/index.d.ts",
+      "import": {
+        "types": "./dist/types/jpa/index.d.ts",
+        "import": "./src/jpa/index.ts",
+        "default": "./src/jpa/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/jpa/index.d.ts",
+        "import": "./src/jpa/index.ts",
+        "default": "./src/jpa/index.ts"
+      }
     },
     "./kotlin-data": {
-      "types": "./src/kotlin-data/index.ts",
-      "import": "./src/kotlin-data/index.ts",
-      "default": "./src/kotlin-data/index.ts"
+      "types": "./dist/types/kotlin-data/index.d.ts",
+      "import": {
+        "types": "./dist/types/kotlin-data/index.d.ts",
+        "import": "./src/kotlin-data/index.ts",
+        "default": "./src/kotlin-data/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/kotlin-data/index.d.ts",
+        "import": "./src/kotlin-data/index.ts",
+        "default": "./src/kotlin-data/index.ts"
+      }
     },
     "./rust-structs": {
-      "types": "./src/rust-structs/index.ts",
-      "import": "./src/rust-structs/index.ts",
-      "default": "./src/rust-structs/index.ts"
+      "types": "./dist/types/rust-structs/index.d.ts",
+      "import": {
+        "types": "./dist/types/rust-structs/index.d.ts",
+        "import": "./src/rust-structs/index.ts",
+        "default": "./src/rust-structs/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/rust-structs/index.d.ts",
+        "import": "./src/rust-structs/index.ts",
+        "default": "./src/rust-structs/index.ts"
+      }
     },
     "./diesel": {
-      "types": "./src/diesel/index.ts",
-      "import": "./src/diesel/index.ts",
-      "default": "./src/diesel/index.ts"
+      "types": "./dist/types/diesel/index.d.ts",
+      "import": {
+        "types": "./dist/types/diesel/index.d.ts",
+        "import": "./src/diesel/index.ts",
+        "default": "./src/diesel/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/diesel/index.d.ts",
+        "import": "./src/diesel/index.ts",
+        "default": "./src/diesel/index.ts"
+      }
     },
     "./csharp-records": {
-      "types": "./src/csharp-records/index.ts",
-      "import": "./src/csharp-records/index.ts",
-      "default": "./src/csharp-records/index.ts"
+      "types": "./dist/types/csharp-records/index.d.ts",
+      "import": {
+        "types": "./dist/types/csharp-records/index.d.ts",
+        "import": "./src/csharp-records/index.ts",
+        "default": "./src/csharp-records/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/csharp-records/index.d.ts",
+        "import": "./src/csharp-records/index.ts",
+        "default": "./src/csharp-records/index.ts"
+      }
     },
     "./efcore": {
-      "types": "./src/efcore/index.ts",
-      "import": "./src/efcore/index.ts",
-      "default": "./src/efcore/index.ts"
+      "types": "./dist/types/efcore/index.d.ts",
+      "import": {
+        "types": "./dist/types/efcore/index.d.ts",
+        "import": "./src/efcore/index.ts",
+        "default": "./src/efcore/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/efcore/index.d.ts",
+        "import": "./src/efcore/index.ts",
+        "default": "./src/efcore/index.ts"
+      }
     },
     "./json-schema": {
-      "types": "./src/json-schema/index.ts",
-      "import": "./src/json-schema/index.ts",
-      "default": "./src/json-schema/index.ts"
+      "types": "./dist/types/json-schema/index.d.ts",
+      "import": {
+        "types": "./dist/types/json-schema/index.d.ts",
+        "import": "./src/json-schema/index.ts",
+        "default": "./src/json-schema/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/json-schema/index.d.ts",
+        "import": "./src/json-schema/index.ts",
+        "default": "./src/json-schema/index.ts"
+      }
     },
     "./xsd": {
-      "types": "./src/xsd/index.ts",
-      "import": "./src/xsd/index.ts",
-      "default": "./src/xsd/index.ts"
+      "types": "./dist/types/xsd/index.d.ts",
+      "import": {
+        "types": "./dist/types/xsd/index.d.ts",
+        "import": "./src/xsd/index.ts",
+        "default": "./src/xsd/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/xsd/index.d.ts",
+        "import": "./src/xsd/index.ts",
+        "default": "./src/xsd/index.ts"
+      }
     },
     "./protobuf": {
-      "types": "./src/protobuf/index.ts",
-      "import": "./src/protobuf/index.ts",
-      "default": "./src/protobuf/index.ts"
+      "types": "./dist/types/protobuf/index.d.ts",
+      "import": {
+        "types": "./dist/types/protobuf/index.d.ts",
+        "import": "./src/protobuf/index.ts",
+        "default": "./src/protobuf/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/protobuf/index.d.ts",
+        "import": "./src/protobuf/index.ts",
+        "default": "./src/protobuf/index.ts"
+      }
     },
     "./cobol-copybook": {
-      "types": "./src/cobol-copybook/index.ts",
-      "import": "./src/cobol-copybook/index.ts",
-      "default": "./src/cobol-copybook/index.ts"
+      "types": "./dist/types/cobol-copybook/index.d.ts",
+      "import": {
+        "types": "./dist/types/cobol-copybook/index.d.ts",
+        "import": "./src/cobol-copybook/index.ts",
+        "default": "./src/cobol-copybook/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/cobol-copybook/index.d.ts",
+        "import": "./src/cobol-copybook/index.ts",
+        "default": "./src/cobol-copybook/index.ts"
+      }
     },
     "./ruby-activerecord": {
-      "types": "./src/ruby-activerecord/index.ts",
-      "import": "./src/ruby-activerecord/index.ts",
-      "default": "./src/ruby-activerecord/index.ts"
+      "types": "./dist/types/ruby-activerecord/index.d.ts",
+      "import": {
+        "types": "./dist/types/ruby-activerecord/index.d.ts",
+        "import": "./src/ruby-activerecord/index.ts",
+        "default": "./src/ruby-activerecord/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/ruby-activerecord/index.d.ts",
+        "import": "./src/ruby-activerecord/index.ts",
+        "default": "./src/ruby-activerecord/index.ts"
+      }
     },
     "./php-eloquent": {
-      "types": "./src/php-eloquent/index.ts",
-      "import": "./src/php-eloquent/index.ts",
-      "default": "./src/php-eloquent/index.ts"
+      "types": "./dist/types/php-eloquent/index.d.ts",
+      "import": {
+        "types": "./dist/types/php-eloquent/index.d.ts",
+        "import": "./src/php-eloquent/index.ts",
+        "default": "./src/php-eloquent/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/php-eloquent/index.d.ts",
+        "import": "./src/php-eloquent/index.ts",
+        "default": "./src/php-eloquent/index.ts"
+      }
     },
     "./swift-codable": {
-      "types": "./src/swift-codable/index.ts",
-      "import": "./src/swift-codable/index.ts",
-      "default": "./src/swift-codable/index.ts"
+      "types": "./dist/types/swift-codable/index.d.ts",
+      "import": {
+        "types": "./dist/types/swift-codable/index.d.ts",
+        "import": "./src/swift-codable/index.ts",
+        "default": "./src/swift-codable/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/swift-codable/index.d.ts",
+        "import": "./src/swift-codable/index.ts",
+        "default": "./src/swift-codable/index.ts"
+      }
     },
     "./typeorm": {
-      "types": "./src/typeorm/index.ts",
-      "import": "./src/typeorm/index.ts",
-      "default": "./src/typeorm/index.ts"
+      "types": "./dist/types/typeorm/index.d.ts",
+      "import": {
+        "types": "./dist/types/typeorm/index.d.ts",
+        "import": "./src/typeorm/index.ts",
+        "default": "./src/typeorm/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/typeorm/index.d.ts",
+        "import": "./src/typeorm/index.ts",
+        "default": "./src/typeorm/index.ts"
+      }
     }
   },
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "types": "./dist/types/index.d.ts",
   "files": [
     "src",
+    "dist",
     "!src/__tests__",
     "!src/**/test",
     "package.json"
@@ -161,7 +394,8 @@
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
     "typecheck": "tsgo -noEmit",
-    "test:docker": "bun test src/__tests__/docker-templates.test.ts"
+    "test:docker": "bun test src/__tests__/docker-templates.test.ts",
+    "build:types": "tsgo -p tsconfig.build.json"
   },
   "peerDependencies": {
     "@sqldoc/db": "workspace:*",

@@ -5,21 +5,34 @@
   "description": "MSSQL adapter for sqldoc (Node.js, uses mssql/tedious)",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/types/index.d.ts",
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./src/index.ts",
+        "default": "./src/index.ts"
+      },
+      "default": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./src/index.ts",
+        "default": "./src/index.ts"
+      }
     }
   },
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "types": "./dist/types/index.d.ts",
   "files": [
     "src",
+    "dist",
     "package.json"
   ],
   "dependencies": {
     "mssql": "^11.0.1"
   },
   "devDependencies": {
-    "@sqldoc/db": "workspace:*"
+    "@sqldoc/db": "workspace:*",
+    "@typescript/native-preview": "catalog:"
+  },
+  "scripts": {
+    "build:types": "tsgo -p tsconfig.build.json"
   }
 }

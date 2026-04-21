@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "cd vscode-sqldoc && node build.mjs && cd .. && bash scripts/build-binary.sh",
+    "build:types": "bun run --filter '*' build:types",
+    "clean:types": "find packages -maxdepth 3 -type d -name dist -prune -exec rm -rf {} +",
     "install-vscode-extension": "cd vscode-sqldoc && bun run install-ext",
     "test:node": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 node --test 'packages/**/*.test.ts' 'tests/**/*.test.ts'",
     "test:node:coverage": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 node --experimental-test-coverage --test-coverage-exclude='**/*.test.ts' --test-coverage-exclude='tests/**' --test-coverage-exclude='**/node_modules/**' --test-coverage-exclude='**/dist/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test 'packages/**/*.test.ts' 'tests/**/*.test.ts'",

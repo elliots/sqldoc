@@ -56,7 +56,11 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
   exit 0
 fi
 
-echo -e "${CYAN}Step 4: Publish to npm${NC}"
+echo -e "${CYAN}Step 4a: Build .d.ts artifacts${NC}"
+bun run clean:types
+bun run build:types
+
+echo -e "${CYAN}Step 4b: Publish to npm${NC}"
 bash scripts/npm-publish.sh
 
 # # -- 5. Push --

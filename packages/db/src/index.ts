@@ -128,8 +128,8 @@ export {
   findTags,
   hasAttr,
   hasTag,
-  inspectAdapter,
   InspectMode,
+  inspectAdapter,
   // Type utilities
   isCustomType,
   isNotExistError,

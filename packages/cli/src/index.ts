@@ -15,7 +15,7 @@ import { runForAllConfigs } from './utils/workspace.ts'
 
 // Programmatic compile pipeline — lets downstream packages drive sqldoc
 // compile without shelling out or depending on internal subpaths.
-export { runCompilePipeline, type PipelineResult } from './utils/pipeline.ts'
+export { type PipelineResult, runCompilePipeline } from './utils/pipeline.ts'
 
 /** Wrap a command action to support --all (run across all workspace configs) */
 function withAll<T extends (...args: any[]) => Promise<void>>(action: T): T {

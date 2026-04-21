@@ -67,6 +67,7 @@
       },
       "devDependencies": {
         "@sqldoc/db": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/db-mysql": {
@@ -77,6 +78,7 @@
       },
       "devDependencies": {
         "@sqldoc/db": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/db-neon": {
@@ -87,6 +89,7 @@
       },
       "devDependencies": {
         "@sqldoc/db": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/db-neon-temporary": {
@@ -98,6 +101,7 @@
       "devDependencies": {
         "@sqldoc/db": "workspace:*",
         "@sqldoc/test-utils": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/db-pglite": {
@@ -108,6 +112,7 @@
       },
       "devDependencies": {
         "@sqldoc/db": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/db-postgres": {
@@ -118,6 +123,7 @@
       },
       "devDependencies": {
         "@sqldoc/db": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/inspector": {
@@ -130,6 +136,7 @@
         "@sqldoc/db": "workspace:*",
         "@sqldoc/db-mssql": "workspace:*",
         "@sqldoc/db-pglite": "workspace:*",
+        "@typescript/native-preview": "catalog:",
       },
     },
     "packages/ns-anon": {

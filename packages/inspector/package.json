@@ -4,18 +4,24 @@
   "version": "0.2.4",
   "description": "TypeScript port of Atlas schema inspector for sqldoc",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
   },
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "types": "./dist/types/index.d.ts",
   "files": [
     "src",
+    "dist",
     "!src/__tests__",
     "NOTICE",
     "package.json"
   ],
   "scripts": {
-    "typecheck": "tsgo -noEmit"
+    "typecheck": "tsgo -noEmit",
+    "build:types": "tsgo -p tsconfig.build.json"
   },
   "dependencies": {
     "@sqldoc/core": "workspace:*"
@@ -23,6 +29,7 @@
   "devDependencies": {
     "@sqldoc/db": "workspace:*",
     "@sqldoc/db-mssql": "workspace:*",
-    "@sqldoc/db-pglite": "workspace:*"
+    "@sqldoc/db-pglite": "workspace:*",
+    "@typescript/native-preview": "catalog:"
   }
 }

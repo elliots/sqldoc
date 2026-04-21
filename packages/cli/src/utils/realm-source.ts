@@ -13,10 +13,10 @@
  *    never guaranteed stable.
  */
 
-import { getEngineSpec } from '@sqldoc/core'
 import type { DatabaseEngine, Realm } from '@sqldoc/core'
-import { createRunner, inspectAdapter, resolveAdapterPlugin } from '@sqldoc/db'
+import { getEngineSpec } from '@sqldoc/core'
 import type { OnMissingPlugin } from '@sqldoc/db'
+import { createRunner, inspectAdapter, resolveAdapterPlugin } from '@sqldoc/db'
 import { computeRealmCacheKey, readRealmCache, writeRealmCache } from './cache.ts'
 
 export interface InspectRealmConfig {
