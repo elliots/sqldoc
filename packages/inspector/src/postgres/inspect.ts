@@ -1314,6 +1314,7 @@ export class PostgresInspector implements Inspector {
 
       const trigger: Trigger = {
         name: trigName,
+        schema: schemaName,
         body: trigDef || undefined,
         actionCondition,
         funcName: funcName || undefined,

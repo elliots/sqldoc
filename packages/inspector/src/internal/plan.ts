@@ -853,28 +853,18 @@ export function dependsOn(c1: Change, c2: Change): boolean {
       return depOfDropSimple({ type: 'proc', name: c1.P.name, schema: c1.P.schema }, c1.P.deps, c2)
 
     case 'add_trigger': {
-      // Trigger depends on its table existing
+      const trig = c1.T
+      // Trigger depends on its table existing — match by structural fields
       if (c2.type === 'add_table') {
-        const trig = c1.T
-        // Check if trigger body references the table
-        if (trig.body?.includes(` ON ${c2.T.schema ? `${c2.T.schema}.` : ''}${c2.T.name} `)) return true
-        if (trig.body?.includes(` ON "${c2.T.schema}"."${c2.T.name}" `)) return true
-        // Check trigger table field
-        if (trig.table === c2.T.name) return true
+        if (trig.table === c2.T.name && (trig.schema ?? '') === (c2.T.schema ?? '')) return true
       }
       if (c2.type === 'add_schema') {
-        // Extract schema from trigger body
-        if (c1.T.body) {
-          const m = c1.T.body.match(/ON\s+(\w+)\./)
-          if (m && m[1] === c2.S.name) return true
-        }
+        if ((trig.schema ?? '') === c2.S.name) return true
       }
-      // Also depends on referenced functions
-      if (c2.type === 'add_func' && c1.T.body) {
-        const funcRef = `${c2.F.schema ? `${c2.F.schema}.` : ''}${c2.F.name}()`
-        if (c1.T.body.includes(funcRef)) return true
+      if (c2.type === 'add_func') {
+        if (trig.funcName === c2.F.name && (trig.funcSchema ?? '') === (c2.F.schema ?? '')) return true
       }
-      return depOfAdd(c1.T.deps, c2)
+      return depOfAdd(trig.deps, c2)
     }
 
     case 'drop_trigger':
