@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/db",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Database adapters and schema type re-exports for sqldoc",
   "exports": {
     ".": {

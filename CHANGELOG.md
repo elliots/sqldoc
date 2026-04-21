@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.3 (2026-04-21)
+
+ffde928 feat: cli: compile/inspect caching
+48861d8 fix: inspector: postgres trigger ordering
+
 ## v0.2.2 (2026-04-21)
 
 cac2951 fix: dep bin loader
