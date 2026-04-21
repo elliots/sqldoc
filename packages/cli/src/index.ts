@@ -13,6 +13,10 @@ import { validateCommand } from './commands/validate.ts'
 import { CliError } from './errors.ts'
 import { runForAllConfigs } from './utils/workspace.ts'
 
+// Programmatic compile pipeline — lets downstream packages drive sqldoc
+// compile without shelling out or depending on internal subpaths.
+export { runCompilePipeline, type PipelineResult } from './utils/pipeline.ts'
+
 /** Wrap a command action to support --all (run across all workspace configs) */
 function withAll<T extends (...args: any[]) => Promise<void>>(action: T): T {
   return (async (...args: any[]) => {
@@ -49,6 +53,7 @@ program
   .option('--include-external', 'Include @external files in compiled output')
   .option('--project <name>', 'Select a named project from multi-project config')
   .option('--all', 'Run across all config files in the workspace')
+  .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
   .action(withAll(compileCommand))
 
 program
@@ -64,6 +69,7 @@ program
   .option('-o, --output <path>', 'Output file path (used with --template)')
   .option('--project <name>', 'Select a named project from multi-project config')
   .option('--all', 'Run across all config files in the workspace')
+  .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
   .action(withAll(codegenCommand))
 
 program
@@ -83,6 +89,7 @@ program
   .option('-v, --verbose', 'Show ignored rules')
   .option('--project <name>', 'Select a named project from multi-project config')
   .option('--all', 'Run across all config files in the workspace')
+  .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
   .action(withAll(lintCommand))
 
 const schema = program.command('schema').description('Schema inspection and comparison')
@@ -95,6 +102,7 @@ schema
   .option('-f, --format <format>', 'Output format: sql, json', 'sql')
   .option('--dev-url <url>', 'Dev database URL (pglite, docker://<image>, dockerfile://<path>, postgres://...)')
   .option('--project <name>', 'Select a named project from multi-project config')
+  .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
   .action(schemaInspectCommand)
 
 schema
@@ -107,6 +115,7 @@ schema
   .option('--dev-url <url>', 'Dev database URL (pglite, docker://<image>, dockerfile://<path>, postgres://...)')
   .option('--check', 'Exit non-zero if schemas differ (CI mode)')
   .option('--project <name>', 'Select a named project from multi-project config')
+  .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
   .action(schemaDiffCommand)
 
 program
@@ -118,6 +127,7 @@ program
   .option('--name <name>', 'Custom migration name')
   .option('--force', 'Allow destructive changes (DROP TABLE, DROP COLUMN, etc.)')
   .option('--all', 'Run across all config files in the workspace')
+  .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
   .action(withAll(migrateCommand))
 
 program.command('doctor').description('Check project setup and report status').action(doctorCommand)

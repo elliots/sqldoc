@@ -48,7 +48,12 @@ interface ResolvedSource {
   externalSql?: string
 }
 
-async function resolveSource(source: string, config: ResolvedConfig, configRoot: string): Promise<ResolvedSource> {
+async function resolveSource(
+  source: string,
+  config: ResolvedConfig,
+  configRoot: string,
+  opts: { noCache?: boolean } = {},
+): Promise<ResolvedSource> {
   // Any URL with a scheme (foo://...) is treated as a database connection
   const scheme = extractScheme(source)
   if (scheme !== source && source.includes('://')) {
@@ -56,7 +61,7 @@ async function resolveSource(source: string, config: ResolvedConfig, configRoot:
   }
 
   const resolved = path.resolve(source)
-  const result = await runCompilePipeline(resolved, config, configRoot)
+  const result = await runCompilePipeline(resolved, config, configRoot, { noCache: opts.noCache })
   if (result.totalErrors > 0) {
     throw new Error(`${result.totalErrors} compilation error(s)`)
   }
@@ -85,11 +90,12 @@ async function resolveSource(source: string, config: ResolvedConfig, configRoot:
 
 export async function schemaInspectCommand(
   source: string | undefined,
-  options: { config?: string; format?: string; devUrl?: string; project?: string },
+  options: { config?: string; format?: string; devUrl?: string; project?: string; cache?: boolean },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
+  const noCache = options.cache === false
 
   for (const config of projects) {
     if (options.devUrl) config.devUrl = options.devUrl
@@ -102,7 +108,7 @@ export async function schemaInspectCommand(
     const format = (options.format ?? 'sql') as Format
 
     try {
-      const resolved = await resolveSource(resolvedSource, config, configRoot)
+      const resolved = await resolveSource(resolvedSource, config, configRoot, { noCache })
 
       if (resolved.type === 'database') {
         // Live database — inspect directly, no compilation needed
@@ -157,10 +163,12 @@ export async function schemaDiffCommand(options: {
   devUrl?: string
   check?: boolean
   project?: string
+  cache?: boolean
 }): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
+  const noCache = options.cache === false
 
   for (const config of projects) {
     if (options.devUrl) config.devUrl = options.devUrl
@@ -183,9 +191,9 @@ export async function schemaDiffCommand(options: {
     }
 
     try {
-      const toResolved = await resolveSource(toSource, config, configRoot)
+      const toResolved = await resolveSource(toSource, config, configRoot, { noCache })
       const fromResolved = fromSource
-        ? await resolveSource(fromSource, config, configRoot)
+        ? await resolveSource(fromSource, config, configRoot, { noCache })
         : { type: 'file' as const, value: '' } // empty = no existing schema
 
       if (fromResolved.type === 'database' || toResolved.type === 'database') {

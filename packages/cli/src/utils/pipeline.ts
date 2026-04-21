@@ -24,6 +24,15 @@ import {
 import { createRunner, extractExtensions } from '@sqldoc/db'
 import pc from 'picocolors'
 import { installPackages, promptAndInstallMissing, promptInstall } from './auto-install.ts'
+import {
+  computeCompileCacheKey,
+  computeRealmCacheKey,
+  getCacheDir,
+  readCompileCache,
+  readRealmCache,
+  writeCompileCache,
+  writeRealmCache,
+} from './cache.ts'
 import { discoverSqlFiles } from './discover.ts'
 import { formatDiagnostic } from './format.ts'
 
@@ -55,10 +64,17 @@ export interface PipelineResult {
  *
  * Those concerns remain in the caller.
  */
+/** Options that affect pipeline behavior without changing compile semantics. */
+export interface PipelineRunOptions {
+  /** Skip all caching (read and write) regardless of SQLDOC_NO_CACHE env. */
+  noCache?: boolean
+}
+
 export async function runCompilePipeline(
   inputPath: string,
   config: ResolvedConfig,
   configRoot: string,
+  options: PipelineRunOptions = {},
 ): Promise<PipelineResult> {
   debug('pipeline', `runCompilePipeline: input=${inputPath}, engine=${config.engine}, dialect=${config.dialect}`)
   // Discover SQL files
@@ -123,50 +139,91 @@ export async function runCompilePipeline(
 
   const { extensions } = extractExtensions(allSqlContents)
   const sqldocDir = findSqldocDir(configRoot) ?? undefined
-  const runner = await createRunner({
+  const cacheDir = options.noCache ? undefined : getCacheDir(sqldocDir)
+
+  // ── Realm cache keys ──────────────────────────────────────────────
+  // Realm inspection depends on the full set of SQL file contents plus engine/dialect/extensions.
+  // Byte-identical inputs produce byte-identical realms, so we can skip the DB round-trip entirely.
+  const relAllFiles = allFiles.map((f) => path.relative(configRoot, f))
+  const fullRealmKey = computeRealmCacheKey({
+    tag: 'full',
     engine: config.engine,
-    devUrl: config.devUrl,
+    dialect: config.dialect,
     extensions,
-    sqldocDir,
-    onMissingPlugin: async (packageNameWithVersion: string) => {
-      if (!sqldocDir) {
-        console.error(pc.yellow('Cannot auto-install: no .sqldoc/ directory found'))
-        return false
-      }
-      if (await promptInstall([packageNameWithVersion])) {
-        try {
-          await installPackages(sqldocDir, [packageNameWithVersion])
-          return true
-        } catch {
-          return false
-        }
-      }
-      return false
-    },
+    files: allFiles.map((_, i) => ({ relPath: relAllFiles[i], content: allSqlContents[i] })),
   })
+
+  let externalRealmKey: string | undefined
+  let externalContents: string[] | undefined
+  if (hasExternals) {
+    externalContents = resolved.externalFiles.map((f) => stripMigrationDown(fs.readFileSync(f, 'utf-8')))
+    externalRealmKey = computeRealmCacheKey({
+      tag: 'external',
+      engine: config.engine,
+      dialect: config.dialect,
+      extensions,
+      schema: defaultSchemaForEngine(config.engine),
+      files: resolved.externalFiles.map((f, i) => ({
+        relPath: path.relative(configRoot, f),
+        content: externalContents![i],
+      })),
+    })
+  }
+
+  // ── Try realm caches first, create runner only if inspection is needed ──
+  let schemaRealm = readRealmCache(cacheDir, fullRealmKey)
+  let externalRealm: Realm | undefined
+  if (hasExternals && externalRealmKey) {
+    externalRealm = readRealmCache(cacheDir, externalRealmKey)
+  }
+  const needsInspect = !schemaRealm || (hasExternals && !externalRealm)
+  if (!needsInspect) debug('pipeline', 'realm cache hit — skipping DB inspection')
+
+  const runner = needsInspect
+    ? await createRunner({
+        engine: config.engine,
+        devUrl: config.devUrl,
+        extensions,
+        sqldocDir,
+        onMissingPlugin: async (packageNameWithVersion: string) => {
+          if (!sqldocDir) {
+            console.error(pc.yellow('Cannot auto-install: no .sqldoc/ directory found'))
+            return false
+          }
+          if (await promptInstall([packageNameWithVersion])) {
+            try {
+              await installPackages(sqldocDir, [packageNameWithVersion])
+              return true
+            } catch {
+              return false
+            }
+          }
+          return false
+        },
+      })
+    : undefined
 
   const mergedOutputs: string[] = []
   const allOutputs: CompilerOutput[] = []
   const allPlugins = new Map<string, NamespacePlugin>()
   let totalErrors = 0
-  let schemaRealm: Realm
   const externalObjectNames = new Set<string>()
 
   try {
     // ── Dual schema inspection when @external directives present (D-16, D-17) ──
-    let externalRealm: Realm | undefined
-
-    if (hasExternals) {
-      // Inspection 1: external files only -> externalRealm
-      const externalContents = resolved.externalFiles.map((f) => stripMigrationDown(fs.readFileSync(f, 'utf-8')))
-      const externalResult = await runner.inspect(externalContents, {
+    if (hasExternals && !externalRealm) {
+      if (!runner) throw new Error('runner unexpectedly missing while inspecting external realm')
+      const externalResult = await runner.inspect(externalContents!, {
         schema: defaultSchemaForEngine(config.engine),
       })
       if (!externalResult.schema) {
         throw new Error(externalResult.error ?? 'Schema inspection failed to parse external schema')
       }
       externalRealm = externalResult.schema
+      writeRealmCache(cacheDir, externalRealmKey!, externalRealm)
+    }
 
+    if (externalRealm) {
       // Extract external object names (schema-qualified to avoid cross-schema collisions)
       for (const schema of externalRealm.schemas) {
         for (const table of schema.tables ?? []) externalObjectNames.add(`${schema.name}.${table.name}`)
@@ -176,21 +233,25 @@ export async function runCompilePipeline(
 
     // Inspection 2 (or sole inspection when no externals): all files -> fullRealm
     // Use zero-padded index prefix so inspection preserves dependency order when it sorts by filename
-    const relFiles = allFiles.map((f, i) => `${String(i).padStart(4, '0')}_${path.relative(process.cwd(), f)}`)
-    const inspectResult = await runner.inspect(allSqlContents, {
-      fileNames: relFiles,
-    })
-    if (!inspectResult.schema) {
-      throw new Error(inspectResult.error ?? 'Schema inspection failed to parse schema')
+    if (!schemaRealm) {
+      if (!runner) throw new Error('runner unexpectedly missing while inspecting full realm')
+      const relFiles = allFiles.map((f, i) => `${String(i).padStart(4, '0')}_${path.relative(process.cwd(), f)}`)
+      const inspectResult = await runner.inspect(allSqlContents, {
+        fileNames: relFiles,
+      })
+      if (!inspectResult.schema) {
+        throw new Error(inspectResult.error ?? 'Schema inspection failed to parse schema')
+      }
+      if (inspectResult.error) {
+        console.error(pc.yellow(inspectResult.error))
+      }
+      schemaRealm = inspectResult.schema
+      debug('pipeline', 'schema inspect complete')
+      writeRealmCache(cacheDir, fullRealmKey, schemaRealm)
     }
-    if (inspectResult.error) {
-      console.error(pc.yellow(inspectResult.error))
-    }
-    schemaRealm = inspectResult.schema
-    debug('pipeline', 'schema inspect complete')
 
     // Validate external object immutability (D-18)
-    if (hasExternals && externalRealm) {
+    if (hasExternals && externalRealm && schemaRealm) {
       validateExternalImmutability(externalRealm, schemaRealm, externalObjectNames)
     }
 
@@ -233,30 +294,44 @@ export async function runCompilePipeline(
       // Cast TagNamespace to NamespacePlugin (plugins extend TagNamespace)
       const plugins = new Map<string, NamespacePlugin>([...namespaces].map(([k, v]) => [k, v as NamespacePlugin]))
 
-      // Parse SQL AST (supplementary — schema inspection is the real schema source)
-      let statements: SqlStatement[] = []
-      try {
-        statements = adapter.parseStatements(source)
-      } catch (err: any) {
-        console.error(pc.yellow(`AST parse warning in ${rel}: ${err?.message ?? String(err)}`))
+      // ── Per-file compile cache lookup ────────────────────────────
+      const compileKey = computeCompileCacheKey({
+        filePath,
+        source,
+        importPaths: imports.map((i) => i.path),
+        config,
+        realmKey: fullRealmKey,
+        sqldocDir,
+      })
+      let output = readCompileCache(cacheDir, compileKey)
+
+      if (!output) {
+        // Parse SQL AST (supplementary — schema inspection is the real schema source)
+        let statements: SqlStatement[] = []
+        try {
+          statements = adapter.parseStatements(source)
+        } catch (err: any) {
+          console.error(pc.yellow(`AST parse warning in ${rel}: ${err?.message ?? String(err)}`))
+        }
+
+        // Validate before compiling
+        const diagnostics = validate(tags, namespaces, source, statements)
+        for (const d of diagnostics) {
+          console.error(formatDiagnostic(filePath, d))
+          if (d.severity === 'error') totalErrors++
+        }
+
+        // Abort this file if validation errors found — do not cache partial results
+        if (diagnostics.some((d) => d.severity === 'error')) {
+          continue
+        }
+
+        // Compile with inspected schema
+        output = compile({ source, filePath, plugins, statements, adapter, config, schemaRealm })
+        writeCompileCache(cacheDir, compileKey, output)
       }
 
-      // Validate before compiling
-      const diagnostics = validate(tags, namespaces, source, statements)
-      for (const d of diagnostics) {
-        console.error(formatDiagnostic(filePath, d))
-        if (d.severity === 'error') totalErrors++
-      }
-
-      // Abort this file if validation errors found
-      if (diagnostics.some((d) => d.severity === 'error')) {
-        continue
-      }
-
-      // Compile with inspected schema
-      const output = compile({ source, filePath, plugins, statements, adapter, config, schemaRealm })
-
-      // Set provenance on each CompilerOutput
+      // Set provenance on each CompilerOutput (not cached — derived from current run)
       output.provenance = resolved.provenanceMap.get(filePath) ?? 'project'
 
       mergedOutputs.push(output.mergedSql)
@@ -284,7 +359,7 @@ export async function runCompilePipeline(
       }
     }
   } finally {
-    await runner.close()
+    if (runner) await runner.close()
   }
 
   return {

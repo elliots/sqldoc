@@ -34,6 +34,7 @@ export async function migrateCommand(options: {
   check?: boolean
   name?: string
   force?: boolean
+  cache?: boolean
 }): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   debug('migrate', 'configRoot:', configRoot)
@@ -50,8 +51,9 @@ export async function migrateCommand(options: {
 async function migrateProject(
   config: ResolvedConfig,
   configRoot: string,
-  options: { check?: boolean; name?: string; force?: boolean },
+  options: { check?: boolean; name?: string; force?: boolean; cache?: boolean },
 ): Promise<void> {
+  const noCache = options.cache === false
   debug('migrate', 'resolved schema:', config.schema)
 
   if (!config.schema) {
@@ -84,7 +86,7 @@ async function migrateProject(
   let desiredSql: string
   let pipelineResult: Awaited<ReturnType<typeof runCompilePipeline>>
   try {
-    pipelineResult = await runCompilePipeline(path.resolve(configRoot, config.schema), config, configRoot)
+    pipelineResult = await runCompilePipeline(path.resolve(configRoot, config.schema), config, configRoot, { noCache })
     if (pipelineResult.totalErrors > 0) {
       throw new CliError(`${pipelineResult.totalErrors} compilation error(s) — fix before migrating`)
     }

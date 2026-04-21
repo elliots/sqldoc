@@ -12,14 +12,15 @@ import { runCompilePipeline } from '../utils/pipeline.ts'
  */
 export async function lintCommand(
   inputPath: string | undefined,
-  options: { config?: string; verbose?: boolean; project?: string },
+  options: { config?: string; verbose?: boolean; project?: string; cache?: boolean },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
+  const noCache = options.cache === false
 
   for (const config of projects) {
-    await lintProject(inputPath, config, configRoot, options.verbose)
+    await lintProject(inputPath, config, configRoot, options.verbose, noCache)
   }
 }
 
@@ -28,6 +29,7 @@ async function lintProject(
   config: ResolvedConfig,
   configRoot: string,
   verbose?: boolean,
+  noCache?: boolean,
 ): Promise<void> {
   // Resolve input path: explicit arg > config.schema > error
   const resolvedInput = inputPath ?? config.schema
@@ -37,7 +39,7 @@ async function lintProject(
 
   let result
   try {
-    result = await runCompilePipeline(resolvedInput, config, configRoot)
+    result = await runCompilePipeline(resolvedInput, config, configRoot, { noCache })
   } catch (err: any) {
     throw formatPipelineError(err, config)
   }

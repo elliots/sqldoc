@@ -16,11 +16,19 @@ import { filterExternalFromRealm, runCompilePipeline } from '../utils/pipeline.t
  */
 export async function codegenCommand(
   inputPath: string | undefined,
-  options: { config?: string; plugins?: string; project?: string; template?: string; output?: string },
+  options: {
+    config?: string
+    plugins?: string
+    project?: string
+    template?: string
+    output?: string
+    cache?: boolean
+  },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig, configPath } = await loadConfig(configRoot, options.config)
   const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
+  const noCache = options.cache === false
 
   for (const config of projects) {
     // --template flag: override codegen config to run specified templates only
@@ -57,7 +65,7 @@ export async function codegenCommand(
 
     let result
     try {
-      result = await runCompilePipeline(resolvedInput, config, configRoot)
+      result = await runCompilePipeline(resolvedInput, config, configRoot, { noCache })
     } catch (err: any) {
       throw formatPipelineError(err, config)
     }

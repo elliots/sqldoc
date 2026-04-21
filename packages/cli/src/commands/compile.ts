@@ -10,11 +10,12 @@ import { runCompilePipeline } from '../utils/pipeline.ts'
  */
 export async function compileCommand(
   inputPath: string | undefined,
-  options: { config?: string; output?: string; project?: string; includeExternal?: boolean },
+  options: { config?: string; output?: string; project?: string; includeExternal?: boolean; cache?: boolean },
 ): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
   const projects = options.project ? [resolveProject(rawConfig, options.project)] : resolveAllProjects(rawConfig)
+  const noCache = options.cache === false
 
   for (const config of projects) {
     const resolvedInput = inputPath ?? config.schema
@@ -24,7 +25,7 @@ export async function compileCommand(
 
     let result
     try {
-      result = await runCompilePipeline(resolvedInput, config, configRoot)
+      result = await runCompilePipeline(resolvedInput, config, configRoot, { noCache })
     } catch (err: any) {
       throw formatPipelineError(err, config)
     }
