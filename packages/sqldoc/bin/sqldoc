@@ -1,7 +1,9 @@
 #!/bin/sh
 # sqldoc — npm/npx launcher for @sqldoc/sqldoc
 # Requires Node.js >= 24 for native TypeScript type stripping.
-# The custom node_modules .ts loader is registered at runtime by delegate.ts.
+# When installed via npm the package lives under node_modules, where Node
+# refuses to strip types. We pre-register a custom ESM loader via --import
+# that handles .ts everywhere (same approach as delegate.ts).
 
 set -e
 
@@ -23,5 +25,6 @@ while [ -L "$SCRIPT" ]; do
 done
 BIN_DIR="$(cd "$(dirname "$SCRIPT")" && pwd)"
 ENTRY="$BIN_DIR/../src/index.ts"
+LOADER="$BIN_DIR/register-loader.mjs"
 
-exec node --no-warnings "$ENTRY" "$@"
+exec node --no-warnings --import "$LOADER" "$ENTRY" "$@"
