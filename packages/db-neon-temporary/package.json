@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/db-neon-temporary",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Neon ephemeral database adapter for sqldoc (creates temporary databases via neon-new)",
   "exports": {
     ".": {

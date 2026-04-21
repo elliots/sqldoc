@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.1 (2026-04-21)
+
+5f61a55 feat: support running cli as a dep, not just all-in-one binary
+
+
 ## v0.2.0 (2026-04-20)
 
 f62f7e29 mssql: initial version
