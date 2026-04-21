@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.4 (2026-04-21)
+
+b54282c feat: caching in diff
+
 ## v0.2.3 (2026-04-21)
 
 ffde928 feat: cli: compile/inspect caching

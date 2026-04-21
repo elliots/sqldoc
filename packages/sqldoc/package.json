@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/sqldoc",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Global CLI shim for sqldoc -- finds .sqldoc/ and delegates to project-local @sqldoc/cli",
   "exports": {
     ".": {

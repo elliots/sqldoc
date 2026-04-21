@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/db-postgres",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "PostgreSQL adapter for sqldoc (Node.js, uses postgres.js)",
   "exports": {
     ".": {
