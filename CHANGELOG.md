@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.5 (2026-04-21)
+
+1b90a57 feat: deliver types with npm packages
+
 ## v0.2.4 (2026-04-21)
 
 b54282c feat: caching in diff
