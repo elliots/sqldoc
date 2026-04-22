@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-anon",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "PostgreSQL Anonymizer namespace for sqldoc -- generates SECURITY LABEL statements",
   "exports": {
     ".": {

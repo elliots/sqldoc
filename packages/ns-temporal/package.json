@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-temporal",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Temporal namespace for sqldoc -- generates valid_from/valid_to columns and SCD Type 2 triggers",
   "exports": {
     ".": {

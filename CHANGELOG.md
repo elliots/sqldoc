@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.7 (2026-04-22)
+
+244282dc fix: composite type precision/scale + modify_object ordering
+
 ## v0.2.6 (2026-04-22)
 
 52d6bc78 fix: strip default schema from composite/domain/enum/view/index DDL

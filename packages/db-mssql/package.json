@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/db-mssql",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "MSSQL adapter for sqldoc (Node.js, uses mssql/tedious)",
   "exports": {
     ".": {
