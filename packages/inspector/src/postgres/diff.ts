@@ -101,11 +101,11 @@ export class PostgresDiff implements DiffDriver {
     const fromDomainMap = new Map(fromDomains.map((d) => [d.T, d]))
 
     for (const d of fromDomains) {
-      if (!toDomainMap.has(d.T)) {
+      const toD = toDomainMap.get(d.T)
+      if (!toD) {
         changes.push({ type: 'drop_object', O: d } as any)
-      } else if (objectChanged(d, toDomainMap.get(d.T))) {
-        changes.push({ type: 'drop_object', O: d } as any)
-        changes.push({ type: 'add_object', O: toDomainMap.get(d.T) } as any)
+      } else if (objectChanged(d, toD)) {
+        changes.push({ type: 'modify_object', from: d, to: toD } as any)
       }
     }
     for (const d of toDomains) {
@@ -121,11 +121,11 @@ export class PostgresDiff implements DiffDriver {
     const fromCompMap = new Map(fromComps.map((c) => [c.T, c]))
 
     for (const c of fromComps) {
-      if (!toCompMap.has(c.T)) {
+      const to = toCompMap.get(c.T)
+      if (!to) {
         changes.push({ type: 'drop_object', O: c } as any)
-      } else if (objectChanged(c, toCompMap.get(c.T))) {
-        changes.push({ type: 'drop_object', O: c } as any)
-        changes.push({ type: 'add_object', O: toCompMap.get(c.T) } as any)
+      } else if (objectChanged(c, to)) {
+        changes.push({ type: 'modify_object', from: c, to } as any)
       }
     }
     for (const c of toComps) {
@@ -141,11 +141,11 @@ export class PostgresDiff implements DiffDriver {
     const fromRangeMap = new Map(fromRanges.map((r) => [r.T, r]))
 
     for (const r of fromRanges) {
-      if (!toRangeMap.has(r.T)) {
+      const toR = toRangeMap.get(r.T)
+      if (!toR) {
         changes.push({ type: 'drop_object', O: r } as any)
-      } else if (objectChanged(r, toRangeMap.get(r.T))) {
-        changes.push({ type: 'drop_object', O: r } as any)
-        changes.push({ type: 'add_object', O: toRangeMap.get(r.T) } as any)
+      } else if (objectChanged(r, toR)) {
+        changes.push({ type: 'modify_object', from: r, to: toR } as any)
       }
     }
     for (const r of toRanges) {
@@ -163,11 +163,11 @@ export class PostgresDiff implements DiffDriver {
 
     for (const a of fromAggs) {
       const k = aggKey(a)
-      if (!toAggMap.has(k)) {
+      const toA = toAggMap.get(k)
+      if (!toA) {
         changes.push({ type: 'drop_object', O: a } as any)
-      } else if (objectChanged(a, toAggMap.get(k))) {
-        changes.push({ type: 'drop_object', O: a } as any)
-        changes.push({ type: 'add_object', O: toAggMap.get(k) } as any)
+      } else if (objectChanged(a, toA)) {
+        changes.push({ type: 'modify_object', from: a, to: toA } as any)
       }
     }
     for (const a of toAggs) {

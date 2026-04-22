@@ -191,7 +191,11 @@ export class PostgresPlan implements PlanDriver {
   private addCompositeType(obj: any): string[] {
     const ident = this.qualifiedIdent(obj.schema, obj.T)
     const fields = (obj.fields ?? obj.compositeFields ?? [])
-      .map((f: any) => `"${f.name}" ${formatTypeRef(f.type?.T || 'text')}`)
+      .map((f: any) => {
+        // Use typeDDL when we have a structured type; falls back to raw T for unknown types.
+        const typeStr = f.type ? typeDDL(f.type) : 'text'
+        return `"${f.name}" ${typeStr}`
+      })
       .join(', ')
     return [`CREATE TYPE ${ident} AS (${fields})`]
   }

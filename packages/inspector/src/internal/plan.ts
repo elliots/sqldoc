@@ -1137,6 +1137,12 @@ export function changeToSQL(driver: PlanDriver, change: Change): string[] {
     case 'drop_object':
       return driver.dropObject?.(change.O, change.extra) ?? []
 
+    case 'modify_object':
+      if (driver.dropObject && driver.addObject) {
+        return [...driver.dropObject((change as any).from), ...driver.addObject((change as any).to)]
+      }
+      throw new Error('modify_object is not supported by this plan driver')
+
     case 'add_proc':
       return driver.addProc?.(change.P) ?? []
 

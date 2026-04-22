@@ -505,4 +505,18 @@ describe('PostgresPlan default schema stripping', () => {
     const stmts = plan.addEnumValues('status', ['a', 'b'], ['a', 'b', 'c'], 'app')
     assert.ok(stmts[0].startsWith('ALTER TYPE "status"'), `should strip schema: ${stmts[0]}`)
   })
+
+  it('preserves precision and scale in composite type fields', () => {
+    const stmts = plan.addObject!({
+      kind: 'composite',
+      T: 'metrics',
+      schema: 'app',
+      fields: [
+        { name: 'amount', type: { kind: 'decimal', T: 'numeric', precision: 10, scale: 4 } },
+        { name: 'count', type: { kind: 'decimal', T: 'numeric', precision: 8 } },
+      ],
+    })
+    assert.ok(stmts[0].includes('"amount" numeric(10,4)'), `should preserve precision/scale: ${stmts[0]}`)
+    assert.ok(stmts[0].includes('"count" numeric(8)'), `should preserve precision: ${stmts[0]}`)
+  })
 })
