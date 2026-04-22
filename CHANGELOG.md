@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.6 (2026-04-22)
+
+52d6bc78 fix: strip default schema from composite/domain/enum/view/index DDL
+
 ## v0.2.5 (2026-04-21)
 
 1b90a57 feat: deliver types with npm packages

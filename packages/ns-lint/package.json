@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-lint",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Lint namespace for sqldoc -- @lint.ignore tag for suppressing lint rules",
   "exports": {
     ".": {
