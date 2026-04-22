@@ -457,4 +457,52 @@ describe('PostgresPlan default schema stripping', () => {
     assert.ok(stmts[0].includes('FUNCTION my_func'), `should strip schema from func name: ${stmts[0]}`)
     assert.ok(!stmts[0].includes('app.my_func'), `should not contain app.my_func: ${stmts[0]}`)
   })
+
+  it('strips default schema from composite type CREATE', () => {
+    const stmts = plan.addObject!({
+      kind: 'composite',
+      T: 'health_report',
+      schema: 'app',
+      fields: [
+        { name: 'id', type: { T: 'uuid' } },
+        { name: 'score', type: { T: 'numeric' } },
+      ],
+    })
+    assert.ok(stmts[0].startsWith('CREATE TYPE "health_report"'), `should strip schema: ${stmts[0]}`)
+    assert.ok(!stmts[0].includes('"app"'), `should not contain default schema: ${stmts[0]}`)
+  })
+
+  it('keeps non-default schema on composite type CREATE', () => {
+    const stmts = plan.addObject!({
+      kind: 'composite',
+      T: 'health_report',
+      schema: 'reporting',
+      fields: [{ name: 'id', type: { T: 'uuid' } }],
+    })
+    assert.ok(
+      stmts[0].startsWith('CREATE TYPE "reporting"."health_report"'),
+      `should keep non-default schema: ${stmts[0]}`,
+    )
+  })
+
+  it('strips default schema from composite type DROP', () => {
+    const stmts = plan.dropObject!({ kind: 'composite', T: 'health_report', schema: 'app' })
+    assert.equal(stmts[0], 'DROP TYPE "health_report"')
+  })
+
+  it('strips default schema from domain type DDL', () => {
+    const stmts = plan.addObject!({
+      kind: 'domain',
+      T: 'email',
+      schema: 'app',
+      type: { kind: 'text', T: 'text' },
+      null: true,
+    })
+    assert.ok(stmts[0].startsWith('CREATE DOMAIN "email"'), `should strip schema: ${stmts[0]}`)
+  })
+
+  it('strips default schema from enum value ALTER', () => {
+    const stmts = plan.addEnumValues('status', ['a', 'b'], ['a', 'b', 'c'], 'app')
+    assert.ok(stmts[0].startsWith('ALTER TYPE "status"'), `should strip schema: ${stmts[0]}`)
+  })
 })

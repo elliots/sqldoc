@@ -53,6 +53,14 @@ export class PostgresPlan implements PlanDriver {
     })
   }
 
+  /** Format a schema-qualified identifier, skipping the schema part when it matches defaultSchema. */
+  private qualifiedIdent(schema: string | undefined, name: string): string {
+    if (schema && schema !== this.defaultSchema) {
+      return `"${schema}"."${name}"`
+    }
+    return `"${name}"`
+  }
+
   /** Strip default schema qualifier from a raw DDL statement header (e.g. CREATE FUNCTION public.name). */
   private stripDefaultSchemaFromDDL(ddl: string): string {
     if (!this.defaultSchema) return ddl
@@ -106,26 +114,24 @@ export class PostgresPlan implements PlanDriver {
       case 'domain':
         return this.addDomainType(obj)
       case 'range_type': {
-        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        const ident = this.qualifiedIdent(obj.schema, obj.T)
         const subtype = obj.subtype ? formatTypeRef(obj.subtype) : 'integer'
         return [`CREATE TYPE ${ident} AS RANGE (SUBTYPE = ${subtype})`]
       }
       case 'aggregate': {
         const argList = (obj.args ?? []).join(', ')
-        const ident = obj.schema ? `"${obj.schema}"."${obj.name}"` : `"${obj.name}"`
-        // Schema-qualify function references
-        const sfunc = obj.stateFunc?.includes('.')
-          ? `"${obj.stateFunc.split('.')[0]}"."${obj.stateFunc.split('.')[1]}"`
-          : obj.schema
-            ? `"${obj.schema}"."${obj.stateFunc}"`
-            : `"${obj.stateFunc}"`
+        const ident = this.qualifiedIdent(obj.schema, obj.name)
+        const splitFunc = (fn: string): string => {
+          if (fn.includes('.')) {
+            const [s, n] = fn.split('.')
+            return this.qualifiedIdent(s, n)
+          }
+          return this.qualifiedIdent(obj.schema, fn)
+        }
+        const sfunc = splitFunc(obj.stateFunc)
         let sql = `CREATE AGGREGATE ${ident}(${argList}) (SFUNC = ${sfunc}, STYPE = ${obj.stateType}`
         if (obj.finalFunc) {
-          const ffunc = obj.finalFunc.includes('.')
-            ? `"${obj.finalFunc.split('.')[0]}"."${obj.finalFunc.split('.')[1]}"`
-            : obj.schema
-              ? `"${obj.schema}"."${obj.finalFunc}"`
-              : `"${obj.finalFunc}"`
+          const ffunc = splitFunc(obj.finalFunc)
           sql += `, FINALFUNC = ${ffunc}`
         }
         if (obj.initVal != null && obj.initVal !== '') sql += `, INITCOND = '${obj.initVal}'`
@@ -157,19 +163,19 @@ export class PostgresPlan implements PlanDriver {
       case 'enum':
         return this.dropEnum(obj.T, obj.schema, ifExists, cascade)
       case 'composite': {
-        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        const ident = this.qualifiedIdent(obj.schema, obj.T)
         return [`DROP TYPE${ifExists} ${ident}${cascade}`]
       }
       case 'domain': {
-        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        const ident = this.qualifiedIdent(obj.schema, obj.T)
         return [`DROP DOMAIN${ifExists} ${ident}${cascade}`]
       }
       case 'range_type': {
-        const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+        const ident = this.qualifiedIdent(obj.schema, obj.T)
         return [`DROP TYPE${ifExists} ${ident}${cascade}`]
       }
       case 'aggregate': {
-        const ident = obj.schema ? `"${obj.schema}"."${obj.name}"` : `"${obj.name}"`
+        const ident = this.qualifiedIdent(obj.schema, obj.name)
         const argList = (obj.args ?? []).join(', ')
         return [`DROP AGGREGATE${ifExists} ${ident}(${argList})${cascade}`]
       }
@@ -183,7 +189,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for creating a composite type. */
   private addCompositeType(obj: any): string[] {
-    const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+    const ident = this.qualifiedIdent(obj.schema, obj.T)
     const fields = (obj.fields ?? obj.compositeFields ?? [])
       .map((f: any) => `"${f.name}" ${formatTypeRef(f.type?.T || 'text')}`)
       .join(', ')
@@ -192,7 +198,7 @@ export class PostgresPlan implements PlanDriver {
 
   /** Generate SQL for creating a domain type. */
   private addDomainType(obj: any): string[] {
-    const ident = obj.schema ? `"${obj.schema}"."${obj.T}"` : `"${obj.T}"`
+    const ident = this.qualifiedIdent(obj.schema, obj.T)
     const baseType = obj.type ? typeDDL(obj.type) : 'text'
     const stmts = [`CREATE DOMAIN ${ident} AS ${baseType}`]
     if (!obj.null) {
@@ -477,8 +483,8 @@ export class PostgresPlan implements PlanDriver {
         }
 
         case 'rename_index': {
-          const prefix = to.schema ? `"${to.schema}".` : ''
-          stmts.push(`ALTER INDEX ${prefix}"${change.from.name}" RENAME TO "${change.to.name}"`)
+          const indexIdent = this.qualifiedIdent(to.schema, change.from.name!)
+          stmts.push(`ALTER INDEX ${indexIdent} RENAME TO "${change.to.name}"`)
           break
         }
 
@@ -585,9 +591,9 @@ export class PostgresPlan implements PlanDriver {
     // View comment
     const comment = findAttr<{ kind: 'comment'; text: string }>(view.attrs, 'comment')
     if (comment?.text) {
-      const prefix = view.schema ? `"${view.schema}".` : ''
+      const viewIdent = this.qualifiedIdent(view.schema, view.name)
       const objType = view.materialized ? 'MATERIALIZED VIEW' : 'VIEW'
-      stmts.push(`COMMENT ON ${objType} ${prefix}"${view.name}" IS ${quote(comment.text)}`)
+      stmts.push(`COMMENT ON ${objType} ${viewIdent} IS ${quote(comment.text)}`)
     }
 
     // Materialized view indexes
@@ -888,7 +894,7 @@ export class PostgresPlan implements PlanDriver {
   /** Generate SQL for adding values to an existing enum type. */
   addEnumValues(name: string, fromValues: string[], toValues: string[], schema?: string): string[] {
     const stmts: string[] = []
-    const ident = schema ? `"${schema}"."${name}"` : `"${name}"`
+    const ident = this.qualifiedIdent(schema, name)
     const fromSet = new Set(fromValues)
 
     for (let i = 0; i < toValues.length; i++) {
