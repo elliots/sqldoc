@@ -51,6 +51,8 @@ export interface InspectorRunner {
       matchDefaultSchemas: boolean
       /** When true, strip default schema qualifier from output SQL. */
       stripDefaultSchema: boolean
+      /** When true, skip extension add/drop changes. */
+      ignoreExtensions?: boolean
       renames?: Rename[]
     },
   ): Promise<InspectorResult>
@@ -343,6 +345,8 @@ export interface DiffRealmsOptions {
   matchDefaultSchemas?: boolean
   /** When true, strip default schema qualifier from output SQL. */
   stripDefaultSchema?: boolean
+  /** When true, skip extension add/drop changes. Useful when diffing against a real DB that has extensions the schema doesn't declare. */
+  ignoreExtensions?: boolean
   renames?: Rename[]
 }
 
@@ -386,7 +390,9 @@ export function diffRealms(
   const renameCandidates = detectRenameCandidates(fromRealm, toRealm, opts?.renames)
 
   const diffOpts =
-    opts?.matchDefaultSchemas !== undefined ? { matchDefaultSchemas: opts.matchDefaultSchemas } : undefined
+    opts?.matchDefaultSchemas !== undefined || opts?.ignoreExtensions !== undefined
+      ? { matchDefaultSchemas: opts?.matchDefaultSchemas ?? false, ignoreExtensions: opts?.ignoreExtensions }
+      : undefined
   let changes = realmDiff(differ, fromRealm, toRealm, diffOpts)
 
   if (changes.length === 0 && renameStmts.length === 0) {
@@ -466,6 +472,7 @@ export async function createInspector(options: InspectorOptions): Promise<Inspec
         defaultSchema: resolvedDefaultSchema,
         matchDefaultSchemas: opts?.matchDefaultSchemas,
         stripDefaultSchema: opts?.stripDefaultSchema,
+        ignoreExtensions: opts?.ignoreExtensions,
         renames: opts?.renames,
       })
     },

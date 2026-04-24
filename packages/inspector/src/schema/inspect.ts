@@ -143,6 +143,8 @@ export interface DiffOptions {
   mode?: DiffMode
   /** When true, treat schemas matching their realm's defaultSchema as equivalent even if names differ. */
   matchDefaultSchemas: boolean
+  /** When true, skip extension add/drop changes. Useful when diffing against a real DB that has extensions the schema doesn't declare. */
+  ignoreExtensions?: boolean
 }
 
 // -- Query Interface --

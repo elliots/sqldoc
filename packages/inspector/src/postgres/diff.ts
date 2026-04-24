@@ -180,8 +180,12 @@ export class PostgresDiff implements DiffDriver {
   }
 
   /** Returns a changeset for migrating realm objects from one state to the other. */
-  realmObjectDiff(from: Realm, to: Realm): Change[] {
+  realmObjectDiff(from: Realm, to: Realm, opts?: DiffOptions): Change[] {
     const changes: Change[] = []
+
+    if (opts?.ignoreExtensions) {
+      return changes
+    }
 
     // Extensions are realm-wide — compare across all schemas
     const fromExts = new Map<string, any>()

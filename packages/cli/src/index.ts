@@ -116,6 +116,7 @@ schema
   .option('--check', 'Exit non-zero if schemas differ (CI mode)')
   .option('--project <name>', 'Select a named project from multi-project config')
   .option('--no-cache', 'Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true)')
+  .option('--ignore-extensions', 'Skip extension add/drop changes (useful when diffing against a real DB)')
   .action(schemaDiffCommand)
 
 program

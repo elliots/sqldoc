@@ -156,7 +156,7 @@ export function realmDiff(driver: DiffDriver, from: Realm, to: Realm, opts?: Dif
   const matchDefaults = opts?.matchDefaultSchemas ?? false
 
   // Realm-level object changes
-  const realmObjChanges = driver.realmObjectDiff(from, to)
+  const realmObjChanges = driver.realmObjectDiff(from, to, opts)
   changes.push(...realmObjChanges)
 
   // Build schema matching: pair from-schemas to to-schemas.

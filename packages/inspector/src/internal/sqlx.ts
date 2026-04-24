@@ -376,7 +376,7 @@ export interface DiffDriver {
   /** Returns a changeset for migrating schema objects from one state to the other. */
   schemaObjectDiff(from: Schema, to: Schema, opts?: DiffOptions): Change[]
   /** Returns a changeset for migrating realm objects from one state to the other. */
-  realmObjectDiff(from: Realm, to: Realm): Change[]
+  realmObjectDiff(from: Realm, to: Realm, opts?: DiffOptions): Change[]
   /** Returns a changeset for migrating table attributes from one state to the other. */
   tableAttrDiff(from: Table, to: Table, opts?: DiffOptions): Change[]
   /** Returns the changes between two view attributes. */

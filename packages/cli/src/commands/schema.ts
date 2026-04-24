@@ -164,6 +164,7 @@ export async function schemaDiffCommand(options: {
   check?: boolean
   project?: string
   cache?: boolean
+  ignoreExtensions?: boolean
 }): Promise<void> {
   const configRoot = resolveConfigRoot(options.config)
   const { config: rawConfig } = await loadConfig(configRoot, options.config)
@@ -197,7 +198,15 @@ export async function schemaDiffCommand(options: {
         : { type: 'file' as const, value: '' } // empty = no existing schema
 
       if (fromResolved.type === 'database' || toResolved.type === 'database') {
-        await diffWithLiveDb(fromResolved, toResolved, config, format, options.check ?? false, configRoot)
+        await diffWithLiveDb(
+          fromResolved,
+          toResolved,
+          config,
+          format,
+          options.check ?? false,
+          configRoot,
+          options.ignoreExtensions ?? false,
+        )
         return
       }
 
@@ -230,6 +239,7 @@ export async function schemaDiffCommand(options: {
           schema: defaultSchemaForEngine(config.engine),
           matchDefaultSchemas: true,
           stripDefaultSchema: true,
+          ignoreExtensions: options.ignoreExtensions ?? false,
         })
         outputDiff(result, format, options.check ?? false)
       } finally {
@@ -249,6 +259,7 @@ async function diffWithLiveDb(
   format: Format,
   check: boolean,
   configRoot: string,
+  ignoreExtensions: boolean,
 ): Promise<void> {
   const schemaOpt = defaultSchemaForEngine(config.engine)
 
@@ -308,6 +319,7 @@ async function diffWithLiveDb(
       schema: schemaOpt,
       matchDefaultSchemas: true,
       stripDefaultSchema: true,
+      ignoreExtensions,
     })
     outputDiff(result, format, check)
   } finally {
