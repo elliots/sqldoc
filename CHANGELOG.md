@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.8 (2026-04-24)
+
+14b8dd74 add ignoreExtensions option to diff
+
 ## v0.2.7 (2026-04-22)
 
 244282dc fix: composite type precision/scale + modify_object ordering
