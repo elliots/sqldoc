@@ -7,6 +7,7 @@ import packageJson from '../package.json' with { type: 'json' }
 import { installDeps } from './arborist.ts'
 import { addCommand } from './commands/add.ts'
 import { initCommand } from './commands/init.ts'
+import { installCommand } from './commands/install.ts'
 import { upgradeCommand } from './commands/upgrade.ts'
 import { delegate, enableNodeModulesTypeStripping, setShimVersion } from './delegate.ts'
 import { findSqldocDir } from './find-sqldoc.ts'
@@ -54,6 +55,7 @@ function buildHelp(): string {
     '',
     `${pc.dim('Commands:')}`,
     '  init                 Initialize .sqldoc/ in the current directory',
+    '  install              Install dependencies from .sqldoc/package.json',
     '  add <packages...>    Install packages into .sqldoc/',
     '  upgrade              Update all packages in .sqldoc/',
   ]
@@ -138,6 +140,12 @@ async function main(): Promise<void> {
     const devIdx = args.indexOf('--dev')
     const devPath = devIdx !== -1 ? args[devIdx + 1] : undefined
     await initCommand(process.cwd(), devPath)
+    return
+  }
+
+  if (command === 'install') {
+    const sqldocDir = requireSqldocDir()
+    await installCommand(sqldocDir)
     return
   }
 
