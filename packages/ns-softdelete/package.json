@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-softdelete",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Soft-delete namespace for sqldoc -- generates deleted_at columns, active views, and cascade triggers",
   "exports": {
     ".": {
