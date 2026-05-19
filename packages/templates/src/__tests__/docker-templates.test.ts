@@ -7,9 +7,9 @@
  *   1. docker build  (typecheck / compile)
  *   2. docker run    (integration test or no-op CMD)
  *
- * Run with: bun test --timeout 180000 packages/templates/src/__tests__/docker-templates.test.ts
+ * Run with: bun test --timeout 1200000 packages/templates/src/__tests__/docker-templates.test.ts
  *
- * Requires Docker. Skipped in the default test suite — run explicitly.
+ * Requires Docker. Included in the repo-wide runtime test suites.
  */
 
 import { execFileSync, execSync } from 'node:child_process'
@@ -29,6 +29,8 @@ const NETWORK = 'sqldoc-test-net'
 const PG_CONTAINER = 'sqldoc-test-pg'
 const PG_PORT = 54321
 const DB_URL = `postgresql://postgres:postgres@${PG_CONTAINER}:5432/postgres`
+const DOCKER_BUILD_TIMEOUT = Number(process.env.DOCKER_TEMPLATE_BUILD_TIMEOUT_MS ?? 900_000)
+const DOCKER_RUN_TIMEOUT = Number(process.env.DOCKER_TEMPLATE_RUN_TIMEOUT_MS ?? 180_000)
 
 function discoverTemplates(): string[] {
   return readdirSync(SRC_DIR, { withFileTypes: true })
@@ -125,11 +127,11 @@ describe('docker template tests', () => {
         try {
           execFileSync('docker', ['build', '-t', tag, testDir], {
             stdio: 'pipe',
-            timeout: 120_000,
+            timeout: DOCKER_BUILD_TIMEOUT,
           })
           execFileSync('docker', ['run', '--rm', '--network', NETWORK, '-e', `DATABASE_URL=${DB_URL}`, tag], {
             stdio: 'pipe',
-            timeout: 30_000,
+            timeout: DOCKER_RUN_TIMEOUT,
           })
         } catch (err: any) {
           const stderr = err.stderr?.toString() ?? ''

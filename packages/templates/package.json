@@ -393,8 +393,8 @@
   ],
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
+    "test:bun": "bun test --max-concurrency=1 --timeout ${TEST_TIMEOUT:-1200000} src/__tests__/**/*.test.ts",
     "typecheck": "tsgo -noEmit",
-    "test:docker": "bun test src/__tests__/docker-templates.test.ts",
     "build:types": "tsgo -p tsconfig.build.json"
   },
   "peerDependencies": {

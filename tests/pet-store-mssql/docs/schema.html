@@ -135,9 +135,9 @@
     adoptions }o--|| pets : &quot;FK__adoptions__pet_i__47DBAE45&quot;
     medical_records }o--|| pets : &quot;FK__medical_r__pet_i__4CA06362&quot;
     pets }o--|| categories : &quot;FK__pets__category_i__3F466844&quot;
-    reviews }o--|| locations : &quot;FK__reviews__locatio__59FA5E80&quot;
-    reviews }o--|| owners : &quot;FK__reviews__owner_i__59063A47&quot;
-    reviews }o--|| pets : &quot;FK__reviews__pet_id__5812160E&quot;
+    reviews }o--|| locations : &quot;FK__reviews__locatio__6A30C649&quot;
+    reviews }o--|| owners : &quot;FK__reviews__owner_i__693CA210&quot;
+    reviews }o--|| pets : &quot;FK__reviews__pet_id__68487DD7&quot;
     adoptions ||..o{ adoptions_audit_log : "audit events"
     staff ||..o{ staff_audit_log : "audit events"</pre>
     </section>
@@ -146,7 +146,6 @@
     <p class="description">Tracks each adoption event with timestamps and fees</p>
     <div class="annotations">
       <span class="annotation">Audited (insert, update, delete)</span>
-      <span class="annotation">MSSQL audit triggers will use inserted/deleted tables (not yet implemented)</span>
     </div>
     <table>
       <thead>
@@ -544,7 +543,7 @@
     </table>
     <h4>Indexes</h4>
     <ul>
-      <li>UQ__owners__AB6E616459A720B7 (email) UNIQUE</li>
+      <li>UQ__owners__AB6E6164AD5F8F89 (email) UNIQUE</li>
     </ul>
   </section>
   <section id="pets">
@@ -643,7 +642,7 @@
     </ul>
     <h4>Indexes</h4>
     <ul>
-      <li>UQ__pets__DDDF4BE7FA268EA6 (sku) UNIQUE</li>
+      <li>UQ__pets__DDDF4BE7B1E0AF62 (sku) UNIQUE</li>
     </ul>
   </section>
   <section id="reviews">
@@ -695,7 +694,7 @@
         <td>-</td>
         <td>-</td>
         <td>-</td>
-        <td>-</td>
+        <td>Range: 1–5</td>
       </tr>
       <tr>
         <td>body</td>
@@ -728,16 +727,15 @@
     </table>
     <h4>Foreign Keys</h4>
     <ul>
-      <li>FK__reviews__locatio__59FA5E80: location_id -&gt; locations(id)</li>
-      <li>FK__reviews__owner_i__59063A47: owner_id -&gt; owners(id)</li>
-      <li>FK__reviews__pet_id__5812160E: pet_id -&gt; pets(id)</li>
+      <li>FK__reviews__locatio__6A30C649: location_id -&gt; locations(id)</li>
+      <li>FK__reviews__owner_i__693CA210: owner_id -&gt; owners(id)</li>
+      <li>FK__reviews__pet_id__68487DD7: pet_id -&gt; pets(id)</li>
     </ul>
   </section>
   <section id="staff">
     <h3>staff</h3>
     <div class="annotations">
       <span class="annotation">Audited (insert, update, delete)</span>
-      <span class="annotation">MSSQL audit triggers will use inserted/deleted tables (not yet implemented)</span>
     </div>
     <table>
       <thead>

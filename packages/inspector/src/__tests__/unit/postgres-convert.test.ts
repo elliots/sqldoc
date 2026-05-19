@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { normalizeDefault, quote } from '../../postgres/convert.ts'
 
 describe('postgres trimCast (via normalizeDefault)', () => {

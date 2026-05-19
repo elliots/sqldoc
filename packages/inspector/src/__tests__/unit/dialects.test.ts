@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { filterSystemSchemas, getInspectorRuntime, resolveInspectorEngine } from '../../dialects.ts'
 import type { Realm } from '../../schema/schema.ts'
 

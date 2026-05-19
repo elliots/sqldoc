@@ -8,6 +8,7 @@ import type { TemplateContext } from '@sqldoc/ns-codegen'
 import { describe, expect, it } from '@sqldoc/test-utils'
 import drizzle from '../drizzle/index.ts'
 import knex from '../knex/index.ts'
+import kysely from '../kysely/index.ts'
 import typescript from '../typescript/index.ts'
 import zod from '../zod/index.ts'
 
@@ -32,6 +33,14 @@ const multiSchemaRealm: Realm = {
     },
     {
       name: 'core',
+      funcs: [
+        {
+          name: 'search_users',
+          args: [],
+          ret: { type: { kind: 'integer', T: 'integer' }, raw: 'integer' },
+          lang: 'sql',
+        },
+      ],
       tables: [
         {
           name: 'roles',
@@ -191,6 +200,17 @@ describe('multi-schema: knex template', () => {
     expect(content).toContain("'auth.users': AuthUserTable")
     expect(content).toContain("'core.projects': CoreProjectTable")
     expect(content).toContain("'core.roles': CoreRoleTable")
+  })
+})
+
+// ── Kysely template ─────────────────────────────────────────────
+
+describe('multi-schema: kysely template', () => {
+  it('quotes schema-qualified function calls in generated helpers', () => {
+    const result = kysely.generate(makeCtx('kysely'))
+    const content = result.files[0].content
+
+    expect(content).toContain('SELECT "core"."search_users"() AS val')
   })
 })
 

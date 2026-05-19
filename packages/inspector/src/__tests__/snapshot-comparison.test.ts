@@ -10,10 +10,10 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import { describe, it } from 'node:test'
 import type { ForeignKey, Index, Realm } from '@sqldoc/db'
 import { createSqliteAdapter } from '@sqldoc/db'
 import pglitePlugin from '@sqldoc/db-pglite'
+import { describe, it } from '@sqldoc/test-utils'
 import type { DbSource } from '../adapter.ts'
 import { createInspector } from '../inspector.ts'
 

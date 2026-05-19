@@ -172,6 +172,8 @@ function handleTemporal(ctx: TagContext): TagOutput {
       object: objectName,
       text: 'MySQL does not support self-referential triggers for UPDATE/DELETE temporal behavior. Use application-level logic.',
     })
+  } else if (dialect !== 'postgres') {
+    throw new Error(`ns-temporal: unsupported dialect '${dialect}'`)
   } else if (pkColumns.length === 0 || columns.length === 0) {
     triggerSqls = []
     extraAnnotations.push({

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { parseType, quote } from '../../mysql/driver.ts'
 
 describe('MySQL parseType boolean detection', () => {

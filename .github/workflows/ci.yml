@@ -56,7 +56,7 @@ jobs:
 
       - name: Run tests (node)
         if: matrix.runtime.name == 'node'
-        run: bun run test:node
+        run: bun run test
 
   lint:
     runs-on: ubuntu-latest

@@ -188,6 +188,21 @@ describe('ns-temporal plugin', () => {
     })
   })
 
+  describe('onTag - unsupported dialects', () => {
+    it('does not fall through to Postgres trigger generation for MSSQL', () => {
+      expect(() =>
+        plugin.onTag!(
+          makeTagCtx({
+            dialect: 'mssql',
+            objectName: 'orders',
+            tag: { name: null, args: {} },
+            schemaTable: mockSchemaTable,
+          }),
+        ),
+      ).toThrow(/unsupported dialect 'mssql'/)
+    })
+  })
+
   describe('lint rules', () => {
     it('has temporal.require-temporal rule', () => {
       expect(plugin.lintRules).toHaveLength(1)

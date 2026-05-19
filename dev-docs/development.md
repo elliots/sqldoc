@@ -11,13 +11,13 @@ Use this doc when you need the day-to-day workflow rather than architecture. It 
 Run these before every commit:
 
 1. `bun run check`
-2. `bun run test:node`
+2. `bun run test`
 
 If `check` needs to rewrite code, use `bun run check:fix` and then rerun `bun run check`.
 
 ## End Of Work
 
-Run `bun run test:bun` at the end of the full task. It takes longer, so it is the final repo-wide verification pass rather than the fast loop before every commit.
+Run `bun run test:bun` as the Bun runtime pass. Both `bun run test` and `bun run test:bun` include Docker-backed tests; `test:bun` excludes the node-only Postgres adapter package test and uses Bun's built-in Postgres adapter in the shared Docker Postgres tests.
 
 ## Test Output Handling
 
@@ -26,8 +26,8 @@ Do not read large test output directly from the terminal scrollback. Pipe it to 
 Example pattern:
 
 ```sh
-tmpfile=$(mktemp /tmp/sqldoc-test-node.XXXXXX.txt)
-bun run test:node >"$tmpfile" 2>&1
+tmpfile=$(mktemp /tmp/sqldoc-test.XXXXXX.txt)
+bun run test >"$tmpfile" 2>&1
 sed -n '1,220p' "$tmpfile"
 ```
 

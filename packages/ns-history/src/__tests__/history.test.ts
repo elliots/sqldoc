@@ -255,6 +255,23 @@ describe('ns-history plugin', () => {
     })
   })
 
+  describe('onTag - MSSQL', () => {
+    it('produces inserted/deleted-table triggers instead of silently omitting trigger behavior', () => {
+      const result = plugin.onTag!(
+        makeTagCtx({
+          dialect: 'mssql',
+          objectName: 'orders',
+          tag: { name: null, args: {} },
+          schemaTable: mockSchemaTable,
+        }),
+      )
+      const sql = (result as any).sql
+
+      expect(sql.length).toBeGreaterThan(1)
+      expect(sql.map((s: any) => s.sql).join('\n')).toContain('deleted')
+    })
+  })
+
   describe('lint rules', () => {
     it('has history.require-history rule', () => {
       expect(plugin.lintRules).toHaveLength(1)

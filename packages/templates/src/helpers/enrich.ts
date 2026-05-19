@@ -133,7 +133,7 @@ export interface EnrichedFunction {
   /** Schema this function belongs to */
   schema: string
   /** Function arguments */
-  args: Array<{ name: string; type: string; category: string }>
+  args: Array<{ name: string; type: string; category: string; mode?: string }>
   /** Return type */
   returnType?: { type: string; category: string; compositeFields?: Array<{ name: string; type: string }> }
   /** Language (sql, plpgsql, etc.) */
@@ -327,6 +327,7 @@ export function enrichRealm(ctx: TemplateContext): EnrichedSchema {
         name: a.name ?? '',
         type: a.type.type.T ?? a.type.raw ?? 'unknown',
         category: typeCategory(a.type.type),
+        mode: a.mode,
       })),
       returnType: fn.ret
         ? {

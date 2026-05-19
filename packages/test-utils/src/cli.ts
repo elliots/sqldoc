@@ -5,12 +5,13 @@
  * don't each re-implement the same child-process wrappers.
  */
 
-import { execSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import * as path from 'node:path'
 
 export const MONOREPO_ROOT = path.resolve(import.meta.dirname, '../../..')
 export const CLI_ENTRY = path.join(MONOREPO_ROOT, 'packages/cli/src/main.ts')
 export const SHIM_ENTRY = path.join(MONOREPO_ROOT, 'packages/sqldoc/src/index.ts')
+const TEST_RUNTIME_BIN = process.env.SQLDOC_TEST_RUNTIME_BIN ?? process.execPath
 
 export function runCli(
   args: string,
@@ -26,7 +27,7 @@ export function runCli(
     ...opts.env,
   }
 
-  const result = spawnSync(process.execPath, [CLI_ENTRY, ...args.split(/\s+/)], {
+  const result = spawnSync(TEST_RUNTIME_BIN, [CLI_ENTRY, ...args.split(/\s+/)], {
     cwd,
     encoding: 'utf-8',
     env,
@@ -40,7 +41,7 @@ export function runCli(
 
   if (exitCode !== 0 && !opts.expectFail) {
     throw new Error(
-      `CLI command failed: node ${CLI_ENTRY} ${args}\n` +
+      `CLI command failed: ${TEST_RUNTIME_BIN} ${CLI_ENTRY} ${args}\n` +
         `Exit code: ${exitCode}\n` +
         `stdout: ${stdout}\n` +
         `stderr: ${stderr}`,
@@ -55,29 +56,27 @@ export function runShim(
   cwd: string,
   opts: { expectFail?: boolean } = {},
 ): { stdout: string; stderr: string; exitCode: number } {
-  try {
-    const stdout = execSync(`${process.execPath} ${SHIM_ENTRY} ${args}`, {
-      cwd,
-      encoding: 'utf-8',
-      env: { ...process.env, NODE_NO_WARNINGS: '1' },
-      timeout: 60_000,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
-    return { stdout, stderr: '', exitCode: 0 }
-  } catch (err: any) {
-    if (opts.expectFail) {
-      return {
-        stdout: err.stdout?.toString() ?? '',
-        stderr: err.stderr?.toString() ?? '',
-        exitCode: err.status ?? 1,
-      }
-    }
+  const result = spawnSync(TEST_RUNTIME_BIN, [SHIM_ENTRY, ...args.split(/\s+/)], {
+    cwd,
+    encoding: 'utf-8',
+    env: { ...process.env, NODE_NO_WARNINGS: '1' },
+    timeout: 60_000,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  })
+
+  const stdout = result.stdout ?? ''
+  const stderr = result.stderr ?? ''
+  const exitCode = result.status ?? 1
+
+  if (exitCode !== 0 && !opts.expectFail) {
     throw new Error(
-      `Shim command failed: node ${SHIM_ENTRY} ${args}\n` +
-        `Exit code: ${err.status}\n` +
-        `stderr: ${err.stderr?.toString() ?? ''}`,
+      `Shim command failed: ${TEST_RUNTIME_BIN} ${SHIM_ENTRY} ${args}\n` +
+        `Exit code: ${exitCode}\n` +
+        `stderr: ${stderr}`,
     )
   }
+
+  return { stdout, stderr, exitCode }
 }
 
 export function initProject(tmpDir: string): void {

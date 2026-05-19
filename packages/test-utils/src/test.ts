@@ -23,7 +23,14 @@ if (isBun) {
   // @ts-expect-error -- bun:test only exists in Bun runtime
   const bunTest = await import('bun:test')
   _describe = bunTest.describe
-  _it = bunTest.it ?? bunTest.test
+  // @ts-expect-error -- bun:test only exists in Bun runtime
+  _it = (name: string, optionsOrFn: any, fn?: any) => {
+    if (optionsOrFn.skip) {
+      return bunTest.test.skipIf(true)(name, optionsOrFn, fn)
+    } else {
+      return bunTest.test(name, optionsOrFn, fn)
+    }
+  }
   _before = bunTest.beforeAll
   _after = bunTest.afterAll
   _beforeEach = bunTest.beforeEach

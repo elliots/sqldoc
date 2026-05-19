@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { hasClause } from '../../internal/plan.ts'
 import { PostgresPlan, withCascade } from '../../postgres/migrate.ts'
 import type { Change, Clause } from '../../schema/migrate.ts'
