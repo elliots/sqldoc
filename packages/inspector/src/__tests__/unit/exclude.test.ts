@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { excludeRealm, excludeSchema } from '../../schema/exclude.ts'
 
 describe('splitPatterns empty segments', () => {

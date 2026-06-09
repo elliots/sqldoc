@@ -3,7 +3,7 @@
 // Usage: MYSQL_TEST=1 bun test packages/inspector/src/__tests__/mysql/
 
 import assert from 'node:assert/strict'
-import { after, before, describe, it } from 'node:test'
+import { after, before, describe, it } from '@sqldoc/test-utils'
 
 // MySQL tests are slow (container startup ~30s). Opt-in via MYSQL_TEST=1.
 const optIn = process.env.MYSQL_TEST === '1'

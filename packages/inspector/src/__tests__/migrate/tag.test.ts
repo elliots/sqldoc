@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { scanStmts } from '../../migrate/lex.ts'
 import { extractTagsFromStmts, parseStmtTags, parseTableName, parseTags, stmtTags } from '../../migrate/tag.ts'
 

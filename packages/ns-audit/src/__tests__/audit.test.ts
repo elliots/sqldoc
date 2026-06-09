@@ -258,6 +258,24 @@ describe('ns-audit plugin', () => {
     })
   })
 
+  describe('onTag - MSSQL', () => {
+    it('produces inserted/deleted-table triggers instead of silently emitting docs only', () => {
+      const result = plugin.onTag!(
+        makeTagCtx({
+          dialect: 'mssql',
+          objectName: 'orders',
+          tag: { name: null, args: {} },
+          schemaTable: mockSchemaTable,
+        }),
+      )
+      const sql = (result as any).sql
+
+      expect(sql.length).toBeGreaterThan(1)
+      expect(sql.map((s: any) => s.sql).join('\n')).toContain('inserted')
+      expect(sql.map((s: any) => s.sql).join('\n')).toContain('deleted')
+    })
+  })
+
   describe('onTag - SQLite', () => {
     it('produces audit log table with INTEGER, TEXT, TEXT', () => {
       const result = plugin.onTag!(

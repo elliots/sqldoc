@@ -119,6 +119,40 @@ END;`,
   return outputs
 }
 
+/** Generate separate per-event triggers for MSSQL using the deleted pseudo-table. */
+function generateMssqlHistoryTriggers(
+  objectName: string,
+  destination: string,
+  operations: string[],
+  columns: Column[],
+): SqlOutput[] {
+  const q = (name: string) => quoteIdentifier(name, 'mssql')
+  const outputs: SqlOutput[] = []
+  const colNames = columns.map((c) => q(c.name)).join(', ')
+  const oldRefs = columns.map((c) => `d.${q(c.name)}`).join(', ')
+
+  for (const op of operations) {
+    const opLower = op.toLowerCase()
+    const opUpper = op.toUpperCase()
+    const triggerName = `${objectName}_history_after_${opLower}`
+
+    outputs.push({
+      sql: `CREATE TRIGGER ${q(triggerName)}
+ON ${q(objectName)}
+AFTER ${opUpper}
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO ${q(destination)} (${colNames}, valid_from, valid_to, history_operation)
+  SELECT ${oldRefs}, SYSUTCDATETIME(), SYSUTCDATETIME(), '${opUpper}'
+  FROM deleted d;
+END;`,
+    })
+  }
+
+  return outputs
+}
+
 // -- Handler --
 
 function handleHistory(ctx: TagContext): TagOutput {
@@ -156,7 +190,7 @@ function handleHistory(ctx: TagContext): TagOutput {
       : dialect === 'mysql' || dialect === 'sqlite'
         ? generatePerEventHistoryTriggers(objectName, destination, operations, columns, dialect)
         : dialect === 'mssql'
-          ? []
+          ? generateMssqlHistoryTriggers(objectName, destination, operations, columns)
           : (() => {
               throw new Error(`ns-history: unsupported dialect '${dialect}'`)
             })()

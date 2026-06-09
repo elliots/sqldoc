@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { typeDDL } from '../../mysql/convert.ts'
 
 describe('MySQL typeDDL enum/set quote escaping', () => {

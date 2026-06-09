@@ -1,8 +1,8 @@
 // PostgreSQL integration tests against PgLite
 
 import assert from 'node:assert/strict'
-import { after, before, describe, it } from 'node:test'
 import pglitePlugin from '@sqldoc/db-pglite'
+import { after, before, describe, it } from '@sqldoc/test-utils'
 import type { DbSource } from '../../adapter.ts'
 import type { InspectorRunner } from '../../inspector.ts'
 import { createInspector } from '../../inspector.ts'

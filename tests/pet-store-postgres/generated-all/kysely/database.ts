@@ -115,5 +115,5 @@ export interface Database {
 }
 
 export function getAdoptionReport(db: Kysely<Database>, pOwnerId: number) {
-  return db.selectFrom(sql<AdoptionReport>`get_adoption_report(${pOwnerId})`.as('t')).selectAll().execute()
+  return db.selectFrom(sql<AdoptionReport>`"get_adoption_report"(${pOwnerId})`.as('t')).selectAll().execute()
 }

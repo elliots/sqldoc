@@ -2,9 +2,9 @@
 // Usage: node --test packages/inspector/src/__tests__/mssql/inspect.test.ts
 
 import assert from 'node:assert/strict'
-import { after, before, describe, it } from 'node:test'
 import { createContainerDbSource } from '@sqldoc/db'
 import mssqlPlugin from '@sqldoc/db-mssql'
+import { after, before, describe, it } from '@sqldoc/test-utils'
 import type { InspectorRunner } from '../../inspector.ts'
 import { createInspector } from '../../inspector.ts'
 

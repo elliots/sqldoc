@@ -17,7 +17,6 @@ import {
   findSqldocDir,
   loadImports,
   parse,
-  parseDirectives,
   resolveDirectives,
   validate,
 } from '@sqldoc/core'
@@ -35,6 +34,7 @@ import {
 } from './cache.ts'
 import { discoverSqlFiles } from './discover.ts'
 import { formatDiagnostic } from './format.ts'
+import { buildPipelineInputs } from './pipeline-inputs.ts'
 
 /** Result from running the compile pipeline */
 export interface PipelineResult {
@@ -103,35 +103,10 @@ export async function runCompilePipeline(
   const hasExternals = resolved.externalFiles.length > 0
   debug('pipeline', `directives: ${resolved.externalFiles.length} external, ${resolved.includeFiles.length} include`)
 
-  // Build merged content: inline @include content into each project file at the end.
-  // This ensures included tables can FK-reference parent tables (they appear after).
-  // External files are kept separate — they are inspected first as the pre-existing baseline.
-  const mergedProjectContents = new Map<string, string>()
-  for (const sqlFile of sqlFiles) {
-    let content = fs.readFileSync(sqlFile, 'utf-8')
-    // Find this file's includes by parsing its directives
-    const directives = parseDirectives(content)
-    for (const d of directives) {
-      if (d.type !== 'include') continue
-      const dir = path.dirname(sqlFile)
-      const abs = path.resolve(dir, d.path)
-      if (resolved.provenanceMap.get(abs) === 'include') {
-        const includeContent = fs.readFileSync(abs, 'utf-8')
-        content += `\n\n${includeContent}`
-      }
-    }
-    mergedProjectContents.set(sqlFile, content)
-  }
-
-  // For schema inspection: external files first, then merged project files (includes inlined)
-  const allFiles = [...resolved.externalFiles, ...sqlFiles]
-
-  // ── Schema inspection -- required for compilation ──────────────────
-  const allRawContents = allFiles.map((f) =>
-    resolved.provenanceMap.get(f) === 'external'
-      ? fs.readFileSync(f, 'utf-8')
-      : (mergedProjectContents.get(f) ?? fs.readFileSync(f, 'utf-8')),
-  )
+  // For schema inspection and compilation: external files first, then project
+  // files, then resolved includes. Include files are first-class inputs so shared
+  // includes are inspected and compiled once instead of appended to every file.
+  const { mergedProjectContents, allFiles, allRawContents } = buildPipelineInputs(sqlFiles, resolved)
 
   // Detect goose migration format and warn once
   if (allRawContents.some((sql) => /^--\s*\+goose\s+(Up|Down)/m.test(sql))) {

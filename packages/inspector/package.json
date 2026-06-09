@@ -20,6 +20,7 @@
     "package.json"
   ],
   "scripts": {
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
     "typecheck": "tsgo -noEmit",
     "build:types": "tsgo -p tsconfig.build.json"
   },
@@ -30,6 +31,7 @@
     "@sqldoc/db": "workspace:*",
     "@sqldoc/db-mssql": "workspace:*",
     "@sqldoc/db-pglite": "workspace:*",
+    "@sqldoc/test-utils": "workspace:*",
     "@typescript/native-preview": "catalog:"
   }
 }

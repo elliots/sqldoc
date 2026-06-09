@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from '@sqldoc/test-utils'
 import { realmDiff } from '../../internal/diff.ts'
 import { changeToSQL, type PlanDriver } from '../../internal/plan.ts'
 import { PostgresDiff } from '../../postgres/diff.ts'

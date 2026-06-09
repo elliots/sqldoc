@@ -34,6 +34,8 @@
     "@typescript/native-preview": "catalog:"
   },
   "scripts": {
+    "test": "node --test 'src/__tests__/**/*.test.ts'",
+    "typecheck": "tsgo -noEmit",
     "build:types": "tsgo -p tsconfig.build.json"
   }
 }

@@ -126,3 +126,65 @@ CREATE TABLE [staff_audit_log] (
   [changed_at] datetime2(7) NOT NULL DEFAULT getdate(),
   CONSTRAINT [PK__staff_au__3213E83F812CE5DE] PRIMARY KEY ([id])
 );
+
+CREATE TRIGGER [adoptions_audit_after_delete]
+ON [adoptions]
+AFTER DELETE
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO [adoptions_audit_log] (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('adoptions', 'DELETE', (SELECT * FROM deleted FOR JSON PATH), NULL, SYSUTCDATETIME());
+END;;
+
+CREATE TRIGGER [adoptions_audit_after_insert]
+ON [adoptions]
+AFTER INSERT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO [adoptions_audit_log] (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('adoptions', 'INSERT', NULL, (SELECT * FROM inserted FOR JSON PATH), SYSUTCDATETIME());
+END;;
+
+CREATE TRIGGER [adoptions_audit_after_update]
+ON [adoptions]
+AFTER UPDATE
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO [adoptions_audit_log] (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('adoptions', 'UPDATE', (SELECT * FROM deleted FOR JSON PATH), (SELECT * FROM inserted FOR JSON PATH), SYSUTCDATETIME());
+END;;
+
+ALTER TABLE [reviews] ADD CONSTRAINT [reviews_rating_range] CHECK ([rating]>=(1) AND [rating]<=(5));
+
+CREATE TRIGGER [staff_audit_after_delete]
+ON [staff]
+AFTER DELETE
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO [staff_audit_log] (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('staff', 'DELETE', (SELECT * FROM deleted FOR JSON PATH), NULL, SYSUTCDATETIME());
+END;;
+
+CREATE TRIGGER [staff_audit_after_insert]
+ON [staff]
+AFTER INSERT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO [staff_audit_log] (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('staff', 'INSERT', NULL, (SELECT * FROM inserted FOR JSON PATH), SYSUTCDATETIME());
+END;;
+
+CREATE TRIGGER [staff_audit_after_update]
+ON [staff]
+AFTER UPDATE
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO [staff_audit_log] (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('staff', 'UPDATE', (SELECT * FROM deleted FOR JSON PATH), (SELECT * FROM inserted FOR JSON PATH), SYSUTCDATETIME());
+END;;

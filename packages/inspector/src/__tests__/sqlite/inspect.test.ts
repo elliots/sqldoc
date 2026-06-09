@@ -1,8 +1,8 @@
 // SQLite integration tests against real SQLite database
 
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
 import { createSqliteAdapter } from '@sqldoc/db'
+import { describe, it } from '@sqldoc/test-utils'
 import type { DbSource } from '../../adapter.ts'
 import { createInspector } from '../../inspector.ts'
 

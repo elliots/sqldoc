@@ -1,7 +1,16 @@
 import { defineTemplate } from '@sqldoc/ns-codegen'
 import { activeTables, enrichRealm } from '../helpers/enrich.ts'
-import { toCamelCase, toPascalCase } from '../helpers/naming.ts'
-import { JSON_TYPE_DECLARATION, pgToTs, type TsTypeOptions } from '../types/pg-to-ts.ts'
+import { toCamelCase } from '../helpers/naming.ts'
+import {
+  collectCompositeTypes,
+  emitCompositeInterfaces,
+  hasJsonTypes,
+  inputFunctionParams,
+  qualifiedFunctionSqlName,
+  resolveFunctionReturnType,
+  resolveTsColumnType,
+} from '../helpers/typescript.ts'
+import { JSON_TYPE_DECLARATION, type TsTypeOptions } from '../types/pg-to-ts.ts'
 
 export const configSchema = {
   dateType: {
@@ -31,10 +40,6 @@ export default defineTemplate({
     }
 
     const schema = enrichRealm(ctx)
-    // Check if any column uses Json type
-    const allCols = [...schema.tables.flatMap((t) => t.columns), ...schema.views.flatMap((v) => v.columns)]
-    const hasJson = allCols.some((c) => c.category === 'json' || c.pgType === 'json' || c.pgType === 'jsonb')
-
     let needsSql = false
 
     const lines: string[] = [
@@ -44,7 +49,7 @@ export default defineTemplate({
       '',
     ]
 
-    if (hasJson) {
+    if (hasJsonTypes(schema)) {
       lines.push(JSON_TYPE_DECLARATION)
       lines.push('')
     }
@@ -57,32 +62,8 @@ export default defineTemplate({
     }
 
     // Composite types (collected from columns and function return types)
-    const composites = new Map<string, Array<{ name: string; type: string }>>()
-    for (const table of schema.tables) {
-      for (const col of table.columns) {
-        if (col.category === 'composite' && col.compositeFields?.length && !composites.has(col.pgType)) {
-          composites.set(col.pgType, col.compositeFields)
-        }
-      }
-    }
-    for (const fn of schema.functions) {
-      if (fn.returnType?.category === 'composite' && fn.returnType.compositeFields?.length) {
-        // Strip "SETOF " prefix to get the actual composite type name
-        const typeName = fn.returnType.type.replace(/^setof\s+/i, '')
-        if (!composites.has(typeName)) {
-          composites.set(typeName, fn.returnType.compositeFields)
-        }
-      }
-    }
-    for (const [name, fields] of composites) {
-      const typeName = toPascalCase(name)
-      lines.push(`export interface ${typeName} {`)
-      for (const f of fields) {
-        lines.push(`  ${toCamelCase(f.name)}: ${pgToTs(f.type, false, options)}`)
-      }
-      lines.push('}')
-      lines.push('')
-    }
+    const composites = collectCompositeTypes(schema)
+    emitCompositeInterfaces(lines, composites, options)
 
     // Generate per-table interfaces
     const tableEntries: string[] = []
@@ -93,7 +74,7 @@ export default defineTemplate({
       lines.push(`export interface ${interfaceName} {`)
 
       for (const col of table.columns) {
-        let tsType = resolveType(col, options)
+        let tsType = resolveTsColumnType(col, options)
 
         // Wrap auto-generated columns in Generated<T>
         if (col.isSerial || col.raw.default !== undefined) {
@@ -117,7 +98,7 @@ export default defineTemplate({
       lines.push(`export interface ${interfaceName} {`)
 
       for (const col of view.columns) {
-        const tsType = resolveType(col, options)
+        const tsType = resolveTsColumnType(col, options)
         lines.push(`  ${col.name}: ${tsType}`)
       }
 
@@ -139,38 +120,26 @@ export default defineTemplate({
       const retRaw = fn.returnType?.type?.toLowerCase() ?? ''
       if (retRaw === 'trigger') continue
 
-      const filteredArgs = fn.args.filter((a) => !a.name?.startsWith('_') && (a as any).mode !== 'OUT')
-
-      // Build parameter list
-      const usedNames = new Set<string>()
-      const params = filteredArgs.map((a, i) => {
-        const argType = pgToTs(a.type, false, options, a.category as any)
-        let argName = a.name ? toCamelCase(a.name) : `arg${i + 1}`
-        if (usedNames.has(argName)) argName = `${argName}${i + 1}`
-        usedNames.add(argName)
-        return { name: argName, type: argType }
-      })
-
+      const params = inputFunctionParams(fn, options)
       const paramStr = params.map((p) => `${p.name}: ${p.type}`).join(', ')
       const sqlArgs = params.map((p) => `\${${p.name}}`).join(', ')
       const fnName = toCamelCase(fn.name)
+      const sqlFnName = qualifiedFunctionSqlName(fn, ctx.defaultSchema)
 
       // Determine return type and query style
       if (retRaw.startsWith('setof ')) {
-        const tableName = retRaw.replace('setof ', '')
-        const table = schema.tables.find((t) => t.name === tableName || t.sqlName === tableName)
-        const rowType = table?.pascalName ?? toPascalCase(tableName)
+        const rowType = resolveFunctionReturnType(fn, schema, options, composites).replace(/\[\]$/, '')
 
         fnDefs.push(`export function ${fnName}(db: Kysely<Database>, ${paramStr}) {`)
-        fnDefs.push(`  return db.selectFrom(sql<${rowType}>\`${fn.name}(${sqlArgs})\`.as('t')).selectAll().execute()`)
+        fnDefs.push(`  return db.selectFrom(sql<${rowType}>\`${sqlFnName}(${sqlArgs})\`.as('t')).selectAll().execute()`)
         fnDefs.push('}')
         fnDefs.push('')
       } else if (fn.returnType) {
-        const retType = pgToTs(fn.returnType.type, false, options, fn.returnType.category as any)
+        const retType = resolveFunctionReturnType(fn, schema, options, composites)
 
         fnDefs.push(`export async function ${fnName}(db: Kysely<Database>, ${paramStr}): Promise<${retType}> {`)
         fnDefs.push(
-          `  const { val } = await sql<{ val: ${retType} }>\`SELECT ${fn.name}(${sqlArgs}) AS val\`.execute(db).then(r => r.rows[0]!)`,
+          `  const { val } = await sql<{ val: ${retType} }>\`SELECT ${sqlFnName}(${sqlArgs}) AS val\`.execute(db).then(r => r.rows[0]!)`,
         )
         fnDefs.push('  return val')
         fnDefs.push('}')
@@ -197,18 +166,6 @@ export default defineTemplate({
           content: lines.join('\n'),
         },
       ],
-    }
-
-    function resolveType(col: any, options: TsTypeOptions): string {
-      if (col.typeOverride) return col.typeOverride
-      if (col.category === 'enum' && col.enumValues?.length) {
-        return col.nullable ? `${toPascalCase(col.pgType)} | null` : toPascalCase(col.pgType)
-      }
-      if (col.category === 'composite' && col.compositeFields?.length) {
-        const compositeType = toPascalCase(col.pgType)
-        return col.nullable ? `${compositeType} | null` : compositeType
-      }
-      return pgToTs(col.pgType, col.nullable, options, col.category)
     }
   },
 })

@@ -127,6 +127,34 @@ $$ LANGUAGE plpgsql;`
   return [{ sql: fnSql }, { sql: triggerSql }]
 }
 
+/** Generate separate statement-level triggers for MSSQL using inserted/deleted pseudo-tables. */
+function generateMssqlTriggers(objectName: string, destination: string, operations: string[]): SqlOutput[] {
+  const q = (name: string) => quoteIdentifier(name, 'mssql')
+  const outputs: SqlOutput[] = []
+
+  for (const op of operations) {
+    const opLower = op.toLowerCase()
+    const opUpper = op.toUpperCase()
+    const triggerName = `${objectName}_audit_after_${opLower}`
+    const oldExpr = opLower === 'insert' ? 'NULL' : '(SELECT * FROM deleted FOR JSON PATH)'
+    const newExpr = opLower === 'delete' ? 'NULL' : '(SELECT * FROM inserted FOR JSON PATH)'
+
+    outputs.push({
+      sql: `CREATE TRIGGER ${q(triggerName)}
+ON ${q(objectName)}
+AFTER ${opUpper}
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO ${q(destination)} (table_name, operation, old_data, new_data, changed_at)
+  VALUES ('${objectName}', '${opUpper}', ${oldExpr}, ${newExpr}, SYSUTCDATETIME());
+END;`,
+    })
+  }
+
+  return outputs
+}
+
 // -- Handler --
 
 function handleAudit(ctx: TagContext): TagOutput {
@@ -142,11 +170,7 @@ function handleAudit(ctx: TagContext): TagOutput {
   if (dialect === 'postgres') {
     triggerSqls = generatePostgresTriggers(objectName, destination, operations)
   } else if (dialect === 'mssql') {
-    triggerSqls = []
-    extraAnnotations.push({
-      object: objectName,
-      text: 'MSSQL audit triggers will use inserted/deleted tables (not yet implemented)',
-    })
+    triggerSqls = generateMssqlTriggers(objectName, destination, operations)
   } else if (dialect === 'mysql' || dialect === 'sqlite') {
     const columns = getSchemaColumns(getSchemaTable(ctx))
     if (columns.length === 0) {

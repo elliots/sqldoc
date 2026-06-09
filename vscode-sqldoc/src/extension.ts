@@ -17,6 +17,7 @@ import {
   validate,
 } from '@sqldoc/core'
 import * as vscode from 'vscode'
+import { resolveWorkspaceDialect } from './config.ts'
 
 /** Load .ts modules using bundle-require (esbuild-wasm) — needed for VSCode's Node runtime */
 async function esbuildLoader(specifier: string, fromDir?: string): Promise<any> {
@@ -42,6 +43,7 @@ const SQL_SELECTORS = ['sql', 'pgsql', 'plpgsql', 'postgres']
 
 let diagnosticCollection: vscode.DiagnosticCollection
 let astAdapter: SqlparserTsAdapter | null = null
+let astAdapterDialect: string | null = null
 let outputChannel: vscode.OutputChannel
 
 // Cache loaded namespaces per document URI so completions can use them
@@ -169,9 +171,10 @@ async function validateDocument(doc: vscode.TextDocument) {
   let statements: SqlStatement[] = []
   let initFailed = false
   try {
-    if (!astAdapter) {
-      // TODO: read dialect from workspace sqldoc.config.ts
-      astAdapter = new SqlparserTsAdapter('postgres')
+    const dialect = await resolveWorkspaceDialect(doc.uri.fsPath)
+    if (!astAdapter || astAdapterDialect !== dialect) {
+      astAdapter = new SqlparserTsAdapter(dialect)
+      astAdapterDialect = dialect
       await astAdapter.init()
     }
     statements = astAdapter.parseStatements(text)
