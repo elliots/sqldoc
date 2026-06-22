@@ -1,12 +1,12 @@
 ---
 layout: home
 hero:
-  name: sqldoc
+  name: SQLDoc
   text: SQL-first development
   tagline: A pluggable compiler pipeline for SQL schemas. Tags in comments drive code generation, migrations, and custom plugins.
-  
-
-    Your .sql files are the source of truth.
+  image:
+    src: /logo.png
+    alt: sqldoc logo
   actions:
     - theme: brand
       text: Get Started

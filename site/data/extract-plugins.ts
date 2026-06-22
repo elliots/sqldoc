@@ -1,4 +1,17 @@
 import * as path from 'node:path'
+import anon from '../../packages/ns-anon/src/index.ts'
+import audit from '../../packages/ns-audit/src/index.ts'
+import codegen from '../../packages/ns-codegen/src/index.ts'
+import comment from '../../packages/ns-comment/src/index.ts'
+import deprecated from '../../packages/ns-deprecated/src/index.ts'
+import docs from '../../packages/ns-docs/src/index.ts'
+import history from '../../packages/ns-history/src/index.ts'
+import lint from '../../packages/ns-lint/src/index.ts'
+import postgraphile from '../../packages/ns-postgraphile/src/index.ts'
+import rls from '../../packages/ns-rls/src/index.ts'
+import softdelete from '../../packages/ns-softdelete/src/index.ts'
+import temporal from '../../packages/ns-temporal/src/index.ts'
+import validate from '../../packages/ns-validate/src/index.ts'
 
 export interface ArgMeta {
   name: string
@@ -77,9 +90,21 @@ interface RuntimePlugin {
   examples?: RuntimeExample[]
 }
 
-const namespaceModules = import.meta.glob('../../packages/ns-*/src/index.ts', {
-  eager: true,
-}) as Record<string, { default?: RuntimePlugin }>
+const namespaceModules: Record<string, RuntimePlugin> = {
+  '../../packages/ns-anon/src/index.ts': anon,
+  '../../packages/ns-audit/src/index.ts': audit,
+  '../../packages/ns-codegen/src/index.ts': codegen,
+  '../../packages/ns-comment/src/index.ts': comment,
+  '../../packages/ns-deprecated/src/index.ts': deprecated,
+  '../../packages/ns-docs/src/index.ts': docs,
+  '../../packages/ns-history/src/index.ts': history,
+  '../../packages/ns-lint/src/index.ts': lint,
+  '../../packages/ns-postgraphile/src/index.ts': postgraphile,
+  '../../packages/ns-rls/src/index.ts': rls,
+  '../../packages/ns-softdelete/src/index.ts': softdelete,
+  '../../packages/ns-temporal/src/index.ts': temporal,
+  '../../packages/ns-validate/src/index.ts': validate,
+}
 
 function toArgMeta(name: string, arg: RuntimeArg): ArgMeta {
   return {
@@ -137,12 +162,7 @@ function pluginMetaFromModule(sourceFile: string, plugin: RuntimePlugin): Plugin
 
 export function extractAllPlugins(): PluginMeta[] {
   const plugins = Object.entries(namespaceModules)
-    .map(([sourceFile, mod]) => {
-      const plugin = mod.default
-      if (!plugin) return null
-      return pluginMetaFromModule(sourceFile, plugin)
-    })
-    .filter((plugin): plugin is PluginMeta => plugin !== null)
+    .map(([sourceFile, plugin]) => pluginMetaFromModule(sourceFile, plugin))
 
   plugins.sort((a, b) => a.name.localeCompare(b.name))
   return plugins

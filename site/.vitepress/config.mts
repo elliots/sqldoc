@@ -41,6 +41,8 @@ export default defineConfigWithTheme<ThemeConfig>({
     ],
   },
   themeConfig: {
+    logo: '/logo.png',
+    siteTitle: false,
     nav: [
       { text: 'Docs', link: '/guide/' },
     ],

@@ -42,8 +42,10 @@ sqldoc compile [path] [options]
 |------|-------------|
 | <code v-pre>-c, --config &lt;path&gt;</code> | Path to sqldoc.config.ts |
 | <code v-pre>-o, --output &lt;path&gt;</code> | Write to file instead of stdout |
+| <code v-pre>--include-external</code> | Include @external files in compiled output |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 | <code v-pre>--all</code> | Run across all config files in the workspace |
+| <code v-pre>--no-cache</code> | Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true) |
 
 ---
 
@@ -71,6 +73,7 @@ sqldoc codegen [path] [options]
 | <code v-pre>-o, --output &lt;path&gt;</code> | Output file path (used with --template) |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 | <code v-pre>--all</code> | Run across all config files in the workspace |
+| <code v-pre>--no-cache</code> | Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true) |
 
 ---
 
@@ -120,6 +123,7 @@ sqldoc lint [path] [options]
 | <code v-pre>-v, --verbose</code> | Show ignored rules |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
 | <code v-pre>--all</code> | Run across all config files in the workspace |
+| <code v-pre>--no-cache</code> | Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true) |
 
 ---
 
@@ -153,6 +157,7 @@ sqldoc schema inspect [source] [options]
 | <code v-pre>-f, --format &lt;format&gt;</code> | Output format: sql, json |
 | <code v-pre>--dev-url &lt;url&gt;</code> | Dev database URL (pglite, docker://&lt;image&gt;, dockerfile://&lt;path&gt;, postgres://...) |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--no-cache</code> | Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true) |
 
 ### `sqldoc schema diff`
 
@@ -173,6 +178,8 @@ sqldoc schema diff [options]
 | <code v-pre>--dev-url &lt;url&gt;</code> | Dev database URL (pglite, docker://&lt;image&gt;, dockerfile://&lt;path&gt;, postgres://...) |
 | <code v-pre>--check</code> | Exit non-zero if schemas differ (CI mode) |
 | <code v-pre>--project &lt;name&gt;</code> | Select a named project from multi-project config |
+| <code v-pre>--no-cache</code> | Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true) |
+| <code v-pre>--ignore-extensions</code> | Skip extension add/drop changes (useful when diffing against a real DB) |
 
 ---
 
@@ -194,6 +201,7 @@ sqldoc migrate [options]
 | <code v-pre>--name &lt;name&gt;</code> | Custom migration name |
 | <code v-pre>--force</code> | Allow destructive changes (DROP TABLE, DROP COLUMN, etc.) |
 | <code v-pre>--all</code> | Run across all config files in the workspace |
+| <code v-pre>--no-cache</code> | Skip compilation cache (equivalent to SQLDOC_NO_CACHE=true) |
 
 ---
 
