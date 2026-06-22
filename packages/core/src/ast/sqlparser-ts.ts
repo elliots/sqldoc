@@ -1,11 +1,11 @@
-import * as sp from '@sqldoc/sqlparser-ts'
+import * as sp from '@guanmingchiu/sqlparser-ts'
 import { debug } from '../debug.ts'
 import type { Dialect } from '../sql-emitter.ts'
 import type { SqlAstAdapter } from './adapter.ts'
 import type { SqlColumn, SqlCommentOn, SqlStatement } from './types.ts'
 
 /**
- * AST adapter backed by @sqldoc/sqlparser-ts (WASM-based, multi-dialect).
+ * AST adapter backed by @guanmingchiu/sqlparser-ts (WASM-based, multi-dialect).
  * Uses real span info from the parser for line-based matching.
  */
 export class SqlparserTsAdapter implements SqlAstAdapter {

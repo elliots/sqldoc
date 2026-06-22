@@ -46,7 +46,7 @@
     "build:types": "tsgo -p tsconfig.build.json"
   },
   "dependencies": {
-    "@sqldoc/sqlparser-ts": "0.61.3",
+    "@guanmingchiu/sqlparser-ts": "0.62.0",
     "pgsql-parser": "17.9.15"
   },
   "devDependencies": {
