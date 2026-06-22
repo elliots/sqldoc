@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@sqldoc/ns-deprecated",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Deprecation namespace for sqldoc -- marks SQL objects as deprecated with COMMENT ON statements",
   "exports": {
     ".": {

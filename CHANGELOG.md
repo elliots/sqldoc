@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.10 (2026-06-22)
+
+ee4541c chore: update to node 26
+4f13732 fix: vscode-sqldoc: fix build
+2c746f0 test against postgres 18, remove postgres 14
+79ad872 chore: update to rc typescript 7
+0743ebb chore: unvendor sqlparser-ts after upstream pr accepted
+d806c77 some more cleanup
+
+
 ## v0.2.9 (2026-04-29)
 
 f2c2e709 feat: install command
