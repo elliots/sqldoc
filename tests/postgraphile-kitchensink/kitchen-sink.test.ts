@@ -13,7 +13,7 @@ const extensions = extractExtensions([kitchenSinkSQL]).extensions
 
 // Kitchen sink uses multiple schemas (a, b, c, d, etc.), extensions (tablefunc, hstore, intarray),
 // and starts with DROP CASCADE.
-const versions: Array<string | undefined> = ['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined]
+const versions: Array<string | undefined> = ['postgres:18', 'postgres:17', 'postgres:16', 'postgres:15', undefined]
 
 if (process.env.TEST_NEON_ONLY === 'true') {
   versions.length = 0

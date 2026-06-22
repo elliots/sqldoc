@@ -56,7 +56,7 @@ describe('docker template tests', () => {
     } catch {}
     dockerExec(`docker network create ${NETWORK}`)
     dockerExec(
-      `docker run -d --name ${PG_CONTAINER} --network ${NETWORK} -p ${PG_PORT}:5432 -e POSTGRES_PASSWORD=postgres postgres:17-alpine`,
+      `docker run -d --name ${PG_CONTAINER} --network ${NETWORK} -p ${PG_PORT}:5432 -e POSTGRES_PASSWORD=postgres postgres:18`,
     )
 
     // Wait for postgres to accept connections via the host port mapping

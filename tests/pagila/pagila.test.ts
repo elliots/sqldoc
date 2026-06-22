@@ -19,7 +19,7 @@ const pagilaSQL =
   rawPagilaSQL
 
 // loop through postgres versions, pglite, and optionally neon-temporary
-const versions: Array<string | undefined> = [undefined] //['postgres:17', 'postgres:16', 'postgres:15', 'postgres:14', undefined]
+const versions: Array<string | undefined> = ['postgres:18', 'postgres:17', 'postgres:16', 'postgres:15', undefined]
 if (process.env.TEST_NEON === 'true') versions.push('neon-temporary')
 
 versions.forEach((version) => {
