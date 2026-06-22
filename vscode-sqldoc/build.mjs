@@ -1,22 +1,48 @@
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as esbuild from 'esbuild'
 
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+import { glob } from "node:fs/promises";
+
+async function findFile(rootDir, fileName) {
+  const { value, done } = await glob(`**/${fileName}`, {
+    cwd: rootDir,
+    absolute: true,
+    followSymlinks: true,
+  }).next();
+
+  return done ? undefined : resolve(rootDir, value);
+}
+
 
 // Copy sqlparser WASM to out/
 cpSync(
-  resolve(__dirname, '../sqlparser-ts/wasm/sqlparser_rs_wasm_bg.wasm'),
+  await findFile(`${__dirname}/node_modules`, 'sqlparser_rs_wasm_bg.wasm'),
   resolve(__dirname, 'out/sqlparser_rs_wasm_bg.wasm'),
+)
+
+// Copy libpg-query WASM to out/
+cpSync(
+  require.resolve(
+    "libpg-query/wasm/libpg-query.wasm",
+  ),
+  resolve(__dirname, 'out/libpg-query.wasm'),
 )
 
 // Copy esbuild-wasm into out/node_modules/ so it ships in the VSIX
 // (esbuild's JS API needs its wasm binary at a relative path it controls)
 const esbuildWasmDest = resolve(__dirname, 'out/node_modules/esbuild-wasm')
 if (existsSync(esbuildWasmDest)) rmSync(esbuildWasmDest, { recursive: true })
-cpSync(resolve(__dirname, '../node_modules/.pnpm/esbuild-wasm@0.27.4/node_modules/esbuild-wasm'), esbuildWasmDest, {
+cpSync(dirname(await findFile(`${__dirname}/node_modules`, 'esbuild.wasm')), esbuildWasmDest, {
   recursive: true,
+  dereference: true
 })
 
 await esbuild.build({
