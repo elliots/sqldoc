@@ -33,12 +33,22 @@ archive() {
   fi
 }
 
+archive_binary() {
+  local src="$1" staged="$2" name="$3" format="${4:-tar.gz}"
+  if [[ ! -f "$src" ]]; then
+    echo "Missing expected binary: $src" >&2
+    exit 1
+  fi
+  cp "$src" "$staged"
+  archive "$staged" "$name" "$format"
+}
+
 # Rename to just "sqldoc" (or sqldoc.exe) inside each archive
-cp "$DIST/sqldoc-linux-x64"      "$DIST/sqldoc" && archive "$DIST/sqldoc"     "sqldoc_linux_amd64"
-cp "$DIST/sqldoc-linux-arm64"    "$DIST/sqldoc" && archive "$DIST/sqldoc"     "sqldoc_linux_arm64"
-cp "$DIST/sqldoc-darwin-x64"     "$DIST/sqldoc" && archive "$DIST/sqldoc"     "sqldoc_darwin_amd64"
-cp "$DIST/sqldoc-darwin-arm64"   "$DIST/sqldoc" && archive "$DIST/sqldoc"     "sqldoc_darwin_arm64"
-cp "$DIST/sqldoc-win-x64.exe"    "$DIST/sqldoc.exe" && archive "$DIST/sqldoc.exe" "sqldoc_windows_amd64" zip
+archive_binary "$DIST/sqldoc-linux-x64"    "$DIST/sqldoc"     "sqldoc_linux_amd64"
+archive_binary "$DIST/sqldoc-linux-arm64"  "$DIST/sqldoc"     "sqldoc_linux_arm64"
+archive_binary "$DIST/sqldoc-darwin-x64"   "$DIST/sqldoc"     "sqldoc_darwin_amd64"
+archive_binary "$DIST/sqldoc-darwin-arm64" "$DIST/sqldoc"     "sqldoc_darwin_arm64"
+archive_binary "$DIST/sqldoc-win-x64.exe"  "$DIST/sqldoc.exe" "sqldoc_windows_amd64" zip
 rm -f "$DIST/sqldoc" "$DIST/sqldoc.exe"
 
 # -- 3. Checksums --
