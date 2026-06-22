@@ -28,8 +28,8 @@
   ],
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsgo -noEmit",
-    "build:types": "tsgo -p tsconfig.build.json"
+    "typecheck": "tsc -noEmit",
+    "build:types": "tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
     "@sqldoc/core": "workspace:*",
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@sqldoc/core": "workspace:*",
     "@sqldoc/db": "workspace:*",
-    "@typescript/native-preview": "catalog:",
+    "typescript": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
 }

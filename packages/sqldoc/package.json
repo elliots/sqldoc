@@ -32,8 +32,8 @@
   ],
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsgo -noEmit",
-    "build:types": "tsgo -p tsconfig.build.json"
+    "typecheck": "tsc -noEmit",
+    "build:types": "tsc -p tsconfig.build.json"
   },
   "engines": {
     "node": ">=24"
@@ -46,6 +46,6 @@
     "@sqldoc/test-utils": "workspace:*",
     "@types/npmcli__arborist": "^6.3.3",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "typescript": "catalog:"
   }
 }

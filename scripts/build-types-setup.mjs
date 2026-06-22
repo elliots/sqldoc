@@ -128,19 +128,19 @@ function processPackage(pkgDir) {
   }
 
   pkg.scripts ??= {}
-  if (pkg.scripts['build:types'] !== 'tsgo -p tsconfig.build.json') {
-    pkg.scripts['build:types'] = 'tsgo -p tsconfig.build.json'
+  if (pkg.scripts['build:types'] !== 'tsc -p tsconfig.build.json') {
+    pkg.scripts['build:types'] = 'tsc -p tsconfig.build.json'
     changed = true
   }
 
-  // Each package's build:types invokes `tsgo`, which bun resolves via the
+  // Each package's build:types invokes `tsc`, which bun resolves via the
   // package's own node_modules/.bin. Without a local devDep, it falls back
-  // to whatever tsgo happens to be on PATH (older dev builds silently emit
+  // to whatever tsc happens to be on PATH (older dev builds silently emit
   // .js instead of .d.ts — observed with 7.0.0-dev.20260308.1). Pin to the
   // same catalog version every other package uses.
   pkg.devDependencies ??= {}
-  if (pkg.devDependencies['@typescript/native-preview'] !== 'catalog:') {
-    pkg.devDependencies['@typescript/native-preview'] = 'catalog:'
+  if (pkg.devDependencies['typescript'] !== 'catalog:') {
+    pkg.devDependencies['typescript'] = 'catalog:'
     changed = true
   }
 

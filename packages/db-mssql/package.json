@@ -31,11 +31,11 @@
   "devDependencies": {
     "@sqldoc/db": "workspace:*",
     "@sqldoc/test-utils": "workspace:*",
-    "@typescript/native-preview": "catalog:"
+    "typescript": "catalog:"
   },
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
-    "typecheck": "tsgo -noEmit",
-    "build:types": "tsgo -p tsconfig.build.json"
+    "typecheck": "tsc -noEmit",
+    "build:types": "tsc -p tsconfig.build.json"
   }
 }

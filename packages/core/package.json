@@ -42,8 +42,8 @@
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
     "lint": "biome check src/",
-    "typecheck": "tsgo -noEmit",
-    "build:types": "tsgo -p tsconfig.build.json"
+    "typecheck": "tsc -noEmit",
+    "build:types": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@guanmingchiu/sqlparser-ts": "0.62.0",
@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
-    "@typescript/native-preview": "catalog:",
+    "typescript": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
 }

@@ -394,8 +394,8 @@
   "scripts": {
     "test": "node --test 'src/__tests__/**/*.test.ts'",
     "test:bun": "bun test --max-concurrency=1 --timeout ${TEST_TIMEOUT:-1200000} src/__tests__/**/*.test.ts",
-    "typecheck": "tsgo -noEmit",
-    "build:types": "tsgo -p tsconfig.build.json"
+    "typecheck": "tsc -noEmit",
+    "build:types": "tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
     "@sqldoc/db": "workspace:*",
@@ -410,7 +410,7 @@
     "@sqldoc/ns-codegen": "workspace:*",
     "@sqldoc/ns-validate": "workspace:*",
     "postgres": "^3.4.5",
-    "@typescript/native-preview": "catalog:",
+    "typescript": "catalog:",
     "@sqldoc/test-utils": "workspace:*"
   }
 }

@@ -8,7 +8,7 @@
     "clean:types": "find packages -maxdepth 3 -type d -name dist -prune -exec rm -rf {} +",
     "install-vscode-extension": "cd vscode-sqldoc && bun run install-ext",
     "test": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 node --test 'packages/**/*.test.ts' 'vscode-sqldoc/src/**/*.test.ts' 'tests/**/*.test.ts'",
-    "test:bun": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 sh -c \"find packages vscode-sqldoc/src tests -name '*.test.ts' ! -path 'packages/db-postgres/src/__tests__/adapter.integration.test.ts' -print | xargs bun test --max-concurrency=1 --timeout ${TEST_TIMEOUT:-1200000}\"",
+    "test:bun": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 sh -c \"find packages vscode-sqldoc/src tests -name '*.test.ts' ! -path 'packages/db-postgres/src/__tests__/adapter.integration.test.ts' -print | xargs bun test --parallel --timeout ${TEST_TIMEOUT:-1200000}\"",
     "test:coverage": "SQLDOC_RESOLVE_FROM_LOCAL_PACKAGE=true NODE_NO_WARNINGS=1 node --experimental-test-coverage --test-coverage-exclude='**/*.test.ts' --test-coverage-exclude='tests/**' --test-coverage-exclude='**/node_modules/**' --test-coverage-exclude='**/dist/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test 'packages/**/*.test.ts' 'vscode-sqldoc/src/**/*.test.ts' 'tests/**/*.test.ts'",
     "test-docs": "./scripts/test-docs.sh",
     "format": "biome format --write .",
@@ -20,7 +20,7 @@
     "clean": "find . -name node_modules -type d -prune -exec rm -rf {} +"
   },
   "catalog": {
-    "@typescript/native-preview": "7.0.0-dev.20260405.1",
+    "typescript": "7.0.1-rc",
     "@types/node": "24",
     "picocolors": "1.1.1"
   },
