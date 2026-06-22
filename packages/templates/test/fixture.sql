@@ -1,5 +1,5 @@
 -- Shared test fixture for all template generation tests.
--- Runs through the full sqldoc compile pipeline (Atlas + pglite).
+-- Runs through the full sqldoc compile pipeline (pglite).
 -- @import '@sqldoc/ns-codegen'
 -- @import '@sqldoc/ns-validate'
 

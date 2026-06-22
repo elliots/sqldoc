@@ -56,7 +56,7 @@ export default {
   // Migration settings
   migrate: {
     dir: './migrations',         // Migration output directory
-    format: 'sql',               // 'sql' | 'atlas'
+    format: 'sql',               // 'sql'
   },
 }
 ```

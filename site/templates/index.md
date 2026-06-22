@@ -10,7 +10,7 @@ sqldoc generates typed code from your SQL schema using templates. Run `sqldoc co
 sqldoc codegen
 ```
 
-Templates read your SQL schema (via Atlas) and produce typed output files -- interfaces, models, query helpers, and more.
+Templates read your SQL schema and produce typed output files -- interfaces, models, query helpers, and more.
 
 <script setup>
 import { data as templates } from '../data/templates.data'

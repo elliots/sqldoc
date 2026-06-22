@@ -132,4 +132,4 @@ The VSCode extension uses **Tier 1 compilation only** (SQL parsing via sqlparser
 - Code generation previews are not available in the editor (use `sqldoc codegen` from the terminal)
 - Schema-dependent features (like validating column names for audit triggers) require running the CLI
 
-For full compilation with schema analysis, use the CLI commands (`sqldoc validate`, `sqldoc codegen`, etc.) which use Tier 2 compilation with the Atlas WASI engine.
+For full compilation with schema analysis, use the CLI commands (`sqldoc validate`, `sqldoc codegen`, etc.) which use Tier 2 compilation using an actual database

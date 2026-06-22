@@ -118,7 +118,7 @@ sqldoc read your SQL file, parsed the tags in comments, and:
 1. **Validated** that all tags have correct syntax, arguments, and targets
 2. **Compiled** the tags into additional SQL (COMMENT ON statements, CHECK constraints)
 3. **Verified** the compiled sql was run in an embedded Postgres (PGLite), as well as the migrations, and then diffed.
-4. **Generated** TypeScript interfaces from your schema via Atlas
+4. **Generated** TypeScript interfaces from your schema
 
 The input SQL stayed unchanged -- tags are comments, so the file is always valid SQL.
 

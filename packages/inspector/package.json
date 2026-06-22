@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@sqldoc/inspector",
   "version": "0.2.10",
-  "description": "TypeScript port of Atlas schema inspector for sqldoc",
+  "description": "Schema inspector for sqldoc",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",

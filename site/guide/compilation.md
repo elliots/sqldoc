@@ -22,7 +22,7 @@ Tier 1 works entirely in memory -- no database needed. It powers:
 
 ## Tier 2: Schema analysis
 
-Tier 2 uses Atlas (compiled from Go to WASI) plus a dev database to:
+Tier 2 uses a dev database to:
 
 1. **Load** the compiled SQL into a database
 2. **Inspect** the resulting schema (tables, columns, types, constraints, relationships)
@@ -58,7 +58,7 @@ SQL files with tags
   [Merge SQL]          -- original SQL + generated SQL
        |
        v
-  [Atlas inspect]      -- load into dev database, inspect schema (Tier 2)
+  [Inspect]            -- load into dev database, inspect schema (Tier 2)
        |
        v
   [Generate code]      -- run templates against inspected schema (Tier 2)

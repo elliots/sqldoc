@@ -154,7 +154,6 @@ The tag context gives your plugin everything it needs to generate intelligent SQ
 - **`ctx.tag.args`** -- access positional or named arguments from the tag
 - **`ctx.siblingTags`** -- see what other namespaces are on the same object
 - **`ctx.config`** -- read namespace-specific config from `sqldoc.config.ts`
-- **`ctx.atlasTable`** / **`ctx.atlasRealm`** -- access the full parsed schema (foreign keys, indexes, constraints)
 
 Some things teams have built:
 

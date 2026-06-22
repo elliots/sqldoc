@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@sqldoc/ns-codegen",
   "version": "0.2.10",
-  "description": "Code generation namespace for sqldoc -- runs configurable templates against compiled Atlas schema",
+  "description": "Code generation namespace for sqldoc -- runs configurable templates",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
